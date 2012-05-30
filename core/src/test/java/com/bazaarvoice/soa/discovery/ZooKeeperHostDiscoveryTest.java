@@ -11,8 +11,8 @@ import org.junit.Test;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
     private static final ServiceEndpoint FOO = new ServiceEndpoint("Foo", "server", 8080);
@@ -61,6 +61,33 @@ public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
 
         _registry.unregister(FOO);
         assertTrue(waitUntilSize(_discovery.getHosts(), 0));
+    }
+
+    @Test
+    public void testWaitForData() throws Exception {
+        // Create the HostDiscovery after registration is done so there's at least one initial host
+        _registry.register(FOO);
+        HostDiscovery discovery = new ZooKeeperHostDiscovery(newCurator(), FOO.getServiceName(), true);
+        assertEquals(Iterables.size(discovery.getHosts()), 1);
+    }
+
+    @Test
+    public void testAlreadyExistingEndpointsDoNotFireEvents() throws Exception {
+        _registry.register(FOO);
+
+        HostDiscovery discovery = new ZooKeeperHostDiscovery(newCurator(), FOO.getServiceName(), true);
+        assertEquals(Iterables.size(discovery.getHosts()), 1);
+
+        CountingListener eventCounter = new CountingListener();
+        discovery.addListener(eventCounter);
+
+        // Don't know when the register() will take effect.  Execute and wait for an
+        // unregister--that should be long enough to wait.
+        _registry.unregister(FOO);
+        assertTrue(waitUntilSize(discovery.getHosts(), 0));
+
+        assertEquals(0, eventCounter.getNumAdds());  // endpoints initially visible never fire add events
+        assertEquals(1, eventCounter.getNumRemoves());
     }
 
     @Test
@@ -116,15 +143,17 @@ public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
         CountDownLatch removeLatch = new CountDownLatch(1);
         _discovery.addListener(new CountDownListener(addLatch, removeLatch));
 
-        HostDiscovery.EndpointListener listener = new FailListener();
-        _discovery.addListener(listener);
-        _discovery.removeListener(listener);
+        CountingListener eventCounter = new CountingListener();
+        _discovery.addListener(eventCounter);
+        _discovery.removeListener(eventCounter);
 
         _registry.register(FOO);
         assertTrue(addLatch.await(10, TimeUnit.SECONDS));
 
         _registry.unregister(FOO);
         assertTrue(removeLatch.await(10, TimeUnit.SECONDS));
+
+        assertEquals(0, eventCounter.getNumEvents());
     }
 
     @Test
@@ -218,15 +247,30 @@ public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
         }
     }
 
-    private static final class FailListener implements HostDiscovery.EndpointListener {
+    private static final class CountingListener implements HostDiscovery.EndpointListener {
+        private int _numAdds;
+        private int _numRemoves;
+
         @Override
         public void onEndpointAdded(ServiceEndpoint endpoint) {
-            fail();
+            _numAdds++;
         }
 
         @Override
         public void onEndpointRemoved(ServiceEndpoint endpoint) {
-            fail();
+            _numRemoves++;
+        }
+
+        public int getNumAdds() {
+            return _numAdds;
+        }
+
+        public int getNumRemoves() {
+            return _numRemoves;
+        }
+
+        public int getNumEvents() {
+            return _numAdds + _numRemoves;
         }
     }
 }
