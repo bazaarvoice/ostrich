@@ -14,6 +14,14 @@ public interface HostDiscovery {
     Iterable<ServiceEndpoint> getHosts();
 
     /**
+     * Returns true if the specified endpoint is a member of the set returned by {@link #getHosts()}.
+     *
+     * @param endpoint The endpoint to test.
+     * @return True if the specified endpoint is a member of the set returned by {@link #getHosts()}.
+     */
+    boolean contains(ServiceEndpoint endpoint);
+
+    /**
      * Add an endpoint listener.
      *
      * @param listener The endpoint listener to add.

@@ -3,15 +3,16 @@ package com.bazaarvoice.soa.examples.calculator;
 import com.bazaarvoice.soa.ServiceEndpoint;
 import com.bazaarvoice.soa.ServiceRegistry;
 import com.bazaarvoice.soa.registry.ZooKeeperServiceRegistry;
-import com.bazaarvoice.soa.zookeeper.ZooKeeperConfiguration;
-import com.bazaarvoice.soa.zookeeper.ZooKeeperConfigurationBuilder;
+import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
+import com.google.common.collect.ImmutableMap;
 import com.yammer.dropwizard.Service;
-import com.yammer.dropwizard.config.Configuration;
 import com.yammer.dropwizard.config.Environment;
 
 import java.net.InetAddress;
+import java.net.URL;
+import java.util.Map;
 
-public class CalculatorService extends Service<Configuration> {
+public class CalculatorService extends Service<CalculatorConfiguration> {
     public static boolean IS_HEALTHY = true;
 
     public CalculatorService() {
@@ -19,21 +20,24 @@ public class CalculatorService extends Service<Configuration> {
     }
 
     @Override
-    protected void initialize(Configuration config, Environment env) throws Exception {
+    protected void initialize(CalculatorConfiguration config, Environment env) throws Exception {
         env.addResource(CalculatorResource.class);
         env.addResource(ToggleHealthResource.class);
         env.addHealthCheck(new CalculatorHealthCheck());
 
         String hostname = InetAddress.getLocalHost().getHostName();
         int port = config.getHttpConfiguration().getPort();
-        ServiceEndpoint endpoint = new ServiceEndpoint(getName(), hostname, port);
+        int adminPort = config.getHttpConfiguration().getAdminPort();
+
+        Map<?,?> payload = ImmutableMap.builder()
+                .put("url", new URL("http", hostname, port, "/" + getName()))
+                .put("adminUrl", new URL("http", hostname, adminPort, ""))
+                .build();
+        ServiceEndpoint endpoint = new ServiceEndpoint(getName(), hostname, port, JsonHelper.toJson(payload));
 
         // Register with ZooKeeper
-        ZooKeeperConfiguration zooKeeperConfig = new ZooKeeperConfigurationBuilder()
-                .withConnectString("localhost:2181")
-                .withRetryNTimes(3, 100)
-                .build();
-        ServiceRegistry registry = new ZooKeeperServiceRegistry(zooKeeperConfig);
+        ZooKeeperConnection connection = config.getZooKeeperConfiguration().connect();
+        ServiceRegistry registry = new ZooKeeperServiceRegistry(connection);
         registry.register(endpoint);
     }
 

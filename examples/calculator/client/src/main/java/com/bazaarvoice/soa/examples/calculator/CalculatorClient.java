@@ -2,11 +2,16 @@ package com.bazaarvoice.soa.examples.calculator;
 
 import com.bazaarvoice.soa.ServiceEndpoint;
 
+import java.util.Map;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+
 public class CalculatorClient implements CalculatorService {
     private final Http _service;
 
     public CalculatorClient(ServiceEndpoint endpoint) {
-        _service = new Http("http://" + endpoint.getServiceAddress() + "/calculator");
+        Map<?,?> payload = JsonHelper.fromJson(endpoint.getPayload(), Map.class);
+        _service = new Http((String) checkNotNull(payload.get("url")));
     }
 
     @Override

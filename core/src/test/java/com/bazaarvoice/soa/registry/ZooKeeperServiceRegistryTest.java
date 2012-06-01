@@ -2,7 +2,7 @@ package com.bazaarvoice.soa.registry;
 
 import com.bazaarvoice.soa.ServiceEndpoint;
 import com.bazaarvoice.soa.test.ZooKeeperTest;
-import com.bazaarvoice.soa.zookeeper.ZooKeeperConfiguration;
+import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
 import com.google.common.base.Charsets;
 import com.google.common.base.Strings;
 import com.netflix.curator.framework.CuratorFramework;
@@ -37,7 +37,7 @@ public class ZooKeeperServiceRegistryTest extends ZooKeeperTest {
 
     @Test(expected = NullPointerException.class)
     public void testNullConfig() throws Exception {
-        new ZooKeeperServiceRegistry((ZooKeeperConfiguration) null);
+        new ZooKeeperServiceRegistry((ZooKeeperConnection) null);
     }
 
     @Test(expected = NullPointerException.class)

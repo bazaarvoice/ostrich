@@ -5,6 +5,10 @@ import com.bazaarvoice.soa.ServiceEndpoint;
 import com.bazaarvoice.soa.ServiceFactory;
 import com.bazaarvoice.soa.loadbalance.RandomAlgorithm;
 
+import java.util.Map;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+
 public class CalculatorServiceFactory implements ServiceFactory<CalculatorService> {
     @Override
     public String getServiceName() {
@@ -23,10 +27,8 @@ public class CalculatorServiceFactory implements ServiceFactory<CalculatorServic
 
     @Override
     public boolean isHealthy(ServiceEndpoint endpoint) {
-        // CalculatorService has the convention that the admin port is always one greater than the service port,
-        // ideally this information would be conveyed in the payload of the service endpoint.
-        int adminPort = endpoint.getPort() + 1;
-        Http http = new Http("http://" + endpoint.getHostname() + ":" + adminPort);
+        Map<?,?> payload = JsonHelper.fromJson(endpoint.getPayload(), Map.class);
+        Http http = new Http((String) checkNotNull(payload.get("adminUrl")));
 
         return http.HEAD("/healthcheck") == 200;
     }

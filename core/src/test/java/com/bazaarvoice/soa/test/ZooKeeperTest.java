@@ -1,7 +1,7 @@
 package com.bazaarvoice.soa.test;
 
 import com.bazaarvoice.soa.zookeeper.ZooKeeperConfiguration;
-import com.bazaarvoice.soa.zookeeper.ZooKeeperConfigurationBuilder;
+import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
 import com.google.common.collect.Lists;
 import com.google.common.io.Closeables;
 import com.netflix.curator.framework.CuratorFramework;
@@ -36,13 +36,13 @@ public abstract class ZooKeeperTest {
         Closeables.closeQuietly(_zooKeeperServer);
     }
 
-    public ZooKeeperConfiguration newZooKeeperConfiguration() throws Exception {
+    public ZooKeeperConnection newZooKeeperConnectionFactory() throws Exception {
         assertNotNull("ZooKeeper testing server is null, did you forget to call super.setup()", _zooKeeperServer);
 
-        return new ZooKeeperConfigurationBuilder()
-                .withConnectString(_zooKeeperServer.getConnectString())
-                .withRetryNTimes(0, 0)
-                .build();
+        return new ZooKeeperConfiguration()
+                .setConnectString(_zooKeeperServer.getConnectString())
+                .setRetryNTimes(new com.bazaarvoice.soa.zookeeper.RetryNTimes(0, 0))
+                .connect();
     }
 
     public CuratorFramework newCurator() throws Exception {
