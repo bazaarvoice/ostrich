@@ -26,7 +26,7 @@ public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
     @Override
     public void setup() throws Exception {
         super.setup();
-        _registry = new ZooKeeperServiceRegistry(newZooKeeperConnectionFactory());
+        _registry = new ZooKeeperServiceRegistry(newZooKeeperConnection());
         _discovery = new ZooKeeperHostDiscovery(newCurator(), FOO.getServiceName());
     }
 

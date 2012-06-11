@@ -23,9 +23,14 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class CuratorConnection implements ZooKeeperConnection {
     private final CuratorFramework _curator;
 
-    public CuratorConnection(String connectString, RetryPolicy retryPolicy) {
+    public CuratorConnection(String connectString, RetryPolicy retryPolicy, String namespace) {
         checkNotNull(connectString);
         checkNotNull(retryPolicy);
+
+        // An empty namespace means no namespace, in which case Curator expects namespace==null.
+        if ("".equals(namespace)) {
+            namespace = null;
+        }
 
         // Make all of the curator threads daemon threads so they don't block the JVM from terminating.
         ThreadFactory threadFactory = new ThreadFactoryBuilder()
@@ -37,6 +42,7 @@ public class CuratorConnection implements ZooKeeperConnection {
             _curator = CuratorFrameworkFactory.builder()
                     .connectString(connectString)
                     .retryPolicy(retryPolicy)
+                    .namespace(namespace)
                     .threadFactory(threadFactory)
                     .build();
             _curator.start();

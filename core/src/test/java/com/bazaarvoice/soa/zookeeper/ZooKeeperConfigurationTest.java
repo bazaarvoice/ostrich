@@ -73,6 +73,12 @@ public class ZooKeeperConfigurationTest {
         assertTrue(config.getRetryPolicy() instanceof RetryUntilElapsed);
     }
 
+    @Test
+    public void testNamespace() throws IOException {
+        ZooKeeperConfiguration config = fromJson("{\"namespace\":\"global\"}");
+        assertEquals("global", config.getNamespace());
+    }
+
     private ZooKeeperConfiguration fromJson(String json) throws IOException {
         return JSON.readValue(json, ZooKeeperConfiguration.class);
     }

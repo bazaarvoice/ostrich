@@ -2,6 +2,7 @@ package com.bazaarvoice.soa.registry;
 
 import com.bazaarvoice.soa.ServiceEndpoint;
 import com.bazaarvoice.soa.test.ZooKeeperTest;
+import com.bazaarvoice.soa.zookeeper.ZooKeeperConfiguration;
 import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
 import com.google.common.base.Charsets;
 import com.google.common.base.Strings;
@@ -169,6 +170,26 @@ public class ZooKeeperServiceRegistryTest extends ZooKeeperTest {
             Stat stat = curator.checkExists().usingWatcher(creationTrigger).forPath(path);
             assertTrue(stat != null || creationTrigger.firedWithin(10, TimeUnit.SECONDS));
         }
+    }
+
+    @Test
+    public void testNamespace() throws Exception {
+        ZooKeeperConnection connection = newZooKeeperConnection(new ZooKeeperConfiguration().setNamespace("/datacenter1"));
+        ZooKeeperServiceRegistry registry = new ZooKeeperServiceRegistry(connection);
+        registry.register(FOO);
+
+        // Use a non-namespaced curator to check that the path was created in the correct namespace
+        assertNotNull(newCurator().checkExists().forPath("/datacenter1" + registry.getRegisteredEndpointPath(FOO)));
+    }
+
+    @Test
+    public void testEmptyNamespace() throws Exception {
+        ZooKeeperConnection connection = newZooKeeperConnection(new ZooKeeperConfiguration().setNamespace(""));
+        ZooKeeperServiceRegistry registry = new ZooKeeperServiceRegistry(connection);
+        registry.register(FOO);
+
+        // Use a non-namespaced curator to check that the path was created in the correct namespace
+        assertNotNull(newCurator().checkExists().forPath(registry.getRegisteredEndpointPath(FOO)));
     }
 
     private void assertRegistered(ServiceEndpoint endpoint, CuratorFramework curator) throws Exception {

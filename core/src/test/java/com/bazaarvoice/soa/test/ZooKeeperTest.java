@@ -29,6 +29,9 @@ public abstract class ZooKeeperTest {
     /** All of the curator instances that we've created running the test. */
     private List<CuratorFramework> _curatorInstances = Lists.newArrayList();
 
+    /** All of the connection instances that we've created running the test. */
+    private List<ZooKeeperConnection> _connections = Lists.newArrayList();
+
     @Before
     public void setup() throws Exception {
         _zooKeeperServer = new TestingServer();
@@ -36,6 +39,9 @@ public abstract class ZooKeeperTest {
 
     @After
     public void teardown() throws Exception {
+        for (ZooKeeperConnection connection : _connections) {
+            Closeables.closeQuietly(connection);
+        }
         for (CuratorFramework curator : _curatorInstances) {
             Closeables.closeQuietly(curator);
         }
@@ -43,25 +49,32 @@ public abstract class ZooKeeperTest {
         Closeables.closeQuietly(_zooKeeperServer);
     }
 
-    public ZooKeeperConnection newZooKeeperConnectionFactory() throws Exception {
+    public ZooKeeperConnection newZooKeeperConnection() throws Exception {
+        return newZooKeeperConnection(new ZooKeeperConfiguration()
+                .setRetryNTimes(new com.bazaarvoice.soa.zookeeper.RetryNTimes(0, 0)));
+    }
+
+    public ZooKeeperConnection newZooKeeperConnection(ZooKeeperConfiguration configuration) {
         assertNotNull("ZooKeeper testing server is null, did you forget to call super.setup()", _zooKeeperServer);
 
-        return new ZooKeeperConfiguration()
+        ZooKeeperConnection connection = configuration
                 .setConnectString("127.0.0.1:" + _zooKeeperServer.getPort())
-                .setRetryNTimes(new com.bazaarvoice.soa.zookeeper.RetryNTimes(0, 0))
                 .connect();
+
+        _connections.add(connection);
+
+        return connection;
     }
 
     public CuratorFramework newCurator() throws Exception {
-        return newCurator(new RetryNTimes(0, 0));
+        return newCurator(CuratorFrameworkFactory.builder().retryPolicy(new RetryNTimes(0, 0)));
     }
 
-    public CuratorFramework newCurator(com.netflix.curator.RetryPolicy retryPolicy) throws Exception {
+    public CuratorFramework newCurator(CuratorFrameworkFactory.Builder builder) throws Exception {
         assertNotNull("ZooKeeper testing server is null, did you forget to call super.setup()", _zooKeeperServer);
 
-        CuratorFramework curator = CuratorFrameworkFactory.builder()
+        CuratorFramework curator = builder
                 .connectString("127.0.0.1:" + _zooKeeperServer.getPort())
-                .retryPolicy(retryPolicy)
                 .build();
         curator.start();
 

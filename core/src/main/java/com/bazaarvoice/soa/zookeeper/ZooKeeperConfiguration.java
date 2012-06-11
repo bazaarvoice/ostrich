@@ -12,13 +12,14 @@ public class ZooKeeperConfiguration {
 
     private String _connectString = "localhost:2181";
     private RetryPolicy _retryPolicy = new RetryNTimes(3, 100);
+    private String _namespace;
 
     /**
      * Returns a new {@link ZooKeeperConnection} with the current configuration settings.
      * @return A new {@link ZooKeeperConnection} with the current configuration settings.
      */
     public ZooKeeperConnection connect() {
-        return new CuratorConnection(_connectString, _retryPolicy.get());
+        return new CuratorConnection(_connectString, _retryPolicy.get(), _namespace);
     }
 
     @VisibleForTesting
@@ -64,6 +65,20 @@ public class ZooKeeperConfiguration {
      */
     public ZooKeeperConfiguration setRetryUntilElapsed(RetryUntilElapsed retryPolicy) {
         _retryPolicy = retryPolicy;
+        return this;
+    }
+
+    @VisibleForTesting
+    String getNamespace() {
+        return _namespace;
+    }
+
+    /**
+     * Sets a namespace that will be prefixed to every path used by the ZooKeeperConnection.
+     * Typically the namespace will be "/global" or the name of the local data center.
+     */
+    public ZooKeeperConfiguration setNamespace(String namespace) {
+        _namespace = namespace;
         return this;
     }
 }
