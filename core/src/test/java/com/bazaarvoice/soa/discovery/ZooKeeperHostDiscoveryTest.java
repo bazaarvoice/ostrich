@@ -43,6 +43,7 @@ public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
     @Override
     public void teardown() throws Exception {
         Closeables.closeQuietly(_discovery);
+        Closeables.closeQuietly(_registry);
         super.teardown();
     }
 

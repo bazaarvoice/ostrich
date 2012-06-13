@@ -1,11 +1,13 @@
 package com.bazaarvoice.soa;
 
+import java.io.Closeable;
+
 /**
  * The <code>HostDiscovery</code> class is used to encapsulate the strategy that provides a set of hosts for use.
  * Users of this class shouldn't cache the results of discovery as subclasses can choose to change the set of available
  * hosts based on some external mechanism (ex. using ZooKeeper).
  */
-public interface HostDiscovery {
+public interface HostDiscovery extends Closeable {
     /**
      * Retrieve the available hosts.
      *

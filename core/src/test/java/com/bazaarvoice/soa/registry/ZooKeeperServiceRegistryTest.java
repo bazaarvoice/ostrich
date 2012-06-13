@@ -10,6 +10,7 @@ import com.google.common.base.Charsets;
 import com.google.common.base.Strings;
 import com.netflix.curator.framework.CuratorFramework;
 import org.apache.zookeeper.data.Stat;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -31,6 +32,12 @@ public class ZooKeeperServiceRegistryTest extends ZooKeeperTest {
         _registry = new ZooKeeperServiceRegistry(newCurator());
     }
 
+    @After
+    public void teardown() throws Exception {
+        _registry.close();
+        super.teardown();
+    }
+
     @Test(expected = NullPointerException.class)
     public void testNullConnection() throws Exception {
         new ZooKeeperServiceRegistry((ZooKeeperConnection) null);
@@ -44,6 +51,18 @@ public class ZooKeeperServiceRegistryTest extends ZooKeeperTest {
     @Test(expected = NullPointerException.class)
     public void testUnregisterNullService() throws Exception {
         _registry.unregister(null);
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testRegisterAfterClose() throws Exception {
+        _registry.close();
+        _registry.register(FOO);
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testUnregisterAfterClose() throws Exception {
+        _registry.close();
+        _registry.unregister(FOO);
     }
 
     @Test(expected = IllegalStateException.class)
@@ -111,6 +130,21 @@ public class ZooKeeperServiceRegistryTest extends ZooKeeperTest {
     }
 
     @Test
+    public void testServiceNodeIsDeletedWhenRegistryIsClosed() throws Exception {
+        CuratorFramework curator = newCurator();
+
+        _registry.register(FOO);
+        String path = _registry.getRegisteredEndpointPath(FOO);
+
+        Trigger deletionTrigger = new Trigger();
+        curator.checkExists().usingWatcher(deletionTrigger).forPath(path);
+
+        _registry.close();
+
+        assertTrue(deletionTrigger.firedWithin(10, TimeUnit.SECONDS));
+    }
+
+    @Test
     public void testServiceNodeIsDeletedWhenSessionDisconnects() throws Exception {
         CuratorFramework curator = newCurator();
 
@@ -124,8 +158,8 @@ public class ZooKeeperServiceRegistryTest extends ZooKeeperTest {
         // automatically cleaned up.
         killSession(_registry.getCurator());
 
-        // Wait for the latch to be called up to 10 seconds.  This should be plenty of time for the node to be removed,
-        // if it's not called by then, fail the test.
+        // Wait for the trigger to be called up to 10 seconds.  This should be plenty of time for the node to be
+        // removed, if it's not called by then, fail the test.
         assertTrue(deletionTrigger.firedWithin(10, TimeUnit.SECONDS));
     }
 

@@ -1,10 +1,12 @@
 package com.bazaarvoice.soa;
 
+import java.io.Closeable;
+
 /**
  * A registry for services.  The <code>ServiceRegistry</code> gives service providers a way to register their service
  * endpoints in order to make them available to consumers of the service across multiple JVMs.
  */
-public interface ServiceRegistry {
+public interface ServiceRegistry extends Closeable {
     /**
      * Add an endpoint of a service to the service registry and make it available for discovery.
      *

@@ -21,7 +21,6 @@ import com.netflix.curator.framework.recipes.cache.PathChildrenCache;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCacheEvent;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCacheListener;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Set;
@@ -34,7 +33,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * The <code>ZooKeeperHostDiscovery</code> class watches a service path in ZooKeeper and will monitor which hosts are
  * available.  As hosts come and go the results of calling the <code>#getHosts</code> method changes.
  */
-public class ZooKeeperHostDiscovery implements HostDiscovery, Closeable {
+public class ZooKeeperHostDiscovery implements HostDiscovery {
     private final CuratorFramework _curator;
     private final Set<ServiceEndPoint> _endpoints;
     private final Set<EndpointListener> _listeners;
