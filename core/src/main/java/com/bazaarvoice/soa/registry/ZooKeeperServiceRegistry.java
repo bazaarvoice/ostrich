@@ -19,7 +19,6 @@ import org.joda.time.format.ISODateTimeFormat;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -43,7 +42,7 @@ public class ZooKeeperServiceRegistry implements ServiceRegistry
     static final DateTimeFormatter ISO8601 = ISODateTimeFormat.dateTime().withZoneUTC();
 
     private final CuratorFramework _curator;
-    private final AtomicBoolean _closed = new AtomicBoolean(false);
+    private volatile boolean _closed = false;
 
     /** The ephemeral data that's been written to ZooKeeper.  Saved in case the connection is lost and then regained. */
     private final Map<String, ZooKeeperPersistentEphemeralNode> _nodes = Maps.newConcurrentMap();
@@ -67,7 +66,7 @@ public class ZooKeeperServiceRegistry implements ServiceRegistry
 
     @VisibleForTesting
     void register(ServiceEndPoint endpoint, boolean includeRegistrationTime) {
-        checkState(!_closed.get());
+        checkState(!_closed);
         checkNotNull(endpoint);
 
         Map<String, Object> registrationData = Maps.newHashMap();
@@ -86,7 +85,7 @@ public class ZooKeeperServiceRegistry implements ServiceRegistry
     /** {@inheritDoc} */
     @Override
     public void unregister(ServiceEndPoint endpoint) {
-        checkState(!_closed.get());
+        checkState(!_closed);
         checkNotNull(endpoint);
 
         String path = makeEndpointPath(endpoint);
@@ -97,11 +96,12 @@ public class ZooKeeperServiceRegistry implements ServiceRegistry
     }
 
     @Override
-    public void close() throws IOException {
-        if (!_closed.compareAndSet(false, true)) {
-            // Already closed
+    public synchronized void close() throws IOException {
+        if (_closed) {
             return;
         }
+
+        _closed = true;
 
         for (ZooKeeperPersistentEphemeralNode node : _nodes.values()) {
             node.close(10, TimeUnit.SECONDS);
