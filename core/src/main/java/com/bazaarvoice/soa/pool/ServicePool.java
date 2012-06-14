@@ -6,7 +6,11 @@ import com.bazaarvoice.soa.RetryPolicy;
 import com.bazaarvoice.soa.Service;
 import com.bazaarvoice.soa.ServiceCallback;
 import com.bazaarvoice.soa.ServiceEndPoint;
-import com.bazaarvoice.soa.ServiceException;
+import com.bazaarvoice.soa.exceptions.ServiceException;
+import com.bazaarvoice.soa.exceptions.NoAvailableHostsException;
+import com.bazaarvoice.soa.exceptions.OnlyBadHostsException;
+import com.bazaarvoice.soa.exceptions.NoSuitableHostsException;
+import com.bazaarvoice.soa.exceptions.MaxRetriesException;
 import com.bazaarvoice.soa.ServiceFactory;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Predicate;
@@ -87,13 +91,21 @@ class ServicePool<S extends Service> implements com.bazaarvoice.soa.ServicePool<
         Stopwatch sw = new Stopwatch(_ticker).start();
         int numAttempts = 0;
         do {
-            Iterable<ServiceEndPoint> hosts = Iterables.filter(_hostDiscovery.getHosts(), _badEndpointFilter);
+            Iterable<ServiceEndPoint> hosts = _hostDiscovery.getHosts();
             if (Iterables.isEmpty(hosts)) {
-                // There were no viable service endpoints available, we have no choice but to stop trying and just exit.
-                break;
+                // There were no service endpoints available, we have no choice but to stop trying and just exit.
+                throw new NoAvailableHostsException();
+            }
+            Iterable<ServiceEndPoint> goodHosts = Iterables.filter(hosts, _badEndpointFilter);
+            if (Iterables.isEmpty(goodHosts)) {
+                // All available hosts are bad, so we must give up.
+                throw new OnlyBadHostsException();
             }
 
-            ServiceEndPoint endpoint = _loadBalanceAlgorithm.choose(hosts);
+            ServiceEndPoint endpoint = _loadBalanceAlgorithm.choose(goodHosts);
+            if (endpoint == null) {
+                throw new NoSuitableHostsException();
+            }
             S service = _serviceFactory.create(endpoint);
             try {
                 return callback.call(service);
@@ -107,7 +119,7 @@ class ServicePool<S extends Service> implements com.bazaarvoice.soa.ServicePool<
             }
         } while (retry.allowRetry(++numAttempts, sw.elapsedMillis()));
 
-        throw new ServiceException();
+        throw new MaxRetriesException();
     }
 
     @Override

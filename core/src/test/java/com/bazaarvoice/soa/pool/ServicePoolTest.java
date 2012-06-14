@@ -6,7 +6,11 @@ import com.bazaarvoice.soa.RetryPolicy;
 import com.bazaarvoice.soa.Service;
 import com.bazaarvoice.soa.ServiceCallback;
 import com.bazaarvoice.soa.ServiceEndPoint;
-import com.bazaarvoice.soa.ServiceException;
+import com.bazaarvoice.soa.exceptions.ServiceException;
+import com.bazaarvoice.soa.exceptions.NoAvailableHostsException;
+import com.bazaarvoice.soa.exceptions.OnlyBadHostsException;
+import com.bazaarvoice.soa.exceptions.NoSuitableHostsException;
+import com.bazaarvoice.soa.exceptions.MaxRetriesException;
 import com.bazaarvoice.soa.ServiceFactory;
 import com.google.common.base.Ticker;
 import com.google.common.collect.ImmutableList;
@@ -124,15 +128,15 @@ public class ServicePoolTest {
         assertSame(expectedService, actualService);
     }
 
-    @Test(expected = ServiceException.class)
-    public void testThrowsServiceExceptionWhenNoEndpointsAvailable() {
+    @Test(expected = NoAvailableHostsException.class)
+    public void testThrowsNoAvailableHostsExceptionWhenNoEndpointsAvailable() {
         // Host discovery sees no endpoints...
         when(_hostDiscovery.getHosts()).thenReturn(ImmutableList.<ServiceEndPoint>of());
         _pool.execute(NEVER_RETRY, null);
     }
 
-    @Test(expected = ServiceException.class)
-    public void testThrowsServiceExceptionWhenOnlyBadEndpointsAvailable() {
+    @Test(expected = OnlyBadHostsException.class)
+    public void testThrowsOnlyBadHostsExceptionWhenOnlyBadEndpointsAvailable() {
         // Exhaust all of the endpoints...
         int numEndpointsAvailable = Iterables.size(_hostDiscovery.getHosts());
         for (int i = 0; i < numEndpointsAvailable; i++) {
@@ -144,13 +148,39 @@ public class ServicePoolTest {
                     }
                 });
                 fail();  // should have propagated service exception
-            } catch (ServiceException e) {
+            } catch (MaxRetriesException e) {
                 // Expected
             }
         }
 
         // This should trigger a service exception because there are no more available endpoints.
         _pool.execute(NEVER_RETRY, null);
+    }
+
+    @Test(expected = NoSuitableHostsException.class)
+    public void testThrowsNoSuitableHostsExceptionWhenLoadBalancerReturnsNull() {
+        ServiceFactory<Service> nullBalancedFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
+        when(nullBalancedFactory.getLoadBalanceAlgorithm()).thenReturn(new LoadBalanceAlgorithm() {
+            @Override
+            public ServiceEndPoint choose(Iterable<ServiceEndPoint> endpoints) {
+                // Always return null
+                return null;
+            }
+        });
+        // Set up a pool with a null returning LoadBalanceAlgorithm
+        ServicePool<Service> nullBalancedPool = (ServicePool<Service>) new ServicePoolBuilder<Service>()
+                .withHostDiscovery(_hostDiscovery)
+                .withServiceFactory(nullBalancedFactory)
+                .withHealthCheckExecutor(_healthCheckExecutor)
+                .withTicker(mock(Ticker.class))
+                .build();
+        nullBalancedPool.execute(NEVER_RETRY, new ServiceCallback<Service, Void>() {
+            @Override
+            public Void call(Service service) throws ServiceException {
+                fail();
+                return null;
+            }
+        });
     }
 
     @Test
@@ -182,7 +212,7 @@ public class ServicePoolTest {
             });
 
             fail();
-        } catch (ServiceException expected) {
+        } catch (MaxRetriesException expected) {
             // We expect a service exception to happen since we're not going to be allowed to retry at all.
             // Make sure we asked the retry strategy if it was okay to retry one time (it said no).
             verify(retry).allowRetry(eq(1), anyLong());
@@ -220,7 +250,7 @@ public class ServicePoolTest {
             });
 
             fail();
-        } catch (ServiceException expected) {
+        } catch (MaxRetriesException expected) {
             // Make sure we tried 3 times.
             verify(retry).allowRetry(eq(3), anyLong());
         }
@@ -245,7 +275,7 @@ public class ServicePoolTest {
             });
 
             fail();
-        } catch (ServiceException expected) {
+        } catch (MaxRetriesException expected) {
             assertEquals(Sets.newHashSet(FOO_SERVICE, BAR_SERVICE, BAZ_SERVICE), seenServices);
         }
     }
@@ -261,7 +291,7 @@ public class ServicePoolTest {
             });
 
             fail();
-        } catch (ServiceException expected) {
+        } catch (MaxRetriesException expected) {
             // Expected exception
         }
 
@@ -319,7 +349,7 @@ public class ServicePoolTest {
             });
 
             fail();
-        } catch (ServiceException expected) {
+        } catch (MaxRetriesException expected) {
             // Expected exception
         }
 
@@ -364,7 +394,7 @@ public class ServicePoolTest {
                     }
                 });
                 fail();  // should have propagated service exception
-            } catch (ServiceException e) {
+            } catch (MaxRetriesException e) {
                 // Expected
             }
         }
@@ -392,7 +422,7 @@ public class ServicePoolTest {
                     }
                 });
                 fail();  // should have propagated service exception
-            } catch (ServiceException e) {
+            } catch (MaxRetriesException e) {
                 // Expected
             }
         }
@@ -432,7 +462,7 @@ public class ServicePoolTest {
                 }
             });
             fail();  // should have propagated service exception
-        } catch (ServiceException e) {
+        } catch (MaxRetriesException e) {
             // Expected
         }
 
@@ -481,7 +511,7 @@ public class ServicePoolTest {
                 }
             });
             fail();  // should have propagated service exception
-        } catch (ServiceException e) {
+        } catch (MaxRetriesException e) {
             // Expected
         }
 

@@ -1,4 +1,4 @@
-package com.bazaarvoice.soa;
+package com.bazaarvoice.soa.exceptions;
 
 public class ServiceException extends RuntimeException {
     public ServiceException() {

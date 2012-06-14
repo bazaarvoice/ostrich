@@ -1,7 +1,7 @@
 package com.bazaarvoice.soa.examples.calculator;
 
 import com.bazaarvoice.soa.ServiceCallback;
-import com.bazaarvoice.soa.ServiceException;
+import com.bazaarvoice.soa.exceptions.ServiceException;
 import com.bazaarvoice.soa.ServicePool;
 import com.bazaarvoice.soa.discovery.ZooKeeperHostDiscovery;
 import com.bazaarvoice.soa.pool.ServicePoolBuilder;
