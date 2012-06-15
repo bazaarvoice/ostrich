@@ -1,6 +1,8 @@
-package com.bazaarvoice.soa;
+package com.bazaarvoice.soa.exceptions;
 
 public class ServiceException extends RuntimeException {
+    private static final long serialVersionUID = 0;
+
     public ServiceException() {
         super();
     }

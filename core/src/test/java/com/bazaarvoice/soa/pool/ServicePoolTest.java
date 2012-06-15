@@ -6,8 +6,12 @@ import com.bazaarvoice.soa.RetryPolicy;
 import com.bazaarvoice.soa.Service;
 import com.bazaarvoice.soa.ServiceCallback;
 import com.bazaarvoice.soa.ServiceEndPoint;
-import com.bazaarvoice.soa.ServiceException;
 import com.bazaarvoice.soa.ServiceFactory;
+import com.bazaarvoice.soa.exceptions.MaxRetriesException;
+import com.bazaarvoice.soa.exceptions.NoAvailableHostsException;
+import com.bazaarvoice.soa.exceptions.NoSuitableHostsException;
+import com.bazaarvoice.soa.exceptions.OnlyBadHostsException;
+import com.bazaarvoice.soa.exceptions.ServiceException;
 import com.google.common.base.Ticker;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
@@ -16,6 +20,7 @@ import com.google.common.util.concurrent.Futures;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Matchers;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
@@ -26,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -47,15 +53,10 @@ public class ServicePoolTest {
     private static final Service FOO_SERVICE = mock(Service.class);
     private static final Service BAR_SERVICE = mock(Service.class);
     private static final Service BAZ_SERVICE = mock(Service.class);
-
-    private static final RetryPolicy NEVER_RETRY = new RetryPolicy() {
-        @Override
-        public boolean allowRetry(int numAttempts, long elapsedTimeMs) {
-            return false;
-        }
-    };
+    private static final RetryPolicy NEVER_RETRY = mock(RetryPolicy.class);
 
     private HostDiscovery _hostDiscovery;
+    private LoadBalanceAlgorithm _loadBalanceAlgorithm;
     private ServiceFactory<Service> _serviceFactory;
     private ScheduledExecutorService _healthCheckExecutor;
     private ServicePool<Service> _pool;
@@ -71,18 +72,22 @@ public class ServicePoolTest {
         _hostDiscovery = mock(HostDiscovery.class);
         when(_hostDiscovery.getHosts()).thenReturn(ImmutableList.of(FOO_ENDPOINT, BAR_ENDPOINT, BAZ_ENDPOINT));
 
+        _loadBalanceAlgorithm = mock(LoadBalanceAlgorithm.class);
+        when(_loadBalanceAlgorithm.choose(any(Iterable.class))).thenAnswer(new Answer<ServiceEndPoint>() {
+            @Override
+            public ServiceEndPoint answer(InvocationOnMock invocation) throws Throwable {
+                // Always choose the first endpoint.  This is probably fine since most tests will have just a single
+                // endpoint available anyways.
+                Iterable<ServiceEndPoint> endpoints = (Iterable<ServiceEndPoint>) invocation.getArguments()[0];
+                return endpoints.iterator().next();
+            }
+        });
+
         _serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
         when(_serviceFactory.create(FOO_ENDPOINT)).thenReturn(FOO_SERVICE);
         when(_serviceFactory.create(BAR_ENDPOINT)).thenReturn(BAR_SERVICE);
         when(_serviceFactory.create(BAZ_ENDPOINT)).thenReturn(BAZ_SERVICE);
-        when(_serviceFactory.getLoadBalanceAlgorithm()).thenReturn(new LoadBalanceAlgorithm() {
-            @Override
-            public ServiceEndPoint choose(Iterable<ServiceEndPoint> endpoints) {
-                // Always choose the first endpoint.  This is probably fine since most tests will have just a single
-                // endpoint available anyways.
-                return endpoints.iterator().next();
-            }
-        });
+        when(_serviceFactory.getLoadBalanceAlgorithm()).thenReturn(_loadBalanceAlgorithm);
 
         _healthCheckExecutor = mock(ScheduledExecutorService.class);
         when(_healthCheckExecutor.submit(any(Runnable.class))).then(new Answer<Future<?>>() {
@@ -124,15 +129,15 @@ public class ServicePoolTest {
         assertSame(expectedService, actualService);
     }
 
-    @Test(expected = ServiceException.class)
-    public void testThrowsServiceExceptionWhenNoEndpointsAvailable() {
+    @Test(expected = NoAvailableHostsException.class)
+    public void testThrowsNoAvailableHostsExceptionWhenNoEndpointsAvailable() {
         // Host discovery sees no endpoints...
         when(_hostDiscovery.getHosts()).thenReturn(ImmutableList.<ServiceEndPoint>of());
         _pool.execute(NEVER_RETRY, null);
     }
 
-    @Test(expected = ServiceException.class)
-    public void testThrowsServiceExceptionWhenOnlyBadEndpointsAvailable() {
+    @Test(expected = OnlyBadHostsException.class)
+    public void testThrowsOnlyBadHostsExceptionWhenOnlyBadEndpointsAvailable() {
         // Exhaust all of the endpoints...
         int numEndpointsAvailable = Iterables.size(_hostDiscovery.getHosts());
         for (int i = 0; i < numEndpointsAvailable; i++) {
@@ -144,13 +149,28 @@ public class ServicePoolTest {
                     }
                 });
                 fail();  // should have propagated service exception
-            } catch (ServiceException e) {
+            } catch (MaxRetriesException e) {
                 // Expected
             }
         }
 
         // This should trigger a service exception because there are no more available endpoints.
         _pool.execute(NEVER_RETRY, null);
+    }
+
+    @Test(expected = NoSuitableHostsException.class)
+    public void testThrowsNoSuitableHostsExceptionWhenLoadBalancerReturnsNull() {
+        // Reset the load balance algorithm's setup and make it always return null.
+        reset(_loadBalanceAlgorithm);
+        when(_loadBalanceAlgorithm.choose(Matchers.<Iterable<ServiceEndPoint>>any())).thenReturn(null);
+
+        boolean called = _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Boolean>() {
+            @Override
+            public Boolean call(Service service) throws ServiceException {
+                return true;
+            }
+        });
+        assertFalse(called);
     }
 
     @Test
@@ -182,7 +202,7 @@ public class ServicePoolTest {
             });
 
             fail();
-        } catch (ServiceException expected) {
+        } catch (MaxRetriesException expected) {
             // We expect a service exception to happen since we're not going to be allowed to retry at all.
             // Make sure we asked the retry strategy if it was okay to retry one time (it said no).
             verify(retry).allowRetry(eq(1), anyLong());
@@ -220,7 +240,7 @@ public class ServicePoolTest {
             });
 
             fail();
-        } catch (ServiceException expected) {
+        } catch (MaxRetriesException expected) {
             // Make sure we tried 3 times.
             verify(retry).allowRetry(eq(3), anyLong());
         }
@@ -245,7 +265,7 @@ public class ServicePoolTest {
             });
 
             fail();
-        } catch (ServiceException expected) {
+        } catch (MaxRetriesException expected) {
             assertEquals(Sets.newHashSet(FOO_SERVICE, BAR_SERVICE, BAZ_SERVICE), seenServices);
         }
     }
@@ -261,7 +281,7 @@ public class ServicePoolTest {
             });
 
             fail();
-        } catch (ServiceException expected) {
+        } catch (MaxRetriesException expected) {
             // Expected exception
         }
 
@@ -319,7 +339,7 @@ public class ServicePoolTest {
             });
 
             fail();
-        } catch (ServiceException expected) {
+        } catch (MaxRetriesException expected) {
             // Expected exception
         }
 
@@ -364,7 +384,7 @@ public class ServicePoolTest {
                     }
                 });
                 fail();  // should have propagated service exception
-            } catch (ServiceException e) {
+            } catch (MaxRetriesException e) {
                 // Expected
             }
         }
@@ -392,7 +412,7 @@ public class ServicePoolTest {
                     }
                 });
                 fail();  // should have propagated service exception
-            } catch (ServiceException e) {
+            } catch (MaxRetriesException e) {
                 // Expected
             }
         }
@@ -432,7 +452,7 @@ public class ServicePoolTest {
                 }
             });
             fail();  // should have propagated service exception
-        } catch (ServiceException e) {
+        } catch (MaxRetriesException e) {
             // Expected
         }
 
@@ -481,7 +501,7 @@ public class ServicePoolTest {
                 }
             });
             fail();  // should have propagated service exception
-        } catch (ServiceException e) {
+        } catch (MaxRetriesException e) {
             // Expected
         }
 

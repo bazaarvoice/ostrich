@@ -1,6 +1,6 @@
 package com.bazaarvoice.soa.examples.calculator;
 
-import com.bazaarvoice.soa.ServiceException;
+import com.bazaarvoice.soa.exceptions.ServiceException;
 import com.google.common.base.Charsets;
 import com.google.common.base.Throwables;
 import com.google.common.io.ByteStreams;
