@@ -2,7 +2,6 @@ package com.bazaarvoice.soa.pool;
 
 import com.bazaarvoice.soa.HostDiscovery;
 import com.bazaarvoice.soa.LoadBalanceAlgorithm;
-import com.bazaarvoice.soa.Service;
 import com.bazaarvoice.soa.ServiceFactory;
 import org.junit.Test;
 
@@ -93,4 +92,7 @@ public class ServicePoolBuilderTest {
                 .withHealthCheckExecutor(healthCheckExecutor)
                 .build();
     }
+
+    // A dummy interface for testing...
+    private static interface Service {}
 }

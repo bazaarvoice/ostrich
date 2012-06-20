@@ -3,7 +3,6 @@ package com.bazaarvoice.soa.pool;
 import com.bazaarvoice.soa.HostDiscovery;
 import com.bazaarvoice.soa.LoadBalanceAlgorithm;
 import com.bazaarvoice.soa.RetryPolicy;
-import com.bazaarvoice.soa.Service;
 import com.bazaarvoice.soa.ServiceCallback;
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceFactory;
@@ -508,4 +507,7 @@ public class ServicePoolTest {
         // At this point the bad endpoints list should be empty
         assertTrue(_pool.getBadEndpoints().isEmpty());
     }
+
+    // A dummy interface for testing...
+    private static interface Service {}
 }

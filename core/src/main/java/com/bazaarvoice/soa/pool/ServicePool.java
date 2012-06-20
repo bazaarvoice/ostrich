@@ -3,15 +3,14 @@ package com.bazaarvoice.soa.pool;
 import com.bazaarvoice.soa.HostDiscovery;
 import com.bazaarvoice.soa.LoadBalanceAlgorithm;
 import com.bazaarvoice.soa.RetryPolicy;
-import com.bazaarvoice.soa.Service;
 import com.bazaarvoice.soa.ServiceCallback;
 import com.bazaarvoice.soa.ServiceEndPoint;
-import com.bazaarvoice.soa.exceptions.ServiceException;
-import com.bazaarvoice.soa.exceptions.NoAvailableHostsException;
-import com.bazaarvoice.soa.exceptions.OnlyBadHostsException;
-import com.bazaarvoice.soa.exceptions.NoSuitableHostsException;
-import com.bazaarvoice.soa.exceptions.MaxRetriesException;
 import com.bazaarvoice.soa.ServiceFactory;
+import com.bazaarvoice.soa.exceptions.MaxRetriesException;
+import com.bazaarvoice.soa.exceptions.NoAvailableHostsException;
+import com.bazaarvoice.soa.exceptions.NoSuitableHostsException;
+import com.bazaarvoice.soa.exceptions.OnlyBadHostsException;
+import com.bazaarvoice.soa.exceptions.ServiceException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
@@ -31,7 +30,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-class ServicePool<S extends Service> implements com.bazaarvoice.soa.ServicePool<S> {
+class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
     // By default check every minute to see if a previously unhealthy endpoint has become healthy.
     @VisibleForTesting
     static final long HEALTH_CHECK_POLL_INTERVAL_IN_SECONDS = 60;

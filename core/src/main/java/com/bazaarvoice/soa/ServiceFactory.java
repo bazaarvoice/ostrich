@@ -1,6 +1,6 @@
 package com.bazaarvoice.soa;
 
-public interface ServiceFactory<S extends Service> {
+public interface ServiceFactory<S> {
     // TODO: getServiceName and getLoadBalanceAlgorithm don't feel right here.
     String getServiceName();
     LoadBalanceAlgorithm getLoadBalanceAlgorithm();

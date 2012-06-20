@@ -1,7 +1,6 @@
 package com.bazaarvoice.soa.pool;
 
 import com.bazaarvoice.soa.HostDiscovery;
-import com.bazaarvoice.soa.Service;
 import com.bazaarvoice.soa.ServiceFactory;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Ticker;
@@ -10,7 +9,7 @@ import java.util.concurrent.ScheduledExecutorService;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class ServicePoolBuilder<S extends Service> {
+public class ServicePoolBuilder<S> {
     private Ticker _ticker = Ticker.systemTicker();
     private HostDiscovery _hostDiscovery;
     private ServiceFactory<S> _serviceFactory;

@@ -1,8 +1,6 @@
 package com.bazaarvoice.soa.examples.calculator;
 
-import com.bazaarvoice.soa.Service;
-
-public interface CalculatorService extends Service {
+public interface CalculatorService {
     int add(int a, int b);
     int sub(int a, int b);
     int mul(int a, int b);

@@ -3,7 +3,7 @@ package com.bazaarvoice.soa;
 import java.util.concurrent.Future;
 
 /**
- * A <code>ServicePool</code> keeps track of <code>Service</code> endpoints for a particular service.  Internally it
+ * A <code>ServicePool</code> keeps track of service endpoints for a particular service.  Internally it
  * understands how requests should be load balanced across endpoints and takes a service owner's
  * <code>LoadBalanceAlgorithm</code> into account when deciding which endpoint to use.  In addition the
  * <code>ServicePool</code> is also able to monitor the health of a service endpoint if the service owner provides a
@@ -28,9 +28,9 @@ import java.util.concurrent.Future;
  * });
  * </pre>
  *
- * @param <S> The <code>Service</code> subclass that this pool keeps track of endpoints for.
+ * @param <S> The service interface that this pool keeps track of endpoints for.
  */
-public interface ServicePool<S extends Service> {
+public interface ServicePool<S> {
     /**
      * Execute a request synchronously against one of the remote services in this <code>ServicePool</code>.
      *
