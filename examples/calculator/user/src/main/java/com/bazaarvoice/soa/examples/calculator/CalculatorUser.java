@@ -2,19 +2,15 @@ package com.bazaarvoice.soa.examples.calculator;
 
 import com.bazaarvoice.soa.ServiceCallback;
 import com.bazaarvoice.soa.ServicePool;
-import com.bazaarvoice.soa.discovery.ZooKeeperHostDiscovery;
 import com.bazaarvoice.soa.exceptions.ServiceException;
 import com.bazaarvoice.soa.pool.ServicePoolBuilder;
 import com.bazaarvoice.soa.retry.RetryNTimes;
 import com.bazaarvoice.soa.zookeeper.ZooKeeperConfiguration;
 import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Random;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 public class CalculatorUser {
@@ -62,14 +58,9 @@ public class CalculatorUser {
                 .setRetryNTimes(new com.bazaarvoice.soa.zookeeper.RetryNTimes(3, 100))
                 .connect();
 
-        ThreadFactory daemonThreadFactory = new ThreadFactoryBuilder()
-                .setDaemon(true)
-                .build();
-
         ServicePool<CalculatorService> pool = new ServicePoolBuilder<CalculatorService>()
-                .withHostDiscovery(new ZooKeeperHostDiscovery(connection, "calculator"))
+                .withZooKeeperHostDiscovery(connection)
                 .withServiceFactory(new CalculatorServiceFactory())
-                .withHealthCheckExecutor(Executors.newScheduledThreadPool(1, daemonThreadFactory))
                 .build();
 
         CalculatorUser user = new CalculatorUser(pool);

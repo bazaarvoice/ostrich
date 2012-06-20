@@ -36,9 +36,8 @@ quick start guide](https://github.com/bazaarvoice/ostrich/blob/master/core/docs/
 
 ```java
 ServicePool<CalculatorService> pool = new ServicePoolBuilder<CalculatorService>()
-  .withHostDiscovery(new ZooKeeperHostDiscovery(zookeeper, "calculator"))
+  .withZooKeeperHostDiscovery(zookeeper)
   .withServiceFactory(new CalculatorServiceFactory())
-  .withHealthCheckExecutor(Executors.newScheduledThreadPool(1))
   .build();
 ```
 

@@ -17,6 +17,11 @@ public class ServicePoolBuilderTest {
     }
 
     @Test(expected = NullPointerException.class)
+    public void testNullZooKeeperConnection() {
+        new ServicePoolBuilder<Service>().withZooKeeperHostDiscovery(null);
+    }
+
+    @Test(expected = NullPointerException.class)
     public void testNullServiceFactory() {
         new ServicePoolBuilder<Service>().withServiceFactory(null);
     }
@@ -48,7 +53,7 @@ public class ServicePoolBuilderTest {
     }
 
     @SuppressWarnings("unchecked")
-    @Test(expected = NullPointerException.class)
+    @Test
     public void testBuildWithNoHealthCheckExecutor() {
         LoadBalanceAlgorithm loadBalanceAlgorithm = mock(LoadBalanceAlgorithm.class);
         HostDiscovery hostDiscovery = mock(HostDiscovery.class);
