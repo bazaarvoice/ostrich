@@ -7,6 +7,6 @@ Currently Ostrich requires that service consumers be JVM based.  This will chang
 
 Quick Start Guides
 ==================
-* [For service providers](blob/master/core/docs/service-provider-quick-start.md)
-* [For service consumers](blob/master/core/docs/service-consumer-quick-start.md)
-* [For operators](blob/master/core/docs/operator-quick-start.md)
+* [For service providers](ostrich/blob/master/core/docs/service-provider-quick-start.md)
+* [For service consumers](ostrich/blob/master/core/docs/service-consumer-quick-start.md)
+* [For operators](ostrich/blob/master/core/docs/operator-quick-start.md)
