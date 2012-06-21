@@ -94,6 +94,7 @@ public class ServicePoolBuilder<S> {
             _hostDiscovery = new ZooKeeperHostDiscovery(_zooKeeperConnection, serviceName);
         }
 
+        boolean shutdownOnClose = (_healthCheckExecutor == null);
         if (_healthCheckExecutor == null) {
             ThreadFactory daemonThreadFactory = new ThreadFactoryBuilder()
                     .setNameFormat(serviceName + "-HealthChecks-%d")
@@ -102,6 +103,6 @@ public class ServicePoolBuilder<S> {
             _healthCheckExecutor = Executors.newScheduledThreadPool(1, daemonThreadFactory);
         }
 
-        return new ServicePool<S>(_ticker, _hostDiscovery, _serviceFactory, _healthCheckExecutor);
+        return new ServicePool<S>(_ticker, _hostDiscovery, _serviceFactory, _healthCheckExecutor, shutdownOnClose);
     }
 }

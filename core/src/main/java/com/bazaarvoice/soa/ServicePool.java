@@ -1,5 +1,6 @@
 package com.bazaarvoice.soa;
 
+import java.io.Closeable;
 import java.util.concurrent.Future;
 
 /**
@@ -30,7 +31,7 @@ import java.util.concurrent.Future;
  *
  * @param <S> The service interface that this pool keeps track of endpoints for.
  */
-public interface ServicePool<S> {
+public interface ServicePool<S> extends Closeable {
     /**
      * Execute a request synchronously against one of the remote services in this <code>ServicePool</code>.
      *

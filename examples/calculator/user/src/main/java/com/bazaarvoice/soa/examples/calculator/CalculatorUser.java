@@ -10,6 +10,7 @@ import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
@@ -50,7 +51,7 @@ public class CalculatorUser {
         }
     }
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, IOException {
         String connectString = (args.length > 0) ? args[0] : "localhost:2181";
 
         ZooKeeperConnection connection = new ZooKeeperConfiguration()
@@ -65,5 +66,6 @@ public class CalculatorUser {
 
         CalculatorUser user = new CalculatorUser(pool);
         user.use();
+        pool.close();
     }
 }

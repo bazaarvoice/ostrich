@@ -16,6 +16,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.Futures;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -26,6 +27,7 @@ import org.mockito.stubbing.Answer;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -35,6 +37,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.eq;
@@ -54,10 +57,12 @@ public class ServicePoolTest {
     private static final Service BAZ_SERVICE = mock(Service.class);
     private static final RetryPolicy NEVER_RETRY = mock(RetryPolicy.class);
 
+    private Ticker _ticker;
     private HostDiscovery _hostDiscovery;
     private LoadBalanceAlgorithm _loadBalanceAlgorithm;
     private ServiceFactory<Service> _serviceFactory;
     private ScheduledExecutorService _healthCheckExecutor;
+    private ScheduledFuture<?> _healthCheckScheduledFuture;
     private ServicePool<Service> _pool;
 
     @SuppressWarnings("unchecked")
@@ -67,6 +72,8 @@ public class ServicePoolTest {
         // This setup method takes the approach of building a reasonably useful ServicePool using mocks that can then be
         // customized by individual test methods to add whatever functionality they need to (or ignored completely).
         //
+
+        _ticker = mock(Ticker.class);
 
         _hostDiscovery = mock(HostDiscovery.class);
         when(_hostDiscovery.getHosts()).thenReturn(ImmutableList.of(FOO_ENDPOINT, BAR_ENDPOINT, BAZ_ENDPOINT));
@@ -102,12 +109,22 @@ public class ServicePoolTest {
             }
         });
 
-        _pool = (ServicePool) new ServicePoolBuilder<Service>()
-                .withHostDiscovery(_hostDiscovery)
-                .withServiceFactory(_serviceFactory)
-                .withHealthCheckExecutor(_healthCheckExecutor)
-                .withTicker(mock(Ticker.class))
-                .build();
+        _healthCheckScheduledFuture = mock(ScheduledFuture.class);
+        when(_healthCheckExecutor.scheduleAtFixedRate((Runnable) any(), anyLong(), anyLong(), (TimeUnit) any())).then(
+                new Answer<ScheduledFuture<?>>() {
+                    @Override
+                    public ScheduledFuture<?> answer(InvocationOnMock invocation) throws Throwable {
+                        return _healthCheckScheduledFuture;
+                    }
+                }
+        );
+
+        _pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory, _healthCheckExecutor, true);
+    }
+
+    @After
+    public void teardown() {
+        _pool.close();
     }
 
     @Test
@@ -319,6 +336,15 @@ public class ServicePoolTest {
     }
 
     @Test
+    public void testCancelsPeriodicHealthCheckAfterClose() {
+        // Future shouldn't be used until after we close...
+        verifyZeroInteractions(_healthCheckScheduledFuture);
+
+        _pool.close();
+        verify(_healthCheckScheduledFuture).cancel(anyBoolean());
+    }
+
+    @Test
     public void testCallsHealthCheckAfterServiceException() throws InterruptedException {
         final AtomicBoolean healthCheckCalled = new AtomicBoolean(false);
         when(_serviceFactory.isHealthy(any(ServiceEndPoint.class))).then(new Answer<Boolean>() {
@@ -506,6 +532,30 @@ public class ServicePoolTest {
 
         // At this point the bad endpoints list should be empty
         assertTrue(_pool.getBadEndpoints().isEmpty());
+    }
+
+    @Test
+    public void testCloseMultipleTimes() {
+        _pool.close();
+        _pool.close();
+    }
+
+    @Test
+    public void testDoesNotShutdownExecutorOnClose() {
+        ServicePool<Service> pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory,
+                _healthCheckExecutor, false);
+        pool.close();
+
+        verify(_healthCheckExecutor, never()).shutdown();
+    }
+
+    @Test
+    public void testDoesShutdownExecutorOnClose() {
+        ServicePool<Service> pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory,
+                _healthCheckExecutor, true);
+        pool.close();
+
+        verify(_healthCheckExecutor).shutdown();
     }
 
     // A dummy interface for testing...

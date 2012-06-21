@@ -37,19 +37,23 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
 
     private final Ticker _ticker;
     private final HostDiscovery _hostDiscovery;
+    private final HostDiscovery.EndpointListener _hostDiscoveryListener;
     private final ServiceFactory<S> _serviceFactory;
     private final ScheduledExecutorService _healthCheckExecutor;
+    private final boolean _shutdownHealthCheckExecutorOnClose;
     private final LoadBalanceAlgorithm _loadBalanceAlgorithm;
     private final Set<ServiceEndPoint> _badEndpoints;
     private final Predicate<ServiceEndPoint> _badEndpointFilter;
     private final Set<ServiceEndPoint> _recentlyRemovedEndpoints;
+    private final Future<?> _batchHealthChecksFuture;
 
-    public ServicePool(Ticker ticker, HostDiscovery hostDiscovery, ServiceFactory<S> serviceFactory,
-                       ScheduledExecutorService healthCheckExecutor) {
+    ServicePool(Ticker ticker, HostDiscovery hostDiscovery, ServiceFactory<S> serviceFactory,
+                ScheduledExecutorService healthCheckExecutor, boolean shutdownExecutorOnClose) {
         _ticker = checkNotNull(ticker);
         _hostDiscovery = checkNotNull(hostDiscovery);
         _serviceFactory = checkNotNull(serviceFactory);
         _healthCheckExecutor = checkNotNull(healthCheckExecutor);
+        _shutdownHealthCheckExecutorOnClose = shutdownExecutorOnClose;
         _loadBalanceAlgorithm = checkNotNull(_serviceFactory.getLoadBalanceAlgorithm());
         _badEndpoints = Sets.newSetFromMap(Maps.<ServiceEndPoint, Boolean>newConcurrentMap());
         _badEndpointFilter = Predicates.not(Predicates.in(_badEndpoints));
@@ -68,7 +72,7 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
         // rediscover that it's a bad endpoint again in the future.  Also in the future it might be useful to measure
         // how long an endpoint has been considered bad and potentially take action for endpoints that are bad for long
         // periods of time.
-        _hostDiscovery.addListener(new HostDiscovery.EndpointListener() {
+        _hostDiscoveryListener = new HostDiscovery.EndpointListener() {
             @Override
             public void onEndpointAdded(ServiceEndPoint endpoint) {
                 addEndpoint(endpoint);
@@ -78,11 +82,22 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
             public void onEndpointRemoved(ServiceEndPoint endpoint) {
                 removeEndpoint(endpoint);
             }
-        });
+        };
+        _hostDiscovery.addListener(_hostDiscoveryListener);
 
         // Periodically wake up and check any badEndpoints to see if they're now healthy.
-        _healthCheckExecutor.scheduleAtFixedRate(new BatchHealthChecks(),
+        _batchHealthChecksFuture = _healthCheckExecutor.scheduleAtFixedRate(new BatchHealthChecks(),
                 HEALTH_CHECK_POLL_INTERVAL_IN_SECONDS, HEALTH_CHECK_POLL_INTERVAL_IN_SECONDS, TimeUnit.SECONDS);
+    }
+
+    @Override
+    public void close() {
+        _batchHealthChecksFuture.cancel(false);
+        _hostDiscovery.removeListener(_hostDiscoveryListener);
+
+        if (_shutdownHealthCheckExecutorOnClose) {
+            _healthCheckExecutor.shutdown();
+        }
     }
 
     @Override
