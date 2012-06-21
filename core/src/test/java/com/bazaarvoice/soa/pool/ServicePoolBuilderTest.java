@@ -3,6 +3,10 @@ package com.bazaarvoice.soa.pool;
 import com.bazaarvoice.soa.HostDiscovery;
 import com.bazaarvoice.soa.LoadBalanceAlgorithm;
 import com.bazaarvoice.soa.ServiceFactory;
+import com.bazaarvoice.soa.zookeeper.ZooKeeperConfiguration;
+import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
+import com.google.common.io.Closeables;
+import com.netflix.curator.test.TestingServer;
 import org.junit.Test;
 
 import java.util.concurrent.ScheduledExecutorService;
@@ -32,8 +36,8 @@ public class ServicePoolBuilderTest {
     }
 
     @SuppressWarnings("unchecked")
-    @Test(expected = NullPointerException.class)
-    public void testBuildWithNoHostDiscovery() {
+    @Test(expected = IllegalStateException.class)
+    public void testBuildWithNoHostDiscoveryAndNoZooKeeperConnection() {
         ServiceFactory<Service> serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
         ScheduledExecutorService healthCheckExecutor = mock(ScheduledExecutorService.class);
         new ServicePoolBuilder<Service>()
@@ -53,6 +57,42 @@ public class ServicePoolBuilderTest {
     }
 
     @SuppressWarnings("unchecked")
+    @Test(expected = NullPointerException.class)
+    public void testBuildWithNullLoadBalanceAlgorithm() {
+        HostDiscovery hostDiscovery = mock(HostDiscovery.class);
+        ServiceFactory<Service> serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
+        ScheduledExecutorService healthCheckExecutor = mock(ScheduledExecutorService.class);
+
+        new ServicePoolBuilder<Service>()
+                .withServiceFactory(serviceFactory)
+                .withHostDiscovery(hostDiscovery)
+                .withHealthCheckExecutor(healthCheckExecutor)
+                .build();
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testBuildWithZooKeeperConnection() throws Exception {
+        ServiceFactory<Service> serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
+        when(serviceFactory.getServiceName()).thenReturn("serviceName");
+        when(serviceFactory.getLoadBalanceAlgorithm()).thenReturn(mock(LoadBalanceAlgorithm.class));
+
+        TestingServer zooKeeperServer = new TestingServer();
+        ZooKeeperConnection connection = null;
+        try {
+            connection = new ZooKeeperConfiguration().setConnectString(zooKeeperServer.getConnectString()).connect();
+
+            new ServicePoolBuilder<Service>()
+                    .withServiceFactory(serviceFactory)
+                    .withZooKeeperHostDiscovery(connection)
+                    .build();
+        } finally {
+            Closeables.closeQuietly(connection);
+            Closeables.closeQuietly(zooKeeperServer);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
     @Test
     public void testBuildWithNoHealthCheckExecutor() {
         LoadBalanceAlgorithm loadBalanceAlgorithm = mock(LoadBalanceAlgorithm.class);
@@ -64,20 +104,6 @@ public class ServicePoolBuilderTest {
         new ServicePoolBuilder<Service>()
                 .withServiceFactory(serviceFactory)
                 .withHostDiscovery(hostDiscovery)
-                .build();
-    }
-
-    @SuppressWarnings("unchecked")
-    @Test(expected = NullPointerException.class)
-    public void testBuildWithNullLoadBalanceAlgorithm() {
-        HostDiscovery hostDiscovery = mock(HostDiscovery.class);
-        ServiceFactory<Service> serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
-        ScheduledExecutorService healthCheckExecutor = mock(ScheduledExecutorService.class);
-
-        new ServicePoolBuilder<Service>()
-                .withServiceFactory(serviceFactory)
-                .withHostDiscovery(hostDiscovery)
-                .withHealthCheckExecutor(healthCheckExecutor)
                 .build();
     }
 
