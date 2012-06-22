@@ -15,22 +15,23 @@ could be the service's github project name.
 * A unique identifier for this particular service instance.  This identifier is used to disambiguate one instance of
 your service from the others.  From the perspective of Ostrich this identifier is completely opaque and only checked for
 equality to other ids.  It is however visible to operators, so using something that could potentially help identify the
-machine the service is running on could be beneficial.  A good choice for a service's unique identifier could be the ip
-address and port that the service is running on.
+machine the service is running on could be beneficial.  A good choice for a service's unique identifier could be the
+host name and port that the service is running on.
 
 * A custom payload (provided as a string) associated with this service instance.  This payload is completely custom and
 can be used to provide information about how to communicate with the service to the client library that you create.
 
 ```java
+InetAddress localhost = InetAddress.getLocalHost();
 Map<String, Object> payload = ImmutableMap.builder()
-  .put("base-url", new URL("http", ip, port, "/calculator"))
-  .put("health-url", new URL("http", ip, healthPort, "/healthcheck"))
+  .put("base-url", new URL("http", localhost.getHostAddress(), port, "/calculator"))
+  .put("health-url", new URL("http", localhost.getHostAddress(), healthPort, "/healthcheck"))
   .build();
-ServiceEndpoint endpoint = new ServiceEndPointBuilder()
+ServiceEndPoint endpoint = new ServiceEndPointBuilder()
   .withServiceName("calculator")
-  .withId(ip + ":" + port)
+  .withId(localhost.getHostName() + ":" + port)
   .withPayload(toJSON(payload))
-  .build()
+  .build();
 
 ServiceRegistry registry = ...;
 registry.register(endpoint);
@@ -105,7 +106,7 @@ public class CalculatorServiceFactory implements ServiceFactory<CalculatorServic
   }
 
   @Override
-  public boolean isHealthy(ServiceEndpoint endpoint) {
+  public boolean isHealthy(ServiceEndPoint endpoint) {
     Map<String, Object> payload = fromJSON(endpoint.getPayload());
     String adminUrl = (String) payload.get("health-url");
     return new Http().HEAD(adminUrl) == 200;

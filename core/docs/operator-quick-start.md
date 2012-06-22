@@ -31,8 +31,8 @@ When services register with Ostrich they create a node in ZooKeeper that contain
 
 * The globally unique name of the service (suggested to be the name of the github project)
 
-* A service unique identifier used to represent the instance of the service that is running (suggested to be the ip
-address of the machine combined with the port that the service is running on).  This will be combined with a UUID to
+* A service unique identifier used to represent the instance of the service that is running (suggested to be the host
+name of the machine combined with the port that the service is running on).  This will be combined with a UUID to
 ensure that it's globally unique, but users are encouraged to include a human readable identifier so that can provide
 context to an operator as to exactly what machine the service is running on.
 
@@ -45,14 +45,14 @@ An example service directory tree in ZooKeeper might look like:
 
     services
     ├── calculator
-    │   ├── _c_08DF108F-EEC5-4EE9-A8A6-98D6F4BCCCF2_10.100.12.16:80
-    │   ├── _c_12056A32-C926-439E-87E8-598D0EE00AFC_10.100.12.17:80
-    │   ├── _c_66109BEE-BF91-4B9E-A8D0-477863565713_10.100.12.18:80
-    │   └── _c_93E3A1EA-958D-492A-AC74-FD883D3DB3D5_10.100.12.19:80
+    │   ├── _c_08DF108F-EEC5-4EE9-A8A6-98D6F4BCCCF2_aws-prod-calc6.aws:80
+    │   ├── _c_12056A32-C926-439E-87E8-598D0EE00AFC_aws-prod-calc7.aws:80
+    │   ├── _c_66109BEE-BF91-4B9E-A8D0-477863565713_aws-prod-calc8.aws:80
+    │   └── _c_93E3A1EA-958D-492A-AC74-FD883D3DB3D5_aws-prod-calc9.aws:80
     └── emodb
-        ├── _c_05F7087E-2ADF-4F14-A338-0CEDD84FEF9C_10.100.8.12:80
-        ├── _c_95FBE7EF-626A-45A6-8545-7E5DC84E894D_10.100.8.13:80
-        └── _c_E38A7641-99B7-4D6A-99F5-A52262DE0185_10.100.8.14:80
+        ├── _c_05F7087E-2ADF-4F14-A338-0CEDD84FEF9C_aws-prod-emodb2.aws:80
+        ├── _c_95FBE7EF-626A-45A6-8545-7E5DC84E894D_aws-prod-emodb3.aws:80
+        └── _c_E38A7641-99B7-4D6A-99F5-A52262DE0185_aws-prod-emodb4.aws:80
 
 As you can see all service registrations live in the same area of ZooKeeper (currently `/services`, but that will likely
 change in the future).  Under the `/services` directory there is an entry for each named service.  For every
