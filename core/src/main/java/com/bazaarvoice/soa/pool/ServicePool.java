@@ -184,7 +184,7 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
 
         @Override
         public void run() {
-            if (_serviceFactory.isHealthy(_endpoint)) {
+            if (isHealthy(_endpoint)) {
                 _badEndpoints.remove(_endpoint);
             }
         }
@@ -195,10 +195,23 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
         @Override
         public void run() {
             for (ServiceEndPoint endpoint : _badEndpoints) {
-                if (_serviceFactory.isHealthy(endpoint)) {
+                if (isHealthy(endpoint)) {
                     _badEndpoints.remove(endpoint);
                 }
             }
+        }
+    }
+
+    @VisibleForTesting
+    boolean isHealthy(ServiceEndPoint endpoint) {
+        // We have to be very careful to not allow an exceptions to make it out of of this method, if they do then
+        // subsequent scheduled invocations of the Runnables may not happen, and we could stop checking health checks
+        // completely.  So we intentionally handle all possible exceptions here.
+        try {
+            return _serviceFactory.isHealthy(endpoint);
+        } catch (Throwable ignored) {
+            // If anything goes bad, we'll still consider the endpoint unhealthy.
+            return false;
         }
     }
 }

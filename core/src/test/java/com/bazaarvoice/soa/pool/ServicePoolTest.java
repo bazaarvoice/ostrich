@@ -535,6 +535,14 @@ public class ServicePoolTest {
     }
 
     @Test
+    public void testIsHealthyHandlesExceptions() {
+        when(_serviceFactory.isHealthy(any(ServiceEndPoint.class))).thenThrow(new RuntimeException());
+
+        // Even though an exception was thrown we shouldn't see it, instead false should be returned from isHealthy
+        assertFalse(_pool.isHealthy(FOO_ENDPOINT));
+    }
+
+    @Test
     public void testCloseMultipleTimes() {
         _pool.close();
         _pool.close();
