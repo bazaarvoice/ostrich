@@ -25,6 +25,8 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -536,7 +538,7 @@ public class ServicePoolTest {
 
     @Test
     public void testIsHealthyHandlesExceptions() {
-        when(_serviceFactory.isHealthy(any(ServiceEndPoint.class))).thenThrow(new RuntimeException());
+        when(_serviceFactory.isHealthy(FOO_ENDPOINT)).thenThrow(new RuntimeException());
 
         // Even though an exception was thrown we shouldn't see it, instead false should be returned from isHealthy
         assertFalse(_pool.isHealthy(FOO_ENDPOINT));
@@ -554,7 +556,7 @@ public class ServicePoolTest {
                 _healthCheckExecutor, false);
         pool.close();
 
-        verify(_healthCheckExecutor, never()).shutdown();
+        verify(_healthCheckExecutor, never()).shutdownNow();
     }
 
     @Test
@@ -563,7 +565,57 @@ public class ServicePoolTest {
                 _healthCheckExecutor, true);
         pool.close();
 
-        verify(_healthCheckExecutor).shutdown();
+        verify(_healthCheckExecutor).shutdownNow();
+    }
+
+    @Test
+    public void testInterruptsHealthCheckOnClose() throws InterruptedException {
+        // Make it so that when we health check FOO that we block until an interrupted exception occurs
+        final CountDownLatch inHealthCheckLatch = new CountDownLatch(1);
+        final CountDownLatch interruptedLatch = new CountDownLatch(1);
+        when(_serviceFactory.isHealthy(FOO_ENDPOINT)).thenAnswer(new Answer<Boolean>() {
+            @Override
+            public Boolean answer(InvocationOnMock invocation) {
+                inHealthCheckLatch.countDown();
+
+                synchronized (this) {
+                    try {
+                        this.wait();
+                    } catch (InterruptedException e) {
+                        interruptedLatch.countDown();
+                    }
+                }
+
+                return false;
+            }
+        });
+
+        // Redefine the endpoints that HostDiscovery knows about to be only FOO
+        when(_hostDiscovery.getHosts()).thenReturn(ImmutableList.of(FOO_ENDPOINT));
+
+        ServicePool<Service> pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory,
+                Executors.newScheduledThreadPool(1), true);
+
+        // Make it so that FOO needs to be health checked...
+        try {
+            pool.execute(NEVER_RETRY, new ServiceCallback<Service, Void>() {
+                @Override
+                public Void call(Service service) throws ServiceException {
+                    throw new ServiceException();
+                }
+            });
+            fail();
+        } catch (MaxRetriesException e) {
+            // Expected
+        }
+
+        // The health check should be running now...
+        assertTrue(inHealthCheckLatch.await(10, TimeUnit.SECONDS));
+
+        // And it should get interrupted on close...
+        pool.close();
+
+        assertTrue(interruptedLatch.await(10, TimeUnit.SECONDS));
     }
 
     // A dummy interface for testing...
