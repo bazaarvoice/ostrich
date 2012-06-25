@@ -40,9 +40,9 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>org.apache.zookeeper</groupId>
-                <artifactId>zookeeper</artifactId>
-                <version>3.4.3</version>
+                <groupId>com.netflix.curator</groupId>
+                <artifactId>curator-recipes</artifactId>
+                <version>1.1.12</version>
 
                 <exclusions>
                     <exclusion>
@@ -66,12 +66,6 @@
                         <artifactId>activation</artifactId>
                     </exclusion>
                 </exclusions>
-            </dependency>
-
-            <dependency>
-                <groupId>com.netflix.curator</groupId>
-                <artifactId>curator-recipes</artifactId>
-                <version>1.1.12</version>
             </dependency>
 
             <dependency>
