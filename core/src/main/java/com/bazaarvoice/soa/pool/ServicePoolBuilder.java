@@ -17,10 +17,11 @@ import static com.google.common.base.Preconditions.checkState;
 
 public class ServicePoolBuilder<S> {
     private Ticker _ticker = Ticker.systemTicker();
+    private ZooKeeperConnection _zooKeeperConnection;
     private HostDiscovery _hostDiscovery;
     private ServiceFactory<S> _serviceFactory;
+    private ExceptionMapper _exceptionMapper;
     private ScheduledExecutorService _healthCheckExecutor;
-    private ZooKeeperConnection _zooKeeperConnection;
 
     @VisibleForTesting
     ServicePoolBuilder<S> withTicker(Ticker ticker) {
@@ -68,6 +69,20 @@ public class ServicePoolBuilder<S> {
     }
 
     /**
+     * Sets the {@code ExceptionMapper} instance that should be used to translate from exceptions thrown inside
+     * calls to {@link com.bazaarvoice.soa.ServicePool#execute} to the exceptions propagated out of {@code execute}.
+     * If the mapper translates an exception to {@link com.bazaarvoice.soa.exceptions.ServiceException} then the
+     * exception becomes retryable, and may be retried by the service pool.
+     *
+     * @param exceptionMapper The {@code ExceptionMapper} to use
+     * @return this
+     */
+    public ServicePoolBuilder<S> withExceptionMapper(ExceptionMapper exceptionMapper) {
+        _exceptionMapper = checkNotNull(exceptionMapper);
+        return this;
+    }
+
+    /**
      * Adds a {@code ScheduledExecutorService} instance to the builder for use in executing health checks.
      * <p/>
      * Adding an executor is optional.  If one isn't specified then one will be created and used automatically.
@@ -103,6 +118,7 @@ public class ServicePoolBuilder<S> {
             _healthCheckExecutor = Executors.newScheduledThreadPool(1, daemonThreadFactory);
         }
 
-        return new ServicePool<S>(_ticker, _hostDiscovery, _serviceFactory, _healthCheckExecutor, shutdownOnClose);
+        return new ServicePool<S>(_ticker, _hostDiscovery, _serviceFactory, _exceptionMapper, _healthCheckExecutor,
+                shutdownOnClose);
     }
 }

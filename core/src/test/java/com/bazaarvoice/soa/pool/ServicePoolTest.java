@@ -43,6 +43,7 @@ import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Matchers.isA;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -97,6 +98,13 @@ public class ServicePoolTest {
         when(_serviceFactory.create(BAZ_ENDPOINT)).thenReturn(BAZ_SERVICE);
         when(_serviceFactory.getLoadBalanceAlgorithm()).thenReturn(_loadBalanceAlgorithm);
 
+        ExceptionMapper exceptionMapper = new ExceptionMapper() {
+            @Override
+            public Throwable translate(Throwable t) {
+                return (t instanceof NetworkException) ? new ServiceException(t) : t;
+            }
+        };
+
         _healthCheckExecutor = mock(ScheduledExecutorService.class);
         when(_healthCheckExecutor.submit(any(Runnable.class))).then(new Answer<Future<?>>() {
             @Override
@@ -121,7 +129,8 @@ public class ServicePoolTest {
                 }
         );
 
-        _pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory, _healthCheckExecutor, true);
+        _pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory, exceptionMapper,
+                _healthCheckExecutor, true);
     }
 
     @After
@@ -228,7 +237,7 @@ public class ServicePoolTest {
     }
 
     @Test
-    public void testDoesNotAttemptToRetryOnNonServiceException() {
+    public void testDoesNotAttemptToRetryOnMappedServiceException() {
         RetryPolicy retry = mock(RetryPolicy.class);
         try {
             _pool.execute(retry, new ServiceCallback<Service, Void>() {
@@ -241,6 +250,27 @@ public class ServicePoolTest {
             fail();
         } catch (NullPointerException expected) {
             verifyZeroInteractions(retry);
+        }
+    }
+
+    @Test
+    public void testAttemptsToRetryOnMappedServiceException() {
+        RetryPolicy retry = mock(RetryPolicy.class);
+        when(retry.allowRetry(anyInt(), anyLong())).thenReturn(false);
+
+        try {
+            _pool.execute(retry, new ServiceCallback<Service, Void>() {
+                @Override
+                public Void call(Service service) throws NetworkException {
+                    throw new NetworkException();
+                }
+            });
+
+            fail();
+        } catch (MaxRetriesException expected) {
+            // We expect a service exception to happen since we're not going to be allowed to retry at all.
+            // Make sure we asked the retry strategy if it was okay to retry one time (it said no).
+            verify(retry).allowRetry(eq(1), anyLong());
         }
     }
 
@@ -553,7 +583,7 @@ public class ServicePoolTest {
     @Test
     public void testDoesNotShutdownExecutorOnClose() {
         ServicePool<Service> pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory,
-                _healthCheckExecutor, false);
+                null, _healthCheckExecutor, false);
         pool.close();
 
         verify(_healthCheckExecutor, never()).shutdownNow();
@@ -562,7 +592,7 @@ public class ServicePoolTest {
     @Test
     public void testDoesShutdownExecutorOnClose() {
         ServicePool<Service> pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory,
-                _healthCheckExecutor, true);
+                null, _healthCheckExecutor, true);
         pool.close();
 
         verify(_healthCheckExecutor).shutdownNow();
@@ -593,7 +623,7 @@ public class ServicePoolTest {
         // Redefine the endpoints that HostDiscovery knows about to be only FOO
         when(_hostDiscovery.getHosts()).thenReturn(ImmutableList.of(FOO_ENDPOINT));
 
-        ServicePool<Service> pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory,
+        ServicePool<Service> pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory, null,
                 Executors.newScheduledThreadPool(1), true);
 
         // Make it so that FOO needs to be health checked...
@@ -620,4 +650,6 @@ public class ServicePoolTest {
 
     // A dummy interface for testing...
     private static interface Service {}
+
+    private static class NetworkException extends Exception {}
 }

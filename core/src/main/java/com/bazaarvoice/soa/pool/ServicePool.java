@@ -23,6 +23,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+import javax.annotation.Nullable;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -39,6 +40,7 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
     private final HostDiscovery _hostDiscovery;
     private final HostDiscovery.EndpointListener _hostDiscoveryListener;
     private final ServiceFactory<S> _serviceFactory;
+    private final ExceptionMapper _exceptionMapper;
     private final ScheduledExecutorService _healthCheckExecutor;
     private final boolean _shutdownHealthCheckExecutorOnClose;
     private final LoadBalanceAlgorithm _loadBalanceAlgorithm;
@@ -48,10 +50,12 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
     private final Future<?> _batchHealthChecksFuture;
 
     ServicePool(Ticker ticker, HostDiscovery hostDiscovery, ServiceFactory<S> serviceFactory,
-                ScheduledExecutorService healthCheckExecutor, boolean shutdownExecutorOnClose) {
+                @Nullable ExceptionMapper exceptionMapper, ScheduledExecutorService healthCheckExecutor,
+                boolean shutdownExecutorOnClose) {
         _ticker = checkNotNull(ticker);
         _hostDiscovery = checkNotNull(hostDiscovery);
         _serviceFactory = checkNotNull(serviceFactory);
+        _exceptionMapper = exceptionMapper;
         _healthCheckExecutor = checkNotNull(healthCheckExecutor);
         _shutdownHealthCheckExecutorOnClose = shutdownExecutorOnClose;
         _loadBalanceAlgorithm = checkNotNull(_serviceFactory.getLoadBalanceAlgorithm());
@@ -125,13 +129,17 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
             S service = _serviceFactory.create(endpoint);
             try {
                 return callback.call(service);
-            } catch (ServiceException e) {
+            } catch (Throwable t) {
+                if (_exceptionMapper != null) {
+                    t = _exceptionMapper.translate(t);
+                }
+                if (!(t instanceof ServiceException)) {
+                    throw Throwables.propagate(t);
+                }
                 // This is a known and supported exception indicating that something went wrong somewhere in the service
                 // layer while trying to communicate with the endpoint.  These errors are often transient, so we enqueue
                 // a health check for the endpoint and mark it as unavailable for the time being.
                 markEndpointAsBad(endpoint);
-            } catch (Exception e) {
-                throw Throwables.propagate(e);
             }
         } while (retry.allowRetry(++numAttempts, sw.elapsedMillis()));
 
