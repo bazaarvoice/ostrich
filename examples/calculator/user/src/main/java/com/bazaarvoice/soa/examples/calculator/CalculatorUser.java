@@ -15,7 +15,8 @@ import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 public class CalculatorUser {
-    private final Logger LOG = LoggerFactory.getLogger(getClass());
+    private static final Logger LOG = LoggerFactory.getLogger(CalculatorUser.class);
+
     private final Random _random = new Random();
     private final ServicePool<CalculatorService> _calculatorPool;
 
@@ -59,13 +60,14 @@ public class CalculatorUser {
                 .setRetryNTimes(new com.bazaarvoice.soa.zookeeper.RetryNTimes(3, 100))
                 .connect();
 
-        ServicePool<CalculatorService> pool = new ServicePoolBuilder<CalculatorService>()
+        ServicePool<CalculatorService> pool = ServicePoolBuilder.create(CalculatorService.class)
                 .withZooKeeperHostDiscovery(connection)
                 .withServiceFactory(new CalculatorServiceFactory())
                 .build();
 
         CalculatorUser user = new CalculatorUser(pool);
         user.use();
+
         pool.close();
     }
 }

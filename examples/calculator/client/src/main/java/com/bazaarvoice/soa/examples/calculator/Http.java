@@ -20,16 +20,10 @@ public class Http {
     }
 
     public String GET(String resource) {
-        URL url;
-        try {
-            url = new URL(_baseUrl + resource);
-        } catch (MalformedURLException e) {
-            throw Throwables.propagate(e);
-        }
+        URL url = toUrl(resource);
 
-        HttpURLConnection connection = null;
         try {
-            connection = (HttpURLConnection) url.openConnection();
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             if (connection.getResponseCode() != 200) {
                 // The server returned an error -- retrying with another server could get a successful response.
                 throw new ServiceException();
@@ -45,33 +39,27 @@ public class Http {
         } catch (IOException e) {
             // Was an exception processing the request -- retrying could solve it.
             throw new ServiceException(e);
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
         }
     }
 
     public int HEAD(String resource) {
-        URL url;
-        try {
-            url = new URL(_baseUrl + resource);
-        } catch (MalformedURLException e) {
-            throw Throwables.propagate(e);
-        }
+        URL url = toUrl(resource);
 
-        HttpURLConnection connection = null;
         try {
-            connection = (HttpURLConnection) url.openConnection();
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("HEAD");
             return connection.getResponseCode();
         } catch (IOException e) {
             // Was an exception processing the request -- retrying could solve it.
             throw new ServiceException(e);
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
+        }
+    }
+
+    private URL toUrl(String resource) {
+        try {
+            return new URL(_baseUrl + resource);
+        } catch (MalformedURLException e) {
+            throw Throwables.propagate(e);
         }
     }
 }

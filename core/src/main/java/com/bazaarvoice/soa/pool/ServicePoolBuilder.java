@@ -1,6 +1,7 @@
 package com.bazaarvoice.soa.pool;
 
 import com.bazaarvoice.soa.HostDiscovery;
+import com.bazaarvoice.soa.RetryPolicy;
 import com.bazaarvoice.soa.ServiceFactory;
 import com.bazaarvoice.soa.discovery.ZooKeeperHostDiscovery;
 import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
@@ -16,11 +17,20 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
 public class ServicePoolBuilder<S> {
+    private final Class<S> _serviceType;
     private Ticker _ticker = Ticker.systemTicker();
     private HostDiscovery _hostDiscovery;
     private ServiceFactory<S> _serviceFactory;
     private ScheduledExecutorService _healthCheckExecutor;
     private ZooKeeperConnection _zooKeeperConnection;
+
+    public static <S> ServicePoolBuilder<S> create(Class<S> serviceType) {
+        return new ServicePoolBuilder<S>(serviceType);
+    }
+
+    private ServicePoolBuilder(Class<S> serviceType) {
+        _serviceType = checkNotNull(serviceType);
+    }
 
     @VisibleForTesting
     ServicePoolBuilder<S> withTicker(Ticker ticker) {
@@ -86,6 +96,10 @@ public class ServicePoolBuilder<S> {
      * @return The {@code ServicePool} that was constructed.
      */
     public com.bazaarvoice.soa.ServicePool<S> build() {
+        return buildInternal();
+    }
+
+    private ServicePool<S> buildInternal() {
         checkNotNull(_serviceFactory);
         checkState(_hostDiscovery != null || _zooKeeperConnection != null);
 
@@ -103,6 +117,21 @@ public class ServicePoolBuilder<S> {
             _healthCheckExecutor = Executors.newScheduledThreadPool(1, daemonThreadFactory);
         }
 
-        return new ServicePool<S>(_ticker, _hostDiscovery, _serviceFactory, _healthCheckExecutor, shutdownOnClose);
+        return new ServicePool<S>(_serviceType, _ticker, _hostDiscovery, _serviceFactory, _healthCheckExecutor,
+                shutdownOnClose);
+    }
+
+    /**
+     * Builds a dynamic proxy that wraps a {@code ServicePool} and implements the service interface directly.  This is
+     * appropriate for stateless services where it's sensible for the same retry policy to apply to every method.
+     * <p>
+     * It is the caller's responsibility to shutdown the service pool when they're done with it by casting the proxy
+     * to {@link java.io.Closeable} and calling the {@link java.io.Closeable#close()} method.
+     * @param retryPolicy The retry policy to apply for every service call.
+     * @return The dynamic proxy instance that implements the service interface {@code S} and the
+     * {@link java.io.Closeable} interface.
+     */
+    public S buildProxy(RetryPolicy retryPolicy) {
+        return buildInternal().newProxy(retryPolicy, true);
     }
 }

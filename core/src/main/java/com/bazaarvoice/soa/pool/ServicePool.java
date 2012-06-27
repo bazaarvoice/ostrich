@@ -22,19 +22,26 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.google.common.reflect.AbstractInvocationHandler;
 
+import java.io.Closeable;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
 
 class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
     // By default check every minute to see if a previously unhealthy endpoint has become healthy.
     @VisibleForTesting
     static final long HEALTH_CHECK_POLL_INTERVAL_IN_SECONDS = 60;
 
+    private final Class<S> _serviceType;
     private final Ticker _ticker;
     private final HostDiscovery _hostDiscovery;
     private final HostDiscovery.EndpointListener _hostDiscoveryListener;
@@ -47,8 +54,9 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
     private final Set<ServiceEndPoint> _recentlyRemovedEndpoints;
     private final Future<?> _batchHealthChecksFuture;
 
-    ServicePool(Ticker ticker, HostDiscovery hostDiscovery, ServiceFactory<S> serviceFactory,
+    ServicePool(Class<S> serviceType, Ticker ticker, HostDiscovery hostDiscovery, ServiceFactory<S> serviceFactory,
                 ScheduledExecutorService healthCheckExecutor, boolean shutdownExecutorOnClose) {
+        _serviceType = serviceType;
         _ticker = checkNotNull(ticker);
         _hostDiscovery = checkNotNull(hostDiscovery);
         _serviceFactory = checkNotNull(serviceFactory);
@@ -141,6 +149,52 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
     @Override
     public <R> Future<R> executeAsync(RetryPolicy retry, ServiceCallback<S, R> callback) {
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public S newProxy(RetryPolicy retryPolicy) {
+        return newProxy(retryPolicy, false);
+    }
+
+    S newProxy(final RetryPolicy retryPolicy, final boolean shutdownPoolOnClose) {
+        checkNotNull(retryPolicy);
+        checkState(_serviceType.isInterface(), "Proxy functionality is only available for interface service types.");
+        ClassLoader loader = Thread.currentThread().getContextClassLoader();
+        Class<?>[] interfaces;
+        if (shutdownPoolOnClose) {
+            interfaces = new Class<?>[]{_serviceType, Closeable.class};
+        } else {
+            interfaces = new Class<?>[]{_serviceType};
+        }
+        Object proxy = Proxy.newProxyInstance(loader, interfaces, new AbstractInvocationHandler() {
+            @Override
+            protected Object handleInvocation(Object proxy, final Method method, final Object[] args) throws Throwable {
+                // Special case for close() allows closing the entire pool by calling close() on the proxy.
+                if (shutdownPoolOnClose && args.length == 0 && method.getName().equals("close")) {
+                    ServicePool.this.close();
+                    return null;
+                }
+                // Delegate the method through to a service provider in the pool.
+                return ServicePool.this.execute(retryPolicy, new ServiceCallback<S, Object>() {
+                    @Override
+                    public Object call(S service) throws ServiceException {
+                        try {
+                            return method.invoke(service, args);
+                        } catch (IllegalAccessException e) {
+                            throw Throwables.propagate(e);
+                        } catch (InvocationTargetException e) {
+                            throw Throwables.propagate(e.getTargetException());
+                        }
+                    }
+                });
+            }
+
+            @Override
+            public String toString() {
+                return "ServicePoolProxy[" + _serviceType.getName() + "]";
+            }
+        });
+        return _serviceType.cast(proxy);
     }
 
     @VisibleForTesting

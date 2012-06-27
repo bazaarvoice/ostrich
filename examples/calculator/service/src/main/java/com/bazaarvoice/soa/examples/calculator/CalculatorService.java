@@ -10,9 +10,14 @@ import com.yammer.dropwizard.Service;
 import com.yammer.dropwizard.config.Environment;
 import com.yammer.dropwizard.lifecycle.Managed;
 
+import javax.ws.rs.core.UriBuilder;
 import java.net.InetAddress;
-import java.net.URL;
+import java.net.URI;
+import java.util.Map;
 
+/**
+ * A Dropwizard+Jersey-based client of a simple calculator service.
+ */
 public class CalculatorService extends Service<CalculatorConfiguration> {
     public static boolean IS_HEALTHY = true;
 
@@ -26,19 +31,22 @@ public class CalculatorService extends Service<CalculatorConfiguration> {
         env.addResource(ToggleHealthResource.class);
         env.addHealthCheck(new CalculatorHealthCheck());
 
-        String ip = InetAddress.getLocalHost().getHostAddress();
+        InetAddress localhost = InetAddress.getLocalHost();
+        String host = localhost.getHostName();
+        String ip = localhost.getHostAddress();
         int port = config.getHttpConfiguration().getPort();
         int adminPort = config.getHttpConfiguration().getAdminPort();
 
         // The client reads the URLs out of the payload to figure out how to connect to this server.
-        String payload = getJson().writeValueAsString(ImmutableMap.builder()
-                .put("url", new URL("http", ip, port, "/" + getName()))
-                .put("adminUrl", new URL("http", ip, adminPort, ""))
-                .build());
-        final ServiceEndPoint endpoint = new ServiceEndPointBuilder()
+        URI serviceUri = UriBuilder.fromResource(CalculatorResource.class).scheme("http").host(ip).port(port).build();
+        URI adminUri = UriBuilder.fromPath("").scheme("http").host(ip).port(adminPort).build();
+        Map<String, ?> payload = ImmutableMap.of(
+                "url", serviceUri,
+                "adminUrl", adminUri);
+        final ServiceEndPoint endPoint = new ServiceEndPointBuilder()
                 .withServiceName(getName())
-                .withId(ip + ":" + port)
-                .withPayload(payload)
+                .withId(host + ":" + port)
+                .withPayload(getJson().writeValueAsString(payload))
                 .build();
 
         // Once everything has initialized successfully, register services with ZooKeeper where clients can find them.
@@ -47,12 +55,12 @@ public class CalculatorService extends Service<CalculatorConfiguration> {
         env.manage(new Managed() {
             @Override
             public void start() throws Exception {
-                registry.register(endpoint);
+                registry.register(endPoint);
             }
 
             @Override
             public void stop() throws Exception {
-                registry.unregister(endpoint);
+                registry.unregister(endPoint);
             }
         });
     }

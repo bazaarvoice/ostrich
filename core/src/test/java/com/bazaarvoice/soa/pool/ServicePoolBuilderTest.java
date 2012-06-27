@@ -2,6 +2,7 @@ package com.bazaarvoice.soa.pool;
 
 import com.bazaarvoice.soa.HostDiscovery;
 import com.bazaarvoice.soa.LoadBalanceAlgorithm;
+import com.bazaarvoice.soa.RetryPolicy;
 import com.bazaarvoice.soa.ServiceFactory;
 import com.bazaarvoice.soa.zookeeper.ZooKeeperConfiguration;
 import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
@@ -9,30 +10,33 @@ import com.google.common.io.Closeables;
 import com.netflix.curator.test.TestingServer;
 import org.junit.Test;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.concurrent.ScheduledExecutorService;
 
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class ServicePoolBuilderTest {
     @Test(expected = NullPointerException.class)
     public void testNullHostDiscovery() {
-        new ServicePoolBuilder<Service>().withHostDiscovery(null);
+        ServicePoolBuilder.create(Service.class).withHostDiscovery(null);
     }
 
     @Test(expected = NullPointerException.class)
     public void testNullZooKeeperConnection() {
-        new ServicePoolBuilder<Service>().withZooKeeperHostDiscovery(null);
+        ServicePoolBuilder.create(Service.class).withZooKeeperHostDiscovery(null);
     }
 
     @Test(expected = NullPointerException.class)
     public void testNullServiceFactory() {
-        new ServicePoolBuilder<Service>().withServiceFactory(null);
+        ServicePoolBuilder.create(Service.class).withServiceFactory(null);
     }
 
     @Test(expected = NullPointerException.class)
     public void testNullHealthCheckExecutor() {
-        new ServicePoolBuilder<Service>().withHealthCheckExecutor(null);
+        ServicePoolBuilder.create(Service.class).withHealthCheckExecutor(null);
     }
 
     @SuppressWarnings("unchecked")
@@ -40,7 +44,7 @@ public class ServicePoolBuilderTest {
     public void testBuildWithNoHostDiscoveryAndNoZooKeeperConnection() {
         ServiceFactory<Service> serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
         ScheduledExecutorService healthCheckExecutor = mock(ScheduledExecutorService.class);
-        new ServicePoolBuilder<Service>()
+        ServicePoolBuilder.create(Service.class)
                 .withServiceFactory(serviceFactory)
                 .withHealthCheckExecutor(healthCheckExecutor)
                 .build();
@@ -50,7 +54,7 @@ public class ServicePoolBuilderTest {
     public void testBuildWithNoServiceFactory() {
         HostDiscovery hostDiscovery = mock(HostDiscovery.class);
         ScheduledExecutorService healthCheckExecutor = mock(ScheduledExecutorService.class);
-        new ServicePoolBuilder<Service>()
+        ServicePoolBuilder.create(Service.class)
                 .withHostDiscovery(hostDiscovery)
                 .withHealthCheckExecutor(healthCheckExecutor)
                 .build();
@@ -63,7 +67,7 @@ public class ServicePoolBuilderTest {
         ServiceFactory<Service> serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
         ScheduledExecutorService healthCheckExecutor = mock(ScheduledExecutorService.class);
 
-        new ServicePoolBuilder<Service>()
+        ServicePoolBuilder.create(Service.class)
                 .withServiceFactory(serviceFactory)
                 .withHostDiscovery(hostDiscovery)
                 .withHealthCheckExecutor(healthCheckExecutor)
@@ -82,7 +86,7 @@ public class ServicePoolBuilderTest {
         try {
             connection = new ZooKeeperConfiguration().setConnectString(zooKeeperServer.getConnectString()).connect();
 
-            new ServicePoolBuilder<Service>()
+            ServicePoolBuilder.create(Service.class)
                     .withServiceFactory(serviceFactory)
                     .withZooKeeperHostDiscovery(connection)
                     .build();
@@ -101,7 +105,7 @@ public class ServicePoolBuilderTest {
         ServiceFactory<Service> serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
         when(serviceFactory.getLoadBalanceAlgorithm()).thenReturn(loadBalanceAlgorithm);
 
-        new ServicePoolBuilder<Service>()
+        ServicePoolBuilder.create(Service.class)
                 .withServiceFactory(serviceFactory)
                 .withHostDiscovery(hostDiscovery)
                 .build();
@@ -117,11 +121,23 @@ public class ServicePoolBuilderTest {
         ServiceFactory<Service> serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
         when(serviceFactory.getLoadBalanceAlgorithm()).thenReturn(loadBalanceAlgorithm);
 
-        new ServicePoolBuilder<Service>()
+        ServicePoolBuilder.create(Service.class)
                 .withServiceFactory(serviceFactory)
                 .withHostDiscovery(hostDiscovery)
                 .withHealthCheckExecutor(healthCheckExecutor)
                 .build();
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testBuildProxy() throws IOException {
+        ServiceFactory serviceFactory = mock(ServiceFactory.class);
+        when(serviceFactory.getLoadBalanceAlgorithm()).thenReturn(mock(LoadBalanceAlgorithm.class));
+        Service service = ServicePoolBuilder.create(Service.class)
+                .withHostDiscovery(mock(HostDiscovery.class))
+                .withServiceFactory(serviceFactory)
+                .buildProxy(mock(RetryPolicy.class));
+        assertTrue(service instanceof Closeable);
     }
 
     // A dummy interface for testing...
