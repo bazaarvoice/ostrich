@@ -198,6 +198,11 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
     }
 
     @VisibleForTesting
+    HostDiscovery getHostDiscovery() {
+        return _hostDiscovery;
+    }
+
+    @VisibleForTesting
     Set<ServiceEndPoint> getBadEndpoints() {
         return ImmutableSet.copyOf(_badEndpoints);
     }

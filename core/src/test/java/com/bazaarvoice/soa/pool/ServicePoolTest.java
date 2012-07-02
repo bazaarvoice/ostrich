@@ -123,7 +123,8 @@ public class ServicePoolTest {
                 }
         );
 
-        _pool = new ServicePool<Service>(Service.class,_ticker, _hostDiscovery, _serviceFactory, _healthCheckExecutor, true);
+        _pool = new ServicePool<Service>(Service.class, _ticker, _hostDiscovery, _serviceFactory, _healthCheckExecutor,
+                true);
     }
 
     @After

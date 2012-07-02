@@ -1,28 +1,28 @@
 package com.bazaarvoice.soa.pool;
 
 import com.bazaarvoice.soa.HostDiscovery;
+import com.bazaarvoice.soa.HostDiscoverySource;
 import com.bazaarvoice.soa.RetryPolicy;
 import com.bazaarvoice.soa.ServiceFactory;
 import com.bazaarvoice.soa.discovery.ZooKeeperHostDiscovery;
 import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Ticker;
+import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
+import static java.lang.String.format;
 
 public class ServicePoolBuilder<S> {
     private final Class<S> _serviceType;
-    private Ticker _ticker = Ticker.systemTicker();
-    private HostDiscovery _hostDiscovery;
+    private final List<HostDiscoverySource> _hostDiscoverySources = Lists.newArrayList();
     private ServiceFactory<S> _serviceFactory;
     private ScheduledExecutorService _healthCheckExecutor;
-    private ZooKeeperConnection _zooKeeperConnection;
 
     public static <S> ServicePoolBuilder<S> create(Class<S> serviceType) {
         return new ServicePoolBuilder<S>(serviceType);
@@ -32,38 +32,60 @@ public class ServicePoolBuilder<S> {
         _serviceType = checkNotNull(serviceType);
     }
 
-    @VisibleForTesting
-    ServicePoolBuilder<S> withTicker(Ticker ticker) {
-        _ticker = checkNotNull(ticker);
+    /**
+     * Adds a {@link HostDiscoverySource} instance to the builder.  Multiple instances of {@code HostDiscoverySource}
+     * may be specified.  The service pool will use the first source to return a non-null instance of
+     * {@link HostDiscovery} for the service name returned by {@link ServiceFactory#getServiceName()}.
+     *
+     * @param hostDiscoverySource a host discovery source to use to find the {@link HostDiscovery} when constructing
+     * the {@link ServicePool}
+     * @return this
+     */
+    public ServicePoolBuilder<S> withHostDiscoverySource(HostDiscoverySource hostDiscoverySource) {
+        _hostDiscoverySources.add(checkNotNull(hostDiscoverySource));
         return this;
     }
 
     /**
-     * Adds a {@code HostDiscovery} instance to the builder.
-     * <p/>
-     * The last call to this method or {@link #withZooKeeperHostDiscovery} wins.
+     * Adds a {@link HostDiscovery} instance to the builder.  The service pool will use this {@code HostDiscovery}
+     * instance unless a preceding call to {@link #withHostDiscoverySource(HostDiscoverySource)} provides a non-null
+     * instance of {@code HostDiscovery}.
+     * <p>
+     * Once this method is called, any subsequent calls to host discovery-related methods on this builder instance are
+     * ignored.
      *
      * @param hostDiscovery the host discovery instance to use in the built {@link ServicePool}
      * @return this
      */
-    public ServicePoolBuilder<S> withHostDiscovery(HostDiscovery hostDiscovery) {
-        _hostDiscovery = checkNotNull(hostDiscovery);
-        return this;
+    public ServicePoolBuilder<S> withHostDiscovery(final HostDiscovery hostDiscovery) {
+        checkNotNull(hostDiscovery);
+        return withHostDiscoverySource(new HostDiscoverySource() {
+            @Override
+            public HostDiscovery forService(String serviceName) {
+                return hostDiscovery;
+            }
+        });
     }
 
     /**
-     * Adds a {@code ZooKeeperConnection} instance to the builder.
-     * <p/>
-     * Will be used in creation of a {@link ZooKeeperHostDiscovery} instance for the built {@link ServicePool}.
-     * The last call to this method or {@link #withHostDiscovery} wins.
+     * Adds a {@link ZooKeeperConnection} instance to the builder that will be used for host discovery.  The service
+     * pool will use ZooKeeper for host discovery unless a preceding call to
+     * {@link #withHostDiscoverySource(HostDiscoverySource)} provides a non-null instance of {@code HostDiscovery}.
+     * <p>
+     * Once this method is called, any subsequent calls to host discovery-related methods on this builder instance are
+     * ignored.
      *
      * @param connection the ZooKeeper connection to use for host discovery
      * @return this
      */
-    public ServicePoolBuilder<S> withZooKeeperHostDiscovery(ZooKeeperConnection connection) {
-        _zooKeeperConnection = checkNotNull(connection);
-        _hostDiscovery = null;
-        return this;
+    public ServicePoolBuilder<S> withZooKeeperHostDiscovery(final ZooKeeperConnection connection) {
+        checkNotNull(connection);
+        return withHostDiscoverySource(new HostDiscoverySource() {
+            @Override
+            public HostDiscovery forService(String serviceName) {
+                return new ZooKeeperHostDiscovery(connection, serviceName);
+            }
+        });
     }
 
     /**
@@ -101,12 +123,9 @@ public class ServicePoolBuilder<S> {
 
     private ServicePool<S> buildInternal() {
         checkNotNull(_serviceFactory);
-        checkState(_hostDiscovery != null || _zooKeeperConnection != null);
 
         String serviceName = _serviceFactory.getServiceName();
-        if (_hostDiscovery == null) {
-            _hostDiscovery = new ZooKeeperHostDiscovery(_zooKeeperConnection, serviceName);
-        }
+        HostDiscovery hostDiscovery = findHostDiscovery(serviceName);
 
         boolean shutdownOnClose = (_healthCheckExecutor == null);
         if (_healthCheckExecutor == null) {
@@ -117,8 +136,18 @@ public class ServicePoolBuilder<S> {
             _healthCheckExecutor = Executors.newScheduledThreadPool(1, daemonThreadFactory);
         }
 
-        return new ServicePool<S>(_serviceType, _ticker, _hostDiscovery, _serviceFactory, _healthCheckExecutor,
-                shutdownOnClose);
+        return new ServicePool<S>(_serviceType, Ticker.systemTicker(), hostDiscovery, _serviceFactory,
+                _healthCheckExecutor, shutdownOnClose);
+    }
+
+    private HostDiscovery findHostDiscovery(String serviceName) {
+        for (HostDiscoverySource source : _hostDiscoverySources) {
+            HostDiscovery hostDiscovery = source.forService(serviceName);
+            if (hostDiscovery != null) {
+                return hostDiscovery;
+            }
+        }
+        throw new IllegalStateException(format("No HostDiscovery found for service: %s", serviceName));
     }
 
     /**

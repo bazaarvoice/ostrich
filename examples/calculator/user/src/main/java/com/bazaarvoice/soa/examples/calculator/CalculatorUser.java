@@ -7,6 +7,7 @@ import com.bazaarvoice.soa.pool.ServicePoolBuilder;
 import com.bazaarvoice.soa.retry.RetryNTimes;
 import com.bazaarvoice.soa.zookeeper.ZooKeeperConfiguration;
 import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
+import com.google.common.io.Closeables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,6 +69,7 @@ public class CalculatorUser {
         CalculatorUser user = new CalculatorUser(pool);
         user.use();
 
-        pool.close();
+        Closeables.closeQuietly(pool);
+        Closeables.closeQuietly(connection);
     }
 }

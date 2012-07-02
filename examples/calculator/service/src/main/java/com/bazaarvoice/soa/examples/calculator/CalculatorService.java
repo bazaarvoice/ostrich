@@ -6,6 +6,7 @@ import com.bazaarvoice.soa.ServiceRegistry;
 import com.bazaarvoice.soa.registry.ZooKeeperServiceRegistry;
 import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.io.Closeables;
 import com.yammer.dropwizard.Service;
 import com.yammer.dropwizard.config.Environment;
 import com.yammer.dropwizard.lifecycle.Managed;
@@ -50,7 +51,7 @@ public class CalculatorService extends Service<CalculatorConfiguration> {
                 .build();
 
         // Once everything has initialized successfully, register services with ZooKeeper where clients can find them.
-        ZooKeeperConnection connection = config.getZooKeeperConfiguration().connect();
+        final ZooKeeperConnection connection = config.getZooKeeperConfiguration().connect();
         final ServiceRegistry registry = new ZooKeeperServiceRegistry(connection);
         env.manage(new Managed() {
             @Override
@@ -61,6 +62,7 @@ public class CalculatorService extends Service<CalculatorConfiguration> {
             @Override
             public void stop() throws Exception {
                 registry.unregister(endPoint);
+                Closeables.closeQuietly(connection);
             }
         });
     }

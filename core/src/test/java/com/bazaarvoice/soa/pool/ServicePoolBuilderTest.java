@@ -1,9 +1,7 @@
 package com.bazaarvoice.soa.pool;
 
-import com.bazaarvoice.soa.HostDiscovery;
-import com.bazaarvoice.soa.LoadBalanceAlgorithm;
-import com.bazaarvoice.soa.RetryPolicy;
-import com.bazaarvoice.soa.ServiceFactory;
+import com.bazaarvoice.soa.*;
+import com.bazaarvoice.soa.ServicePool;
 import com.bazaarvoice.soa.zookeeper.ZooKeeperConfiguration;
 import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
 import com.google.common.io.Closeables;
@@ -14,6 +12,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.concurrent.ScheduledExecutorService;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -94,6 +93,47 @@ public class ServicePoolBuilderTest {
             Closeables.closeQuietly(connection);
             Closeables.closeQuietly(zooKeeperServer);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testHostDiscoverySourceOverride() {
+        ServiceFactory<Service> serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
+        when(serviceFactory.getLoadBalanceAlgorithm()).thenReturn(mock(LoadBalanceAlgorithm.class));
+
+        final HostDiscovery overrideDiscovery = mock(HostDiscovery.class);
+        HostDiscovery baseDiscovery = mock(HostDiscovery.class);
+        ServicePool<Service> pool = ServicePoolBuilder.create(Service.class)
+                .withHostDiscoverySource(new HostDiscoverySource() {
+                    @Override
+                    public HostDiscovery forService(String serviceName) {
+                        return overrideDiscovery;
+                    }
+                })
+                .withHostDiscovery(baseDiscovery)
+                .withServiceFactory(serviceFactory)
+                .build();
+        assertEquals(overrideDiscovery, ((com.bazaarvoice.soa.pool.ServicePool) pool).getHostDiscovery());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testHostDiscoverySourceFallThrough() {
+        ServiceFactory<Service> serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
+        when(serviceFactory.getLoadBalanceAlgorithm()).thenReturn(mock(LoadBalanceAlgorithm.class));
+
+        HostDiscovery hostDiscovery = mock(HostDiscovery.class);
+        ServicePool<Service> pool = ServicePoolBuilder.create(Service.class)
+                .withHostDiscoverySource(new HostDiscoverySource() {
+                    @Override
+                    public HostDiscovery forService(String serviceName) {
+                        return null;
+                    }
+                })
+                .withHostDiscovery(hostDiscovery)
+                .withServiceFactory(serviceFactory)
+                .build();
+        assertEquals(hostDiscovery, ((com.bazaarvoice.soa.pool.ServicePool) pool).getHostDiscovery());
     }
 
     @SuppressWarnings("unchecked")

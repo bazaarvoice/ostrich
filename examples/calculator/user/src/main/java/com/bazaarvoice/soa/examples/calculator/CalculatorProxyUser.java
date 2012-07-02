@@ -69,5 +69,6 @@ public class CalculatorProxyUser {
         user.use();
 
         Closeables.closeQuietly((Closeable) service);
+        Closeables.closeQuietly(connection);
     }
 }
