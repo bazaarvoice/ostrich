@@ -7,6 +7,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -21,8 +22,14 @@ public class ConfiguredFixedHostDiscoverySourceTest {
     }
 
     @Test
-    public void testEmptyMap() {
+    public void testDefaultConstructor() {
         HostDiscoverySource source = new ConfiguredFixedHostDiscoverySource<Void>();
+        assertNull(source.forService("payload"));
+    }
+
+    @Test
+    public void testEmptyMap() {
+        HostDiscoverySource source = new ConfiguredFixedHostDiscoverySource<Void>(Collections.<String, Void>emptyMap());
         assertNull(source.forService("payload"));
     }
 
@@ -47,5 +54,25 @@ public class ConfiguredFixedHostDiscoverySourceTest {
         assertEquals("service", endPoint.getServiceName());
         assertEquals("id", endPoint.getId());
         assertEquals("payload", endPoint.getPayload());
+    }
+
+    @Test
+    public void testOverridePayloadSerialize() {
+        final Object customPayload = new Object();
+        Map<String, Object> endPoints = ImmutableMap.of("id", customPayload);
+        HostDiscoverySource source = new ConfiguredFixedHostDiscoverySource<Object>(endPoints) {
+            @Override
+            protected String serialize(String serviceName, String id, Object payload) {
+                assertEquals("service", serviceName);
+                assertEquals("id", id);
+                assertEquals(customPayload, payload);
+                return "custom-payload";
+            }
+        };
+        HostDiscovery hostDiscovery = source.forService("service");
+        assertNotNull(hostDiscovery);
+
+        List<ServiceEndPoint> hosts = Lists.newArrayList(hostDiscovery.getHosts());
+        assertEquals("custom-payload", hosts.get(0).getPayload());
     }
 }

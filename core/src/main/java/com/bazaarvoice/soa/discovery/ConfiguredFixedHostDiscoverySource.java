@@ -47,10 +47,12 @@ public class ConfiguredFixedHostDiscoverySource<Payload> implements HostDiscover
 
         List<ServiceEndPoint> endPoints = Lists.newArrayListWithCapacity(_endPoints.size());
         for (Map.Entry<String, Payload> entry : _endPoints.entrySet()) {
+            String id = entry.getKey();
+            Payload payload = entry.getValue();
             endPoints.add(new ServiceEndPointBuilder()
                     .withServiceName(serviceName)
-                    .withId(entry.getKey())
-                    .withPayload(serialize(entry.getValue()))
+                    .withId(id)
+                    .withPayload(serialize(serviceName, id, payload))
                     .build());
         }
         return new FixedHostDiscovery(endPoints);
@@ -59,7 +61,8 @@ public class ConfiguredFixedHostDiscoverySource<Payload> implements HostDiscover
     /**
      * Subclasses may override this to customize the persistent format of the payload.
      */
-    protected String serialize(Payload payload) {
+    @SuppressWarnings("UnusedParameters")
+    protected String serialize(String serviceName, String id, Payload payload) {
         return String.valueOf(payload);
     }
 
