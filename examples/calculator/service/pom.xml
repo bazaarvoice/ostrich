@@ -62,7 +62,7 @@
         <dependency>
             <groupId>com.bazaarvoice.soa</groupId>
             <artifactId>soa-dropwizard</artifactId>
-            <version>0.1.7-SNAPSHOT</version>
+            <version>0.1.8-SNAPSHOT</version>
         </dependency>
 
         <dependency>
