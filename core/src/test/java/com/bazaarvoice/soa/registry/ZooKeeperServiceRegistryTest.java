@@ -212,7 +212,7 @@ public class ZooKeeperServiceRegistryTest extends ZooKeeperTest {
 
     @Test
     public void testNamespace() throws Exception {
-        ZooKeeperConnection connection = newZooKeeperConnection(new ZooKeeperConfiguration().setNamespace("/dc1"));
+        ZooKeeperConnection connection = newZooKeeperConnection(new ZooKeeperConfiguration().withNamespace("/dc1"));
         ZooKeeperServiceRegistry registry = new ZooKeeperServiceRegistry(connection);
         registry.register(FOO);
 
@@ -222,7 +222,7 @@ public class ZooKeeperServiceRegistryTest extends ZooKeeperTest {
 
     @Test
     public void testEmptyNamespace() throws Exception {
-        ZooKeeperConnection connection = newZooKeeperConnection(new ZooKeeperConfiguration().setNamespace(""));
+        ZooKeeperConnection connection = newZooKeeperConnection(new ZooKeeperConfiguration().withNamespace(""));
         ZooKeeperServiceRegistry registry = new ZooKeeperServiceRegistry(connection);
         registry.register(FOO);
 

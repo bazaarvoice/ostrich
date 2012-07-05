@@ -42,7 +42,7 @@
             <dependency>
                 <groupId>com.netflix.curator</groupId>
                 <artifactId>curator-recipes</artifactId>
-                <version>1.1.12</version>
+                <version>1.1.13</version>
 
                 <exclusions>
                     <exclusion>
@@ -71,7 +71,7 @@
             <dependency>
                 <groupId>com.netflix.curator</groupId>
                 <artifactId>curator-test</artifactId>
-                <version>1.1.12</version>
+                <version>1.1.13</version>
                 <scope>test</scope>
             </dependency>
 
@@ -117,6 +117,7 @@
 
     <modules>
         <module>core</module>
+        <module>dropwizard</module>
         <module>examples</module>
     </modules>
 

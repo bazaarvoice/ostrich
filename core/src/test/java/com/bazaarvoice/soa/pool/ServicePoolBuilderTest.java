@@ -83,7 +83,7 @@ public class ServicePoolBuilderTest {
         TestingServer zooKeeperServer = new TestingServer();
         ZooKeeperConnection connection = null;
         try {
-            connection = new ZooKeeperConfiguration().setConnectString(zooKeeperServer.getConnectString()).connect();
+            connection = new ZooKeeperConfiguration().withConnectString(zooKeeperServer.getConnectString()).connect();
 
             ServicePoolBuilder.create(Service.class)
                     .withServiceFactory(serviceFactory)

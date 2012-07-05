@@ -50,15 +50,15 @@ public abstract class ZooKeeperTest {
     }
 
     public ZooKeeperConnection newZooKeeperConnection() throws Exception {
-        return newZooKeeperConnection(new ZooKeeperConfiguration()
-                .setRetryNTimes(new com.bazaarvoice.soa.zookeeper.RetryNTimes(0, 0)));
+        // For test case purposes don't retry at all.  This should never be done in production!!!
+        return newZooKeeperConnection(new ZooKeeperConfiguration().withBoundedExponentialBackoffRetry(100, 1000, 1));
     }
 
     public ZooKeeperConnection newZooKeeperConnection(ZooKeeperConfiguration configuration) {
         assertNotNull("ZooKeeper testing server is null, did you forget to call super.setup()", _zooKeeperServer);
 
         ZooKeeperConnection connection = configuration
-                .setConnectString("127.0.0.1:" + _zooKeeperServer.getPort())
+                .withConnectString(_zooKeeperServer.getConnectString())
                 .connect();
 
         _connections.add(connection);
@@ -74,7 +74,7 @@ public abstract class ZooKeeperTest {
         assertNotNull("ZooKeeper testing server is null, did you forget to call super.setup()", _zooKeeperServer);
 
         CuratorFramework curator = builder
-                .connectString("127.0.0.1:" + _zooKeeperServer.getPort())
+                .connectString(_zooKeeperServer.getConnectString())
                 .build();
         curator.start();
 

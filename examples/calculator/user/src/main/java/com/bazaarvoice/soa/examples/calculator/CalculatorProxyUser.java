@@ -56,8 +56,8 @@ public class CalculatorProxyUser {
         String connectString = (args.length > 0) ? args[0] : "localhost:2181";
 
         ZooKeeperConnection connection = new ZooKeeperConfiguration()
-                .setConnectString(connectString)
-                .setRetryNTimes(new com.bazaarvoice.soa.zookeeper.RetryNTimes(3, 100))
+                .withConnectString(connectString)
+                .withBoundedExponentialBackoffRetry(10, 1000, 3)
                 .connect();
 
         CalculatorService service = ServicePoolBuilder.create(CalculatorService.class)

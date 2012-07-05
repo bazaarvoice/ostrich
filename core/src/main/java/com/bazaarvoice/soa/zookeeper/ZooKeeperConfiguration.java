@@ -2,16 +2,21 @@ package com.bazaarvoice.soa.zookeeper;
 
 import com.bazaarvoice.soa.internal.CuratorConnection;
 import com.google.common.annotations.VisibleForTesting;
+import com.netflix.curator.RetryPolicy;
+import com.netflix.curator.retry.BoundedExponentialBackoffRetry;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 /**
  * ZooKeeper connection configuration class.
- * <p>
- * This class is designed to map easily to YAML configuration files, deserialized using Jackson.
+ * <p/>
+ * NOTE: If you modify this class then you <b>must</b> also modify the corresponding class in the soa-dropwizard
+ * artifact.  If you don't then you've just exposed configuration options that can't be easily used by people writing
+ * dropwizard services.
  */
 public class ZooKeeperConfiguration {
-
     private String _connectString = "localhost:2181";
-    private RetryPolicy _retryPolicy = new RetryNTimes(3, 100);
+    private RetryPolicy _retryPolicy = new BoundedExponentialBackoffRetry(100, 1000, 5);
     private String _namespace;
 
     /**
@@ -19,11 +24,11 @@ public class ZooKeeperConfiguration {
      * @return A new {@link ZooKeeperConnection} with the current configuration settings.
      */
     public ZooKeeperConnection connect() {
-        return new CuratorConnection(_connectString, _retryPolicy.get(), _namespace);
+        return new CuratorConnection(_connectString, _retryPolicy, _namespace);
     }
 
     @VisibleForTesting
-    String getConnectString() {
+    protected String getConnectString() {
         return _connectString;
     }
 
@@ -34,42 +39,33 @@ public class ZooKeeperConfiguration {
      * unavailable.
      * @param connectString A ZooKeeper connection string.
      */
-    public ZooKeeperConfiguration setConnectString(String connectString) {
+    public ZooKeeperConfiguration withConnectString(String connectString) {
         _connectString = connectString;
         return this;
     }
 
     @VisibleForTesting
-    RetryPolicy getRetryPolicy() {
+    protected RetryPolicy getRetryPolicy() {
         return _retryPolicy;
     }
 
     /**
-     * Sets a retry policy that retries a set number of times with increasing sleep time between retries.
+     * Sets a retry policy that retries up to a set number of times with an exponential backoff between retries.
      */
-    public ZooKeeperConfiguration setExponentialBackoffRetry(ExponentialBackoffRetry retryPolicy) {
-        _retryPolicy = retryPolicy;
-        return this;
-    }
+    public ZooKeeperConfiguration withBoundedExponentialBackoffRetry(int initialSleepTimeMs, int maxSleepTimeMs,
+                                                                     int maxNumAttempts) {
+        checkArgument(maxNumAttempts > 0);
+        checkArgument(initialSleepTimeMs > 0);
+        checkArgument(maxSleepTimeMs > 0);
 
-    /**
-     * Sets a retry policy that retries a set number of times with a constant sleep time between retries.
-     */
-    public ZooKeeperConfiguration setRetryNTimes(RetryNTimes retryPolicy) {
-        _retryPolicy = retryPolicy;
-        return this;
-    }
-
-    /**
-     * Sets a retry policy that retries until a specified time has elapsed, with a constant sleep time between retries.
-     */
-    public ZooKeeperConfiguration setRetryUntilElapsed(RetryUntilElapsed retryPolicy) {
-        _retryPolicy = retryPolicy;
+        // The Curator retry policies take as a parameter the number of times a retry is allowed.  So we convert
+        // maxNumAttempts into maxNumRetries.
+        _retryPolicy = new BoundedExponentialBackoffRetry(initialSleepTimeMs, maxSleepTimeMs, maxNumAttempts-1);
         return this;
     }
 
     @VisibleForTesting
-    String getNamespace() {
+    protected String getNamespace() {
         return _namespace;
     }
 
@@ -77,7 +73,7 @@ public class ZooKeeperConfiguration {
      * Sets a namespace that will be prefixed to every path used by the ZooKeeperConnection.
      * Typically the namespace will be "/global" or the name of the local data center.
      */
-    public ZooKeeperConfiguration setNamespace(String namespace) {
+    public ZooKeeperConfiguration withNamespace(String namespace) {
         _namespace = namespace;
         return this;
     }

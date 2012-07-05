@@ -60,9 +60,9 @@
         </dependency>
 
         <dependency>
-            <groupId>com.yammer.dropwizard</groupId>
-            <artifactId>dropwizard-core</artifactId>
-            <version>0.4.0</version>
+            <groupId>com.bazaarvoice.soa</groupId>
+            <artifactId>soa-dropwizard</artifactId>
+            <version>0.1.7-SNAPSHOT</version>
         </dependency>
 
         <dependency>

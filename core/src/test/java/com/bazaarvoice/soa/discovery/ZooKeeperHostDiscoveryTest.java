@@ -29,7 +29,6 @@ public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
             .withId("server:8081")
             .build();
 
-
     private ZooKeeperServiceRegistry _registry;
     private ZooKeeperHostDiscovery _discovery;
 
