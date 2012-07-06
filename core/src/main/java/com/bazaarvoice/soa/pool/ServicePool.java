@@ -24,6 +24,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.reflect.AbstractInvocationHandler;
 
+import javax.annotation.Nullable;
 import java.io.Closeable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -53,9 +54,11 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
     private final Predicate<ServiceEndPoint> _badEndpointFilter;
     private final Set<ServiceEndPoint> _recentlyRemovedEndpoints;
     private final Future<?> _batchHealthChecksFuture;
+    private final boolean _cacheServices;
+    private final ServiceCache<S> _serviceCache;
 
     ServicePool(Class<S> serviceType, Ticker ticker, HostDiscovery hostDiscovery, ServiceFactory<S> serviceFactory,
-                ScheduledExecutorService healthCheckExecutor, boolean shutdownExecutorOnClose) {
+                ScheduledExecutorService healthCheckExecutor, boolean shutdownExecutorOnClose, @Nullable ServiceCachingPolicy policy) {
         _serviceType = serviceType;
         _ticker = checkNotNull(ticker);
         _hostDiscovery = checkNotNull(hostDiscovery);
@@ -70,6 +73,8 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
                 .expireAfterWrite(10, TimeUnit.MINUTES)  // TODO: Make this a constant
                 .<ServiceEndPoint, Boolean>build()
                 .asMap());
+        _cacheServices = policy != null;
+        _serviceCache = _cacheServices ? new ServiceCache<S>(_serviceFactory, policy) : null;
 
         // Watch endpoints as they are removed from host discovery so that we can remove them from our set of bad
         // endpoints as well.  This will prevent the badEndpoints set from growing in an unbounded fashion.  There is a
@@ -130,9 +135,14 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
                 throw new NoSuitableHostsException();
             }
 
-            S service = _serviceFactory.create(endpoint);
             try {
-                return callback.call(service);
+                if (_cacheServices) {
+                    return _serviceCache.call(callback, endpoint);
+                }
+                else {
+                    S service = _serviceFactory.create(endpoint);
+                    return callback.call(service);
+                }
             } catch (ServiceException e) {
                 // This is a known and supported exception indicating that something went wrong somewhere in the service
                 // layer while trying to communicate with the endpoint.  These errors are often transient, so we enqueue
@@ -221,6 +231,9 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
         // endpoints ensures that this memory leak doesn't happen.
         _recentlyRemovedEndpoints.add(endpoint);
         _badEndpoints.remove(endpoint);
+        if (_serviceCache != null) {
+            _serviceCache.endPointRemoved(endpoint);
+        }
     }
 
     private synchronized void markEndpointAsBad(ServiceEndPoint endpoint) {

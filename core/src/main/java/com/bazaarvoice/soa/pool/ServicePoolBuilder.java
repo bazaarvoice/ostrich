@@ -23,6 +23,7 @@ public class ServicePoolBuilder<S> {
     private final List<HostDiscoverySource> _hostDiscoverySources = Lists.newArrayList();
     private ServiceFactory<S> _serviceFactory;
     private ScheduledExecutorService _healthCheckExecutor;
+    private ServiceCachingPolicy _cachePolicy;
 
     public static <S> ServicePoolBuilder<S> create(Class<S> serviceType) {
         return new ServicePoolBuilder<S>(serviceType);
@@ -112,6 +113,11 @@ public class ServicePoolBuilder<S> {
         return this;
     }
 
+    public ServicePoolBuilder<S> withCache(ServiceCachingPolicy policy) {
+        _cachePolicy = checkNotNull(policy);
+        return this;
+    }
+
     /**
      * Builds the {@code ServicePool}.
      *
@@ -137,7 +143,7 @@ public class ServicePoolBuilder<S> {
         }
 
         return new ServicePool<S>(_serviceType, Ticker.systemTicker(), hostDiscovery, _serviceFactory,
-                _healthCheckExecutor, shutdownOnClose);
+                _healthCheckExecutor, shutdownOnClose, _cachePolicy);
     }
 
     private HostDiscovery findHostDiscovery(String serviceName) {

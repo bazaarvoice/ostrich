@@ -11,6 +11,7 @@ import org.junit.Test;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -165,6 +166,24 @@ public class ServicePoolBuilderTest {
                 .withServiceFactory(serviceFactory)
                 .withHostDiscovery(hostDiscovery)
                 .withHealthCheckExecutor(healthCheckExecutor)
+                .build();
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testBuildWithCache() {
+        LoadBalanceAlgorithm loadBalanceAlgorithm = mock(LoadBalanceAlgorithm.class);
+        HostDiscovery hostDiscovery = mock(HostDiscovery.class);
+
+        ServiceFactory<Service> serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
+        when(serviceFactory.getLoadBalanceAlgorithm()).thenReturn(loadBalanceAlgorithm);
+
+        ServiceCachingPolicy policy = new ServiceCachingPolicy(100, 10, TimeUnit.SECONDS, 1);
+
+        ServicePoolBuilder.create(Service.class)
+                .withServiceFactory(serviceFactory)
+                .withHostDiscovery(hostDiscovery)
+                .withCache(policy)
                 .build();
     }
 
