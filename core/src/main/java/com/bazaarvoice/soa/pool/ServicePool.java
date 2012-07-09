@@ -12,6 +12,7 @@ import com.bazaarvoice.soa.exceptions.NoSuitableHostsException;
 import com.bazaarvoice.soa.exceptions.OnlyBadHostsException;
 import com.bazaarvoice.soa.exceptions.ServiceException;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import com.google.common.base.Stopwatch;
@@ -20,15 +21,21 @@ import com.google.common.base.Ticker;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.reflect.AbstractInvocationHandler;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.ListeningExecutorService;
 
 import java.io.Closeable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -46,6 +53,8 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
     private final HostDiscovery _hostDiscovery;
     private final HostDiscovery.EndpointListener _hostDiscoveryListener;
     private final ServiceFactory<S> _serviceFactory;
+    private final ListeningExecutorService _asyncExecutor;
+    private final boolean _shutdownAsyncExecutorOnClose;
     private final ScheduledExecutorService _healthCheckExecutor;
     private final boolean _shutdownHealthCheckExecutorOnClose;
     private final LoadBalanceAlgorithm _loadBalanceAlgorithm;
@@ -55,13 +64,16 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
     private final Future<?> _batchHealthChecksFuture;
 
     ServicePool(Class<S> serviceType, Ticker ticker, HostDiscovery hostDiscovery, ServiceFactory<S> serviceFactory,
-                ScheduledExecutorService healthCheckExecutor, boolean shutdownExecutorOnClose) {
+                ListeningExecutorService asyncExecutor, boolean shutdownAsyncExecutorOnClose,
+                ScheduledExecutorService healthCheckExecutor, boolean shutdownHealthCheckExecutorOnClose) {
         _serviceType = serviceType;
         _ticker = checkNotNull(ticker);
         _hostDiscovery = checkNotNull(hostDiscovery);
         _serviceFactory = checkNotNull(serviceFactory);
+        _asyncExecutor = checkNotNull(asyncExecutor);
+        _shutdownAsyncExecutorOnClose = shutdownAsyncExecutorOnClose;
         _healthCheckExecutor = checkNotNull(healthCheckExecutor);
-        _shutdownHealthCheckExecutorOnClose = shutdownExecutorOnClose;
+        _shutdownHealthCheckExecutorOnClose = shutdownHealthCheckExecutorOnClose;
         _loadBalanceAlgorithm = checkNotNull(_serviceFactory.getLoadBalanceAlgorithm());
         _badEndpoints = Sets.newSetFromMap(Maps.<ServiceEndPoint, Boolean>newConcurrentMap());
         _badEndpointFilter = Predicates.not(Predicates.in(_badEndpoints));
@@ -102,6 +114,10 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
     public void close() {
         _batchHealthChecksFuture.cancel(true);
         _hostDiscovery.removeListener(_hostDiscoveryListener);
+
+        if (_shutdownAsyncExecutorOnClose) {
+            _asyncExecutor.shutdownNow();
+        }
 
         if (_shutdownHealthCheckExecutorOnClose) {
             _healthCheckExecutor.shutdownNow();
@@ -147,8 +163,70 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
     }
 
     @Override
-    public <R> Future<R> executeAsync(RetryPolicy retry, ServiceCallback<S, R> callback) {
-        throw new UnsupportedOperationException();
+    public <R> ListenableFuture<R> executeAsync(final RetryPolicy retry, final ServiceCallback<S, R> callback) {
+        return _asyncExecutor.submit(new Callable<R>() {
+            @Override
+            public R call() throws Exception {
+                return execute(retry, callback);
+            }
+        });
+    }
+
+    @Override
+    public <R> List<R> executeOnSome(RetryPolicy retry, Predicate<ServiceEndPoint> filter, ServiceCallback<S, R> callback) {
+        return Lists.transform(executeAsyncOnSome(retry, filter, callback), new Function<Future<R>, R>() {
+            @Override
+            public R apply(Future<R> future) {
+                try {
+                    return future.get();
+                } catch (ExecutionException e) {
+                    throw Throwables.propagate(e.getCause());
+                } catch (Exception e) {
+                    throw Throwables.propagate(e);
+                }
+            }
+        });
+    }
+
+    @Override
+    public <R> List<ListenableFuture<R>> executeAsyncOnSome(final RetryPolicy retry, Predicate<ServiceEndPoint> filter, final ServiceCallback<S, R> callback) {
+        return Lists.newArrayList(Iterables.transform(Iterables.filter(_hostDiscovery.getHosts(), filter), new Function<ServiceEndPoint, ListenableFuture<R>>() {
+            @Override
+            public ListenableFuture<R> apply(final ServiceEndPoint endpoint) {
+                return _asyncExecutor.submit(new Callable<R>() {
+                    @Override
+                    public R call() throws Exception {
+                        Stopwatch sw = new Stopwatch(_ticker).start();
+                        int numAttempts = 0;
+                        do {
+                            S service = _serviceFactory.create(endpoint);
+                            try {
+                                return callback.call(service);
+                            } catch (ServiceException e) {
+                                // This is a known and supported exception indicating that something went wrong somewhere in the service
+                                // layer while trying to communicate with the endpoint.  These errors are often transient, so we enqueue
+                                // a health check for the endpoint and mark it as unavailable for the time being.
+                                markEndpointAsBad(endpoint);
+                            } catch (Exception e) {
+                                throw Throwables.propagate(e);
+                            }
+                        } while (retry.allowRetry(++numAttempts, sw.elapsedMillis()));
+
+                        throw new MaxRetriesException();
+                    }
+                });
+            }
+        }));
+    }
+
+    @Override
+    public <R> List<R> executeOnAll(final RetryPolicy retry, final ServiceCallback<S, R> callback) {
+        return executeOnSome(retry, Predicates.<ServiceEndPoint>alwaysTrue(), callback);
+    }
+
+    @Override
+    public <R> List<ListenableFuture<R>> executeAsyncOnAll(final RetryPolicy retry, final ServiceCallback<S, R> callback) {
+        return executeAsyncOnSome(retry, Predicates.<ServiceEndPoint>alwaysTrue(), callback);
     }
 
     @Override

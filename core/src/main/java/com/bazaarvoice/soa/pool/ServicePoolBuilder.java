@@ -8,9 +8,12 @@ import com.bazaarvoice.soa.discovery.ZooKeeperHostDiscovery;
 import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
 import com.google.common.base.Ticker;
 import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
@@ -22,6 +25,7 @@ public class ServicePoolBuilder<S> {
     private final Class<S> _serviceType;
     private final List<HostDiscoverySource> _hostDiscoverySources = Lists.newArrayList();
     private ServiceFactory<S> _serviceFactory;
+    private ListeningExecutorService _asyncExecutor;
     private ScheduledExecutorService _healthCheckExecutor;
 
     public static <S> ServicePoolBuilder<S> create(Class<S> serviceType) {
@@ -100,6 +104,19 @@ public class ServicePoolBuilder<S> {
     }
 
     /**
+     * Adds a {@code ExecutorService} instance to the builder for use in asynchronous operations.
+     * <p/>
+     * Adding an executor is optional.  If one isn't specified then one will be created and used automatically.
+     *
+     * @param executor The {@code ExecutorService} to use
+     * @return this
+     */
+    public ServicePoolBuilder<S> withAsyncExecutor(ExecutorService executor) {
+        _asyncExecutor = MoreExecutors.listeningDecorator(checkNotNull(executor));
+        return this;
+    }
+
+    /**
      * Adds a {@code ScheduledExecutorService} instance to the builder for use in executing health checks.
      * <p/>
      * Adding an executor is optional.  If one isn't specified then one will be created and used automatically.
@@ -127,7 +144,15 @@ public class ServicePoolBuilder<S> {
         String serviceName = _serviceFactory.getServiceName();
         HostDiscovery hostDiscovery = findHostDiscovery(serviceName);
 
-        boolean shutdownOnClose = (_healthCheckExecutor == null);
+        boolean shutdownAsyncExecutorOnClose = (_asyncExecutor == null);
+        if (_asyncExecutor == null) {
+            ThreadFactory threadFactory = new ThreadFactoryBuilder()
+                    .setNameFormat(serviceName + "-AsyncServiceCalls-%d")
+                    .build();
+            _asyncExecutor = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(8, threadFactory));
+        }
+
+        boolean shutdownHealthCheckExecutorOnClose = (_healthCheckExecutor == null);
         if (_healthCheckExecutor == null) {
             ThreadFactory daemonThreadFactory = new ThreadFactoryBuilder()
                     .setNameFormat(serviceName + "-HealthChecks-%d")
@@ -137,7 +162,8 @@ public class ServicePoolBuilder<S> {
         }
 
         return new ServicePool<S>(_serviceType, Ticker.systemTicker(), hostDiscovery, _serviceFactory,
-                _healthCheckExecutor, shutdownOnClose);
+                _asyncExecutor, shutdownAsyncExecutorOnClose,
+                _healthCheckExecutor, shutdownHealthCheckExecutorOnClose);
     }
 
     private HostDiscovery findHostDiscovery(String serviceName) {

@@ -1,6 +1,10 @@
 package com.bazaarvoice.soa.pool;
 
-import com.bazaarvoice.soa.*;
+import com.bazaarvoice.soa.HostDiscovery;
+import com.bazaarvoice.soa.HostDiscoverySource;
+import com.bazaarvoice.soa.LoadBalanceAlgorithm;
+import com.bazaarvoice.soa.RetryPolicy;
+import com.bazaarvoice.soa.ServiceFactory;
 import com.bazaarvoice.soa.ServicePool;
 import com.bazaarvoice.soa.zookeeper.ZooKeeperConfiguration;
 import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
@@ -10,6 +14,7 @@ import org.junit.Test;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 
 import static org.junit.Assert.assertEquals;
@@ -34,6 +39,11 @@ public class ServicePoolBuilderTest {
     }
 
     @Test(expected = NullPointerException.class)
+    public void testNullAsyncExecutor() {
+        ServicePoolBuilder.create(Service.class).withAsyncExecutor(null);
+    }
+
+    @Test(expected = NullPointerException.class)
     public void testNullHealthCheckExecutor() {
         ServicePoolBuilder.create(Service.class).withHealthCheckExecutor(null);
     }
@@ -42,9 +52,11 @@ public class ServicePoolBuilderTest {
     @Test(expected = IllegalStateException.class)
     public void testBuildWithNoHostDiscoveryAndNoZooKeeperConnection() {
         ServiceFactory<Service> serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
+        ExecutorService asyncExecutor = mock(ExecutorService.class);
         ScheduledExecutorService healthCheckExecutor = mock(ScheduledExecutorService.class);
         ServicePoolBuilder.create(Service.class)
                 .withServiceFactory(serviceFactory)
+                .withAsyncExecutor(asyncExecutor)
                 .withHealthCheckExecutor(healthCheckExecutor)
                 .build();
     }
@@ -52,9 +64,11 @@ public class ServicePoolBuilderTest {
     @Test(expected = NullPointerException.class)
     public void testBuildWithNoServiceFactory() {
         HostDiscovery hostDiscovery = mock(HostDiscovery.class);
+        ExecutorService asyncExecutor = mock(ExecutorService.class);
         ScheduledExecutorService healthCheckExecutor = mock(ScheduledExecutorService.class);
         ServicePoolBuilder.create(Service.class)
                 .withHostDiscovery(hostDiscovery)
+                .withAsyncExecutor(asyncExecutor)
                 .withHealthCheckExecutor(healthCheckExecutor)
                 .build();
     }
@@ -64,11 +78,13 @@ public class ServicePoolBuilderTest {
     public void testBuildWithNullLoadBalanceAlgorithm() {
         HostDiscovery hostDiscovery = mock(HostDiscovery.class);
         ServiceFactory<Service> serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
+        ExecutorService asyncExecutor = mock(ExecutorService.class);
         ScheduledExecutorService healthCheckExecutor = mock(ScheduledExecutorService.class);
 
         ServicePoolBuilder.create(Service.class)
                 .withServiceFactory(serviceFactory)
                 .withHostDiscovery(hostDiscovery)
+                .withAsyncExecutor(asyncExecutor)
                 .withHealthCheckExecutor(healthCheckExecutor)
                 .build();
     }
@@ -156,6 +172,7 @@ public class ServicePoolBuilderTest {
     public void testBuildWithNoTicker() {
         LoadBalanceAlgorithm loadBalanceAlgorithm = mock(LoadBalanceAlgorithm.class);
         HostDiscovery hostDiscovery = mock(HostDiscovery.class);
+        ExecutorService asyncExecutor = mock(ExecutorService.class);
         ScheduledExecutorService healthCheckExecutor = mock(ScheduledExecutorService.class);
 
         ServiceFactory<Service> serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
@@ -164,6 +181,7 @@ public class ServicePoolBuilderTest {
         ServicePoolBuilder.create(Service.class)
                 .withServiceFactory(serviceFactory)
                 .withHostDiscovery(hostDiscovery)
+                .withAsyncExecutor(asyncExecutor)
                 .withHealthCheckExecutor(healthCheckExecutor)
                 .build();
     }

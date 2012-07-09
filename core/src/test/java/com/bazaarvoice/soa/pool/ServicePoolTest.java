@@ -11,11 +11,16 @@ import com.bazaarvoice.soa.exceptions.NoAvailableHostsException;
 import com.bazaarvoice.soa.exceptions.NoSuitableHostsException;
 import com.bazaarvoice.soa.exceptions.OnlyBadHostsException;
 import com.bazaarvoice.soa.exceptions.ServiceException;
+import com.google.common.base.Predicate;
 import com.google.common.base.Ticker;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.MoreExecutors;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -26,7 +31,9 @@ import org.mockito.stubbing.Answer;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -65,6 +72,7 @@ public class ServicePoolTest {
     private HostDiscovery _hostDiscovery;
     private LoadBalanceAlgorithm _loadBalanceAlgorithm;
     private ServiceFactory<Service> _serviceFactory;
+    private ListeningExecutorService _asyncExecutor;
     private ScheduledExecutorService _healthCheckExecutor;
     private ScheduledFuture<?> _healthCheckScheduledFuture;
     private ServicePool<Service> _pool;
@@ -99,6 +107,22 @@ public class ServicePoolTest {
         when(_serviceFactory.create(BAZ_ENDPOINT)).thenReturn(BAZ_SERVICE);
         when(_serviceFactory.getLoadBalanceAlgorithm()).thenReturn(_loadBalanceAlgorithm);
 
+        _asyncExecutor = mock(ListeningExecutorService.class);
+        when(_asyncExecutor.submit(any(Callable.class))).then(new Answer<Future<Object>>() {
+            @Override
+            public Future<Object> answer(InvocationOnMock invocation) throws Throwable {
+                // Execute the callable on this thread...
+                Callable callable = (Callable) invocation.getArguments()[0];
+
+                try {
+                    // The future should return the immediate result
+                    return Futures.immediateFuture(callable.call());
+                } catch (Exception e) {
+                    return Futures.immediateFailedFuture(e);
+                }
+            }
+        });
+
         _healthCheckExecutor = mock(ScheduledExecutorService.class);
         when(_healthCheckExecutor.submit(any(Runnable.class))).then(new Answer<Future<?>>() {
             @Override
@@ -123,8 +147,7 @@ public class ServicePoolTest {
                 }
         );
 
-        _pool = new ServicePool<Service>(Service.class, _ticker, _hostDiscovery, _serviceFactory, _healthCheckExecutor,
-                true);
+        _pool = new ServicePool<Service>(Service.class, _ticker, _hostDiscovery, _serviceFactory, _asyncExecutor, true, _healthCheckExecutor, true);
     }
 
     @After
@@ -289,6 +312,104 @@ public class ServicePoolTest {
         } catch (MaxRetriesException expected) {
             assertEquals(Sets.newHashSet(FOO_SERVICE, BAR_SERVICE, BAZ_SERVICE), seenServices);
         }
+    }
+
+    @Test
+    public void testExecuteAsyncWithListener() throws Exception {
+        ListenableFuture<Object> futureResult = _pool.executeAsync(NEVER_RETRY, new ServiceCallback<Service, Object>() {
+            @Override
+            public Object call(Service service) throws ServiceException {
+                return "OK";
+            }
+        });
+
+        final AtomicBoolean mutableBoolean = new AtomicBoolean(false);
+        futureResult.addListener(new Runnable() {
+            @Override
+            public void run() {
+                mutableBoolean.set(true);
+            }
+        }, MoreExecutors.sameThreadExecutor());
+
+        assertEquals("Result", futureResult.get(), "OK");
+        assertTrue("Listener", mutableBoolean.get());
+    }
+
+    @Test
+    public void testExecutesOnAll() {
+        final Set<Service> seenServices = Sets.newHashSet();
+
+        List<Object> results = _pool.executeOnAll(NEVER_RETRY, new ServiceCallback<Service, Object>() {
+            @Override
+            public Object call(Service service) throws ServiceException {
+                seenServices.add(service);
+                return service;
+            }
+        });
+
+        assertEquals("Seen services", Sets.newHashSet(FOO_SERVICE, BAR_SERVICE, BAZ_SERVICE), seenServices);
+        assertEquals("Results", Lists.newArrayList(FOO_SERVICE, BAR_SERVICE, BAZ_SERVICE), results);
+    }
+
+    @Test
+    public void testExecutesOnAllWithFailures() {
+        try {
+            List<Object> results = _pool.executeOnAll(NEVER_RETRY, new ServiceCallback<Service, Object>() {
+                @Override
+                public Object call(Service service) throws ServiceException {
+                    if (BAR_SERVICE == service) {
+                        throw new ServiceException("Failed: " + service);
+                    }
+                    return service;
+                }
+            });
+
+            fail("Shouldn't get results: " + results);
+        } catch (MaxRetriesException e) {
+            // ok
+        }
+    }
+
+    @Test
+    public void testExecutesOnAllWithSomeFailures() throws Exception {
+        final Set<Service> seenServices = Sets.newHashSet();
+
+        List<ListenableFuture<Object>> futureResults = _pool.executeAsyncOnAll(NEVER_RETRY, new ServiceCallback<Service, Object>() {
+            @Override
+            public Object call(Service service) throws ServiceException {
+                seenServices.add(service);
+                if (BAR_SERVICE == service) {
+                    throw new ServiceException("Failed: " + service);
+                }
+                return service;
+            }
+        });
+
+        List<Object> successful = Futures.successfulAsList(futureResults).get();
+
+        assertEquals("Seen", Sets.newHashSet(FOO_SERVICE, BAR_SERVICE, BAZ_SERVICE), seenServices);
+        assertEquals("Successful", Lists.newArrayList(FOO_SERVICE, null, BAZ_SERVICE), successful);
+    }
+
+    @Test
+    public void testExecutesOnSome() {
+        final Set<Service> seenServices = Sets.newHashSet();
+
+        List<Object> results = _pool.executeOnSome(NEVER_RETRY, new Predicate<ServiceEndPoint>() {
+            @Override
+            public boolean apply(ServiceEndPoint input) {
+                return input == FOO_ENDPOINT || input == BAZ_ENDPOINT;
+            }
+        }, new ServiceCallback<Service, Object>() {
+            @Override
+            public Object call(Service service) throws ServiceException {
+                seenServices.add(service);
+                return service;
+            }
+        });
+
+        assertEquals(Sets.newHashSet(FOO_SERVICE, BAZ_SERVICE), seenServices);
+        assertEquals(Lists.newArrayList(FOO_SERVICE, BAZ_SERVICE), results);
     }
 
     @Test
@@ -556,18 +677,40 @@ public class ServicePoolTest {
     @Test
     public void testDoesNotShutdownExecutorOnClose() {
         ServicePool<Service> pool = new ServicePool<Service>(Service.class, _ticker, _hostDiscovery, _serviceFactory,
-                _healthCheckExecutor, false);
+                _asyncExecutor, false, _healthCheckExecutor, false);
         pool.close();
 
+        verify(_asyncExecutor, never()).shutdownNow();
         verify(_healthCheckExecutor, never()).shutdownNow();
     }
 
     @Test
     public void testDoesShutdownExecutorOnClose() {
         ServicePool<Service> pool = new ServicePool<Service>(Service.class, _ticker, _hostDiscovery, _serviceFactory,
-                _healthCheckExecutor, true);
+                _asyncExecutor, true, _healthCheckExecutor, true);
         pool.close();
 
+        verify(_asyncExecutor).shutdownNow();
+        verify(_healthCheckExecutor).shutdownNow();
+    }
+
+    @Test
+    public void testShutdownOnlyAsyncExecutorOnClose() {
+        ServicePool<Service> pool = new ServicePool<Service>(Service.class, _ticker, _hostDiscovery, _serviceFactory,
+                _asyncExecutor, true, _healthCheckExecutor, false);
+        pool.close();
+
+        verify(_asyncExecutor).shutdownNow();
+        verify(_healthCheckExecutor, never()).shutdownNow();
+    }
+
+    @Test
+    public void testShutdownOnlyHealthCheckExecutorOnClose() {
+        ServicePool<Service> pool = new ServicePool<Service>(Service.class, _ticker, _hostDiscovery, _serviceFactory,
+                _asyncExecutor, false, _healthCheckExecutor, true);
+        pool.close();
+
+        verify(_asyncExecutor, never()).shutdownNow();
         verify(_healthCheckExecutor).shutdownNow();
     }
 
@@ -630,7 +773,7 @@ public class ServicePoolTest {
         when(_hostDiscovery.getHosts()).thenReturn(ImmutableList.of(FOO_ENDPOINT));
 
         ServicePool<Service> pool = new ServicePool<Service>(Service.class, _ticker, _hostDiscovery, _serviceFactory,
-                Executors.newScheduledThreadPool(1), true);
+                _asyncExecutor, true, Executors.newScheduledThreadPool(1), true);
 
         // Make it so that FOO needs to be health checked...
         try {
