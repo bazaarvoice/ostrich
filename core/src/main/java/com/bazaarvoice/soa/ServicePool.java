@@ -1,7 +1,10 @@
 package com.bazaarvoice.soa;
 
+import com.google.common.base.Predicate;
+import com.google.common.util.concurrent.ListenableFuture;
+
 import java.io.Closeable;
-import java.util.concurrent.Future;
+import java.util.List;
 
 /**
  * A <code>ServicePool</code> keeps track of service endpoints for a particular service.  Internally it
@@ -49,7 +52,47 @@ public interface ServicePool<S> extends Closeable {
      * @param callback The user provided callback to invoke with a service endpoint.
      * @param <R> The return type for the call.
      */
-    <R> Future<R> executeAsync(RetryPolicy retryPolicy, ServiceCallback<S, R> callback);
+    <R> ListenableFuture<R> executeAsync(RetryPolicy retryPolicy, ServiceCallback<S, R> callback);
+
+    /**
+     * Execute a request synchronously against a subset of the remote services.
+     *
+     * @param retryPolicy The retry policy for the operation.
+     * @param filter The filter to check before calling the service
+     * @param callback The user provided callback to invoke with a service endpoint.
+     * @param <R> The return type for the call.
+     */
+    <R> List<R> executeOnSome(RetryPolicy retryPolicy, Predicate<ServiceEndPoint> filter, ServiceCallback<S, R> callback);
+
+    /**
+     * Execute a request asynchronously against a subset of the remote services. A list of
+     * <code>ListenableFuture</code>s is returned that will eventually contain the result of the operation.
+     *
+     * @param retryPolicy The retry policy for the operation.
+     * @param filter The filter to check before calling the service
+     * @param callback The user provided callback to invoke with a service endpoint.
+     * @param <R> The return type for the call.
+     */
+    <R> List<ListenableFuture<R>> executeAsyncOnSome(RetryPolicy retryPolicy, Predicate<ServiceEndPoint> filter, ServiceCallback<S, R> callback);
+
+    /**
+     * Execute a request synchronously against all of the remote services.
+     *
+     * @param retryPolicy The retry policy for the operation.
+     * @param callback The user provided callback to invoke with a service endpoint.
+     * @param <R> The return type for the call.
+     */
+    <R> List<R> executeOnAll(RetryPolicy retryPolicy, ServiceCallback<S, R> callback);
+
+    /**
+     * Execute a request asynchronously against all of the remote services. A list of
+     * <code>ListenableFuture</code>s is returned that will eventually contain the result of the operation.
+     *
+     * @param retryPolicy The retry policy for the operation.
+     * @param callback The user provided callback to invoke with a service endpoint.
+     * @param <R> The return type for the call.
+     */
+    <R> List<ListenableFuture<R>> executeAsyncOnAll(RetryPolicy retryPolicy, ServiceCallback<S, R> callback);
 
     /**
      * Returns a dynamic proxy that implements the service interface and implicitly wraps every call to a service
