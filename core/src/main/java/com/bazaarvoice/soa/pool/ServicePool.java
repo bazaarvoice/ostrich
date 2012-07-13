@@ -129,8 +129,6 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
                 HEALTH_CHECK_POLL_INTERVAL_IN_SECONDS, HEALTH_CHECK_POLL_INTERVAL_IN_SECONDS, TimeUnit.SECONDS);
     }
 
-
-
     @Override
     public void close() {
         _batchHealthChecksFuture.cancel(true);
