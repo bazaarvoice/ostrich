@@ -124,7 +124,7 @@ public class ServicePoolTest {
         );
 
         _pool = new ServicePool<Service>(Service.class, _ticker, _hostDiscovery, _serviceFactory, _healthCheckExecutor,
-                true, null);
+                true);
     }
 
     @After
@@ -556,7 +556,7 @@ public class ServicePoolTest {
     @Test
     public void testDoesNotShutdownExecutorOnClose() {
         ServicePool<Service> pool = new ServicePool<Service>(Service.class, _ticker, _hostDiscovery, _serviceFactory,
-                _healthCheckExecutor, false, null);
+                _healthCheckExecutor, false);
         pool.close();
 
         verify(_healthCheckExecutor, never()).shutdownNow();
@@ -565,7 +565,7 @@ public class ServicePoolTest {
     @Test
     public void testDoesShutdownExecutorOnClose() {
         ServicePool<Service> pool = new ServicePool<Service>(Service.class, _ticker, _hostDiscovery, _serviceFactory,
-                _healthCheckExecutor, true, null);
+                _healthCheckExecutor, true);
         pool.close();
 
         verify(_healthCheckExecutor).shutdownNow();
@@ -630,7 +630,7 @@ public class ServicePoolTest {
         when(_hostDiscovery.getHosts()).thenReturn(ImmutableList.of(FOO_ENDPOINT));
 
         ServicePool<Service> pool = new ServicePool<Service>(Service.class, _ticker, _hostDiscovery, _serviceFactory,
-                Executors.newScheduledThreadPool(1), true, null);
+                Executors.newScheduledThreadPool(1), true);
 
         // Make it so that FOO needs to be health checked...
         try {

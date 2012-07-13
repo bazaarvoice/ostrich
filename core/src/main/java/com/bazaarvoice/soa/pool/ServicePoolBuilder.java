@@ -113,6 +113,13 @@ public class ServicePoolBuilder<S> {
         return this;
     }
 
+    /**
+     * Enables caching of service connections in the built {@link ServicePool}. Calling this method is optional, and
+     * should be used if overhead of creating a connection from a {@link com.bazaarvoice.soa.ServiceEndPoint} is
+     * substantial, or there are other benefits to reusing connections.
+     * @param policy The configuration connection caching in the pool should abide by
+     * @return this
+     */
     public ServicePoolBuilder<S> withCache(ServiceCachingPolicy policy) {
         _cachePolicy = checkNotNull(policy);
         return this;
@@ -142,8 +149,13 @@ public class ServicePoolBuilder<S> {
             _healthCheckExecutor = Executors.newScheduledThreadPool(1, daemonThreadFactory);
         }
 
-        return new ServicePool<S>(_serviceType, Ticker.systemTicker(), hostDiscovery, _serviceFactory,
-                _healthCheckExecutor, shutdownOnClose, _cachePolicy);
+        if (_cachePolicy != null) {
+            return new ServicePool<S>(_serviceType, Ticker.systemTicker(), hostDiscovery, _serviceFactory,
+                    _healthCheckExecutor, shutdownOnClose, _cachePolicy);
+        } else {
+            return new ServicePool<S>(_serviceType, Ticker.systemTicker(), hostDiscovery, _serviceFactory,
+                    _healthCheckExecutor, shutdownOnClose);
+        }
     }
 
     private HostDiscovery findHostDiscovery(String serviceName) {

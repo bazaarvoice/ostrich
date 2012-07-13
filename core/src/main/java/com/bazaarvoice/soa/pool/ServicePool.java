@@ -6,8 +6,10 @@ import com.bazaarvoice.soa.RetryPolicy;
 import com.bazaarvoice.soa.ServiceCallback;
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceFactory;
+import com.bazaarvoice.soa.exceptions.InvalidEndPointCheckOutAttemptException;
 import com.bazaarvoice.soa.exceptions.MaxRetriesException;
 import com.bazaarvoice.soa.exceptions.NoAvailableHostsException;
+import com.bazaarvoice.soa.exceptions.NoCachedConnectionAvailableException;
 import com.bazaarvoice.soa.exceptions.NoSuitableHostsException;
 import com.bazaarvoice.soa.exceptions.OnlyBadHostsException;
 import com.bazaarvoice.soa.exceptions.ServiceException;
@@ -58,7 +60,22 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
     private final ServiceCache<S> _serviceCache;
 
     ServicePool(Class<S> serviceType, Ticker ticker, HostDiscovery hostDiscovery, ServiceFactory<S> serviceFactory,
-                ScheduledExecutorService healthCheckExecutor, boolean shutdownExecutorOnClose, @Nullable ServiceCachingPolicy policy) {
+                ScheduledExecutorService healthCheckExecutor, boolean shutdownExecutorOnClose) {
+        this(serviceType, ticker, hostDiscovery, serviceFactory, healthCheckExecutor, shutdownExecutorOnClose, null,
+                false);
+    }
+
+    ServicePool(Class<S> serviceType, Ticker ticker, HostDiscovery hostDiscovery,
+                        ServiceFactory<S> serviceFactory, ScheduledExecutorService healthCheckExecutor,
+                        boolean shutdownExecutorOnClose, ServiceCachingPolicy policy) {
+        this(serviceType, ticker, hostDiscovery, serviceFactory, healthCheckExecutor, shutdownExecutorOnClose, policy,
+                true);
+    }
+
+
+    private ServicePool(Class<S> serviceType, Ticker ticker, HostDiscovery hostDiscovery,
+                        ServiceFactory<S> serviceFactory, ScheduledExecutorService healthCheckExecutor,
+                        boolean shutdownExecutorOnClose, @Nullable ServiceCachingPolicy policy, boolean cacheServices) {
         _serviceType = serviceType;
         _ticker = checkNotNull(ticker);
         _hostDiscovery = checkNotNull(hostDiscovery);
@@ -73,8 +90,17 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
                 .expireAfterWrite(10, TimeUnit.MINUTES)  // TODO: Make this a constant
                 .<ServiceEndPoint, Boolean>build()
                 .asMap());
-        _cacheServices = policy != null;
-        _serviceCache = _cacheServices ? new ServiceCache<S>(_serviceFactory, policy) : null;
+        _cacheServices = cacheServices;
+        if (_cacheServices) {
+            _serviceCache = new ServiceCache<S>(serviceFactory, checkNotNull(policy), new Predicate<ServiceEndPoint>() {
+                @Override
+                public boolean apply(@Nullable ServiceEndPoint endPoint) {
+                    return !_badEndpoints.contains(endPoint) && _hostDiscovery.contains(endPoint);
+                }
+            });
+        } else {
+            _serviceCache = null;
+        }
 
         // Watch endpoints as they are removed from host discovery so that we can remove them from our set of bad
         // endpoints as well.  This will prevent the badEndpoints set from growing in an unbounded fashion.  There is a
@@ -102,6 +128,8 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
         _batchHealthChecksFuture = _healthCheckExecutor.scheduleAtFixedRate(new BatchHealthChecks(),
                 HEALTH_CHECK_POLL_INTERVAL_IN_SECONDS, HEALTH_CHECK_POLL_INTERVAL_IN_SECONDS, TimeUnit.SECONDS);
     }
+
+
 
     @Override
     public void close() {
@@ -134,15 +162,26 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
             if (endpoint == null) {
                 throw new NoSuitableHostsException();
             }
-
+            S service;
+            boolean shouldCheckIn = false;
+            if (_cacheServices) {
+                try {
+                    service = _serviceCache.checkOut(endpoint);
+                    shouldCheckIn = true;
+                } catch (InvalidEndPointCheckOutAttemptException e) {
+                    // End point went bad or was removed in the middle of this iteration and thus is rejected by
+                    // the cache, so let's just move on.
+                    continue;
+                } catch (NoCachedConnectionAvailableException e) {
+                    // Unable to get a cached instance, so let's burst.
+                    service = _serviceFactory.create(endpoint);
+                    shouldCheckIn = false;
+                }
+            } else {
+                service = _serviceFactory.create(endpoint);
+            }
             try {
-                if (_cacheServices) {
-                    return _serviceCache.call(callback, endpoint);
-                }
-                else {
-                    S service = _serviceFactory.create(endpoint);
-                    return callback.call(service);
-                }
+                return callback.call(service);
             } catch (ServiceException e) {
                 // This is a known and supported exception indicating that something went wrong somewhere in the service
                 // layer while trying to communicate with the endpoint.  These errors are often transient, so we enqueue
@@ -150,6 +189,10 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
                 markEndpointAsBad(endpoint);
             } catch (Exception e) {
                 throw Throwables.propagate(e);
+            } finally {
+                if (_cacheServices && shouldCheckIn) {
+                    _serviceCache.checkIn(endpoint, service);
+                }
             }
         } while (retry.allowRetry(++numAttempts, sw.elapsedMillis()));
 

@@ -21,7 +21,26 @@ ZooKeeperConnection zookeeper = new ZooKeeperConfiguration()
   .connect();
 ```
 
-#### 2. Create a `ServicePool` instance
+### 2. Set up a caching policy (optional)
+
+If you want the service pool to cache connections, you'll need to set up a policy to handle caching connections.
+Note that you'll want to choose settings suitable for your application depending on the nature of the service.
+The cache configuration options are:
+
+* maxTotalConnections - The maximum total number of connections to be cached.
+* mxConnectionsPerEndPoint - The maximum number of cached connections for a single end point.
+* minConnectionIdleTimeBeforeEviction - The amount of time a cached connection must be unused before it can be evicted.
+* idleConnectionEvictionFrequency - The time period between cache eviction runs.
+* unit - The TimeUnit of the previous two values.
+
+Here's an example of creating a caching policy of size 100, 10 max per endpoint, 15 seconds idle before potential
+eviction, and 5 seconds between eviction runs.
+
+```java
+ServiceCachingPolicy cachingPolicy = new ServiceCachingPolicy(100, 10, 15, 5, TimeUnit.SECONDS);
+```
+
+#### 3. Create a `ServicePool` instance
 
 A service pool is the heart of the consumer library that Ostrich provides.  As a consumer you will receive instances
 of a particular service from it to work with.  Internally it uses a host discovery mechanism to determine which servers
@@ -38,6 +57,7 @@ quick start guide](https://github.com/bazaarvoice/ostrich/blob/master/core/docs/
 ServicePool<CalculatorService> pool = new ServicePoolBuilder<CalculatorService>()
   .withZooKeeperHostDiscovery(zookeeper)
   .withServiceFactory(new CalculatorServiceFactory())
+  .withCache(cachingPolicy)
   .build();
 ```
 
@@ -45,7 +65,7 @@ ServicePool<CalculatorService> pool = new ServicePoolBuilder<CalculatorService>(
 team that builds the service.  Each team that exposes some service using the Ostrich library should provide you with a
 jar containing their service interface, a client implementation, as well as a service factory implementation.
 
-#### 3. Use the `ServicePool` instance
+#### 4. Use the `ServicePool` instance
 
 Using the service is easy.  You invoke the execute method on it providing two pieces of information.  First a retry
 strategy.  This tells the service pool what to do if the operation fails in a retryable way.  For as long as the retry

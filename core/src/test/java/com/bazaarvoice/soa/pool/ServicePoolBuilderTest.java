@@ -178,7 +178,7 @@ public class ServicePoolBuilderTest {
         ServiceFactory<Service> serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
         when(serviceFactory.getLoadBalanceAlgorithm()).thenReturn(loadBalanceAlgorithm);
 
-        ServiceCachingPolicy policy = new ServiceCachingPolicy(100, 10, TimeUnit.SECONDS, 1);
+        ServiceCachingPolicy policy = new ServiceCachingPolicy(100, 1, 10, 5, TimeUnit.SECONDS);
 
         ServicePoolBuilder.create(Service.class)
                 .withServiceFactory(serviceFactory)
