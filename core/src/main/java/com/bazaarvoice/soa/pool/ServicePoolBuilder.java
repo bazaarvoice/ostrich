@@ -145,11 +145,7 @@ public class ServicePoolBuilder<S> {
         HostDiscovery hostDiscovery = findHostDiscovery(serviceName);
 
         if (_cachingPolicy == null) {
-            _cachingPolicy = new ServiceCachingPolicyBuilder()
-                    .withMaxNumConnections(0)
-                    .withMaxNumConnectionsPerEndpoint(0)
-                    .withCacheExhaustionAction(ServiceCachingPolicy.ExhaustionAction.GROW)
-                    .build();
+            _cachingPolicy = ServiceCachingPolicyBuilder.NO_CACHING;
         }
 
         boolean shutdownOnClose = (_healthCheckExecutor == null);

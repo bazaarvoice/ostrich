@@ -6,10 +6,8 @@ import com.bazaarvoice.soa.RetryPolicy;
 import com.bazaarvoice.soa.ServiceCallback;
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceFactory;
-import com.bazaarvoice.soa.exceptions.InvalidEndPointCheckOutAttemptException;
 import com.bazaarvoice.soa.exceptions.MaxRetriesException;
 import com.bazaarvoice.soa.exceptions.NoAvailableHostsException;
-import com.bazaarvoice.soa.exceptions.NoCachedConnectionAvailableException;
 import com.bazaarvoice.soa.exceptions.NoSuitableHostsException;
 import com.bazaarvoice.soa.exceptions.OnlyBadHostsException;
 import com.bazaarvoice.soa.exceptions.ServiceException;
@@ -135,20 +133,7 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
                 throw new NoSuitableHostsException();
             }
 
-            S service;
-            boolean shouldCheckIn;
-            try {
-                service = _serviceCache.checkOut(endpoint);
-                shouldCheckIn = true;
-            } catch (InvalidEndPointCheckOutAttemptException e) {
-                // End point went bad or was removed in the middle of this iteration and thus is rejected by
-                // the cache, so let's just move on.
-                continue;
-            } catch (NoCachedConnectionAvailableException e) {
-                // Unable to get a cached instance, so let's burst.
-                service = _serviceFactory.create(endpoint);
-                shouldCheckIn = false;
-            }
+            S service = _serviceCache.checkOut(endpoint);
 
             try {
                 return callback.call(service);
@@ -156,12 +141,11 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
                 // This is a known and supported exception indicating that something went wrong somewhere in the service
                 // layer while trying to communicate with the endpoint.  These errors are often transient, so we enqueue
                 // a health check for the endpoint and mark it as unavailable for the time being.
-                shouldCheckIn = false;
                 markEndpointAsBad(endpoint);
             } catch (Exception e) {
                 throw Throwables.propagate(e);
             } finally {
-                if (shouldCheckIn) {
+                if (service != null) {
                     _serviceCache.checkIn(endpoint, service);
                 }
             }
@@ -245,12 +229,12 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
         // endpoints ensures that this memory leak doesn't happen.
         _recentlyRemovedEndpoints.add(endpoint);
         _badEndpoints.remove(endpoint);
-        if (_serviceCache != null) {
-            _serviceCache.evict(endpoint);
-        }
+        _serviceCache.evict(endpoint);
     }
 
     private synchronized void markEndpointAsBad(ServiceEndPoint endpoint) {
+        _serviceCache.evict(endpoint);
+
         if (_recentlyRemovedEndpoints.contains(endpoint)) {
             // Nothing to do, we've already removed this endpoint
             return;

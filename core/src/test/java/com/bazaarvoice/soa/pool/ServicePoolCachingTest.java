@@ -8,6 +8,7 @@ import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceFactory;
 import com.bazaarvoice.soa.exceptions.MaxRetriesException;
 import com.bazaarvoice.soa.exceptions.ServiceException;
+import com.google.common.base.Throwables;
 import com.google.common.base.Ticker;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
@@ -20,6 +21,11 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -27,6 +33,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
@@ -179,6 +186,118 @@ public class ServicePoolCachingTest {
         }
 
         assertSame(service, pool.execute(NEVER_RETRY, IDENTITY_CALLBACK));
+    }
+
+    @Test
+    public void testWithServiceExceptionRemoving() throws ExecutionException, InterruptedException {
+        final ServicePool<Service> pool = newPool(CACHE_ONE_INSTANCE_PER_ENDPOINT);
+        final CountDownLatch canReturn = new CountDownLatch(1);
+
+        // Set it up so that when we health check FOO, that it becomes healthy.
+        when(_serviceFactory.isHealthy(FOO_ENDPOINT)).thenReturn(true);
+
+        final CountDownLatch callableStarted = new CountDownLatch(1);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<Service> serviceFuture = executor.submit(new Callable<Service>() {
+                @Override
+                public Service call() throws Exception {
+                    return pool.execute(NEVER_RETRY, new ServiceCallback<Service, Service>() {
+                        @Override
+                        public Service call(Service service) throws ServiceException {
+                            callableStarted.countDown();
+
+                            // Block until we're allowed to return
+                            try {
+                                canReturn.await(10, TimeUnit.SECONDS);
+                            } catch (InterruptedException e) {
+                                throw Throwables.propagate(e);
+                            }
+
+                            return service;
+                        }
+                    });
+                }
+            });
+
+            // Wait until the callable has definitely started and allocated a service instance...
+            assertTrue(callableStarted.await(10, TimeUnit.SECONDS));
+
+            // Throw an exception so that the end point is marked as bad and removed from the cache
+            try {
+                pool.execute(NEVER_RETRY, new ServiceCallback<Service, Void>() {
+                    @Override
+                    public Void call(Service service) throws ServiceException {
+                        throw new ServiceException();
+                    }
+                });
+                fail();
+            } catch (MaxRetriesException expected) {
+                // expected exception
+            }
+
+            // Let the initial callback terminate...
+            canReturn.countDown();
+
+            assertNotSame(serviceFuture.get(), pool.execute(NEVER_RETRY, IDENTITY_CALLBACK));
+        } finally {
+            executor.shutdown();
+        }
+    }
+
+    @Test
+    public void testWithHostDiscoveryRemoving() throws ExecutionException, InterruptedException {
+        final ServicePool<Service> pool = newPool(CACHE_ONE_INSTANCE_PER_ENDPOINT);
+        final CountDownLatch canReturn = new CountDownLatch(1);
+
+        // Set it up so that when we health check FOO, that it becomes healthy.
+        when(_serviceFactory.isHealthy(FOO_ENDPOINT)).thenReturn(true);
+
+        final CountDownLatch callableStarted = new CountDownLatch(1);
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<Service> serviceFuture = executor.submit(new Callable<Service>() {
+                @Override
+                public Service call() throws Exception {
+                    return pool.execute(NEVER_RETRY, new ServiceCallback<Service, Service>() {
+                        @Override
+                        public Service call(Service service) throws ServiceException {
+                            callableStarted.countDown();
+
+                            // Block until we're allowed to return
+                            try {
+                                canReturn.await(10, TimeUnit.SECONDS);
+                            } catch (InterruptedException e) {
+                                throw Throwables.propagate(e);
+                            }
+
+                            return service;
+                        }
+                    });
+                }
+            });
+
+            // Wait until the callable has definitely started and allocated a service instance...
+            assertTrue(callableStarted.await(10, TimeUnit.SECONDS));
+
+
+            // Capture the endpoint listener that was registered with HostDiscovery
+            ArgumentCaptor<HostDiscovery.EndpointListener> listener = ArgumentCaptor.forClass(
+                    HostDiscovery.EndpointListener.class);
+            verify(_hostDiscovery).addListener(listener.capture());
+
+            // Remove the end point from host discovery then add it back
+            listener.getValue().onEndpointRemoved(FOO_ENDPOINT);
+            listener.getValue().onEndpointAdded(FOO_ENDPOINT);
+
+            // Let the initial callback terminate...
+            canReturn.countDown();
+
+            assertNotSame(serviceFuture.get(), pool.execute(NEVER_RETRY, IDENTITY_CALLBACK));
+        } finally {
+            executor.shutdown();
+        }
     }
 
     private ServicePool<Service> newPool(ServiceCachingPolicy cachingPolicy) {

@@ -6,16 +6,20 @@ import com.bazaarvoice.soa.exceptions.InvalidEndPointCheckOutAttemptException;
 import com.bazaarvoice.soa.exceptions.NoCachedConnectionAvailableException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
+import com.google.common.collect.MapMaker;
+import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.pool.BaseKeyedPoolableObjectFactory;
 import org.apache.commons.pool.impl.GenericKeyedObjectPool;
 
 import java.io.Closeable;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -35,8 +39,10 @@ class ServiceCache<S> implements Closeable {
     static final long EVICTION_DURATION_IN_SECONDS = 300;
 
     private final GenericKeyedObjectPool<ServiceEndPoint, S> _pool;
+    private final AtomicLong _revisionNumber = new AtomicLong();
+    private final Map<ServiceEndPoint, Long> _invalidRevisions = new MapMaker().weakKeys().makeMap();
+    private final Map<S, Long> _checkOutRevisions = Maps.newConcurrentMap();
     private final Future<?> _evictionFuture;
-
 
     /**
      * Builds a basic service cache.
@@ -114,7 +120,12 @@ class ServiceCache<S> implements Closeable {
         checkNotNull(endPoint);
 
         try {
-            return _pool.borrowObject(endPoint);
+            S service = _pool.borrowObject(endPoint);
+
+            // Remember the revision that we've checked this service out on in case we need to invalidate it later
+            _checkOutRevisions.put(service, _revisionNumber.incrementAndGet());
+
+            return service;
         } catch (NoSuchElementException e) {
             // This will happen if there are no available connections and there is no room for a new one,
             // or if a newly created connection is not valid.
@@ -135,8 +146,17 @@ class ServiceCache<S> implements Closeable {
         checkNotNull(endPoint);
         checkNotNull(service);
 
+        // Figure out if we should check this revision in.  If it was created before the last known invalid revision
+        // for this particular end point then we shouldn't check it in.
+        Long invalidRevision = _invalidRevisions.get(endPoint);
+        Long serviceRevision = _checkOutRevisions.remove(service);
+
         try {
-            _pool.returnObject(endPoint, service);
+            if (invalidRevision != null && serviceRevision < invalidRevision) {
+                _pool.invalidateObject(endPoint, service);
+            } else {
+                _pool.returnObject(endPoint, service);
+            }
         } catch (Exception e) {
             // Should never happen.
             throw Throwables.propagate(e);
@@ -153,6 +173,8 @@ class ServiceCache<S> implements Closeable {
     public void evict(ServiceEndPoint endPoint) {
         checkNotNull(endPoint);
 
+        // Mark all service instances created prior to now as invalid so that we don't inadvertently check them back in
+        _invalidRevisions.put(endPoint, _revisionNumber.incrementAndGet());
         _pool.clear(endPoint);
     }
 
