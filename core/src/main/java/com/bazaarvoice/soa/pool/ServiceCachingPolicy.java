@@ -2,60 +2,52 @@ package com.bazaarvoice.soa.pool;
 
 import java.util.concurrent.TimeUnit;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-
 /**
- * A policy for determining connection caching performed by  a {@link ServicePool}. A {@code ServiceCachingPolicy}
- * configures how many total connections can be held simultaneously for a service, how many can be held for a single
- * end point, how long a connection can sit idle before being eligible to be cleaned up, and how frequently culling
- * those idle connections can happen. Note that there is no guaranteed eviction time, so a connection can potentially
- * remain cached and idle for as long as {code minConnectionIdleTimeBeforeEviction + idleConnectionEvictionFrequency}.
+ * A policy for determining host service instance caching is performed by a {@link ServicePool}.  The
+ * {@code ServiceCachingPolicy} configures how caching of should be performed by a {@link ServiceCache}.
  */
-public final class ServiceCachingPolicy {
-    /** The maximum total number of cached connections for a service. */
-    final long _maxTotalConnections;
-
-    /** The maximum number of cached connections for a single {@link com.bazaarvoice.soa.ServiceEndPoint}. */
-    final long _maxConnectionsPerEndPoint;
-
-    /** The minimum amount of time a connection must be idle before it is eligible for eviction. */
-    final long _minConnectionIdleTimeBeforeEviction;
-
-    /** The frequency with which idle connections are checked for eviction eligibility. */
-    final long _idleConnectionEvictionFrequency;
-
-    /** The {@code TimeUnit} for {@link #_minConnectionIdleTimeBeforeEviction} and
-     * {@link #_idleConnectionEvictionFrequency}.
-     * */
-    final TimeUnit _unit;
+public interface ServiceCachingPolicy {
+    /**
+     * Returns the maximum number of in-use service instances that can exist globally.
+     * <p/>
+     * NOTE: A value of -1 indicates that there is no limit.
+     */
+    int getMaxNumServiceInstances();
 
     /**
-     * Constructs a caching policy. All configuration options must be specified, as sensible values depend highly on the
-     * constraints of the application.
-     * @param maxTotalConnections The maximum number of connections that should be cached, aggregated over all end
-     * points.
-     * @param maxConnectionsPerEndPoint The maximum number of connections cached for a single end point.
-     * @param minConnectionIdleTimeBeforeEviction The minimum amount of time that should base before a cached connection
-     * is considered for eviction. As this is a minimum, there is no guarantee that a cached connection will expire
-     * precisely when it has been idle for this long.
-     * @param idleConnectionEvictionFrequency How frequently cached connections should be checked for eviction.
-     * @param unit The time unit {@code minConnectionIdleTimeBeforeEviction} and {@code idleConnectionEvictionFrequency}
-     * are in.
+     * Returns the maximum number of in-use service instances that can exist for a single end point.
+     * <p/>
+     * NOTE: A value of -1 indicates that there is no limit.
      */
-    public ServiceCachingPolicy(int maxTotalConnections, int maxConnectionsPerEndPoint,
-                                long minConnectionIdleTimeBeforeEviction, long idleConnectionEvictionFrequency,
-                                TimeUnit unit) {
-        checkArgument(maxTotalConnections > 0);
-        checkArgument(maxConnectionsPerEndPoint > 0);
-        checkArgument(minConnectionIdleTimeBeforeEviction >= 0);
-        checkArgument(idleConnectionEvictionFrequency > 0);
-        checkNotNull(unit);
+    int getMaxNumServiceInstancesPerEndPoint();
 
-        _maxTotalConnections = maxTotalConnections;
-        _maxConnectionsPerEndPoint = maxConnectionsPerEndPoint;
-        _minConnectionIdleTimeBeforeEviction = minConnectionIdleTimeBeforeEviction;
-        _idleConnectionEvictionFrequency = idleConnectionEvictionFrequency;
-        _unit = unit;
+    /**
+     * The amount of time that a service instance is allowed to be idle for before it is considered for eviction from
+     * the cache.
+     * <p/>
+     * NOTE: There is no guaranteed eviction time, so an idle service instance can be evicted as early as this time,
+     * but not before.
+     */
+    long getMinIdleTimeBeforeEviction(TimeUnit unit);
+
+    /**
+     * What action to take when it is not possible to allocate a new service instance because the cache is at its limit
+     * for service instances.
+     * <p/>
+     * NOTE: Setting this to {@link ExhaustionAction#GROW} will make it so that the cache can (temporarily) hold more
+     * instances than {@link #getMaxNumServiceInstances()} or {@link #getMaxNumServiceInstancesPerEndPoint()} says it
+     * should be able to hold.
+     */
+    ExhaustionAction getCacheExhaustionAction();
+
+    enum ExhaustionAction {
+        /** Throw an exception when at the limit of the number of allowed instances. */
+        FAIL,
+
+        /** Create a new temporary service instance when at the limit of the number of allowed instances. */
+        GROW,
+
+        /** Wait until an instance is returned to the cache when at the limit of the number of allowed instances. */
+        WAIT
     }
 }

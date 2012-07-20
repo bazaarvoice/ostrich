@@ -1,6 +1,7 @@
 package com.bazaarvoice.soa.examples.calculator;
 
 import com.bazaarvoice.soa.pool.ServiceCachingPolicy;
+import com.bazaarvoice.soa.pool.ServiceCachingPolicyBuilder;
 import com.bazaarvoice.soa.pool.ServicePoolBuilder;
 import com.bazaarvoice.soa.retry.RetryNTimes;
 import com.bazaarvoice.soa.zookeeper.ZooKeeperConfiguration;
@@ -62,12 +63,16 @@ public class CalculatorProxyUser {
                 .connect();
 
         // Connection caching is optional, but included here for the sake of demonstration.
-        ServiceCachingPolicy cachingPolicy = new ServiceCachingPolicy(100, 10, 15, 5, TimeUnit.SECONDS);
+        ServiceCachingPolicy cachingPolicy = new ServiceCachingPolicyBuilder()
+                .withMaxNumConnections(10)
+                .withMaxNumConnectionsPerEndpoint(1)
+                .withMaxConnectionIdleTime(5, TimeUnit.SECONDS)
+                .build();
 
         CalculatorService service = ServicePoolBuilder.create(CalculatorService.class)
                 .withZooKeeperHostDiscovery(connection)
                 .withServiceFactory(new CalculatorServiceFactory())
-                .withCache(cachingPolicy)
+                .withCachingPolicy(cachingPolicy)
                 .buildProxy(new RetryNTimes(3, 100, TimeUnit.MILLISECONDS));
 
         CalculatorProxyUser user = new CalculatorProxyUser(service);
