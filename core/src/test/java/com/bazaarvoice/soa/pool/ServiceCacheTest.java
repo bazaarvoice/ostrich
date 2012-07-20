@@ -14,6 +14,7 @@ import org.mockito.stubbing.Answer;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -23,6 +24,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -53,10 +55,10 @@ public class ServiceCacheTest {
             }
         });
 
-        // By default the caching policy will only cache one service instance per endpoint and never expires instances
+        // By default the caching policy will grow infinitely
         _cachingPolicy = mock(ServiceCachingPolicy.class);
         when(_cachingPolicy.getMaxNumServiceInstances()).thenReturn(-1);
-        when(_cachingPolicy.getMaxNumServiceInstancesPerEndPoint()).thenReturn(-1);
+        when(_cachingPolicy.getMaxNumServiceInstancesPerEndPoint()).thenReturn(1);
         when(_cachingPolicy.getCacheExhaustionAction()).thenReturn(ServiceCachingPolicy.ExhaustionAction.FAIL);
     }
 
@@ -118,9 +120,19 @@ public class ServiceCacheTest {
         assertNotSame(service, cache.checkOut(END_POINT));
     }
 
+    @Test
+    public void testEvictedEndPointWhileServiceInstanceCheckedOut() {
+        ServiceCache<Service> cache = newCache();
+
+        Service service = cache.checkOut(END_POINT);
+        cache.evict(END_POINT);
+        cache.checkIn(END_POINT, service);
+
+        assertNotSame(service, cache.checkOut(END_POINT));
+    }
+
     @Test(expected = NoCachedConnectionAvailableException.class)
     public void testFailCacheExhaustionAction() {
-        when(_cachingPolicy.getMaxNumServiceInstancesPerEndPoint()).thenReturn(1);
         when(_cachingPolicy.getCacheExhaustionAction()).thenReturn(ServiceCachingPolicy.ExhaustionAction.FAIL);
 
         ServiceCache<Service> cache = newCache();
@@ -130,7 +142,6 @@ public class ServiceCacheTest {
 
     @Test
     public void testGrowCacheExhaustionAction() {
-        when(_cachingPolicy.getMaxNumServiceInstancesPerEndPoint()).thenReturn(1);
         when(_cachingPolicy.getCacheExhaustionAction()).thenReturn(ServiceCachingPolicy.ExhaustionAction.GROW);
 
         ServiceCache<Service> cache = newCache();
@@ -146,27 +157,23 @@ public class ServiceCacheTest {
         ServiceCache<Service> cache = newCache();
 
         // Grow the cache a bunch, remembering each service that was created...
-        Set<Service> services = Sets.newHashSet();
+        Set<Service> seenServices = Sets.newHashSet();
         for (int i = 0; i < 10; i++) {
-            services.add(cache.checkOut(END_POINT));
+            seenServices.add(cache.checkOut(END_POINT));
         }
 
         // Now return each of the services.  Since the cache has a size of 1, only one of them should be retained...
-        for (Service service : services) {
+        for (Service service : seenServices) {
             cache.checkIn(END_POINT, service);
         }
 
         // Figure out which one is retained...
         Service retainedService = cache.checkOut(END_POINT);
-        assertTrue(services.contains(retainedService));
-        cache.checkIn(END_POINT, retainedService);
+        assertTrue(seenServices.contains(retainedService));
 
-        // All subsequent checkouts should be for the same service...
-        for (int i = 0; i < 10; i++) {
-            Service service = cache.checkOut(END_POINT);
-            assertSame(retainedService, service);
-            cache.checkIn(END_POINT, service);
-        }
+        // Force the cache to grow again, this new service should have never been seen before...
+        Service newService = cache.checkOut(END_POINT);
+        assertFalse(seenServices.contains(newService));
     }
 
     @Test
@@ -180,16 +187,25 @@ public class ServiceCacheTest {
         // Run a 2nd check out operation in a background thread.  It should block because there is only one service
         // instance available, and the above check out operation is holding onto it.  Eventually we're going to call
         // check in to return the instance, at which point the background thread should be able to terminate.
+        final CountDownLatch inCallable = new CountDownLatch(1);
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
             Future<Service> serviceFuture = executor.submit(new Callable<Service>() {
                 @Override
                 public Service call() throws Exception {
+                    inCallable.countDown();
                     return cache.checkOut(END_POINT);
                 }
             });
 
+            // Block until we know for sure the callable has had a chance to start executing and it is highly likely
+            // that is is blocked in the checkOut call.
+            assertTrue(inCallable.await(10, TimeUnit.SECONDS));
+
             try {
+                // This should fail because the service instance hasn't yet been returned.  There's a small chance that
+                // this could fail while there is a bug in the code if it takes the bug more time to manifest itself
+                // than the allotted time to wait.
                 serviceFuture.get(100, TimeUnit.MILLISECONDS);
                 fail();
             } catch (TimeoutException e) {
@@ -197,7 +213,7 @@ public class ServiceCacheTest {
             }
 
             cache.checkIn(END_POINT, service);
-            assertSame(service, serviceFuture.get(100, TimeUnit.MILLISECONDS));
+            assertSame(service, serviceFuture.get(10, TimeUnit.SECONDS));
         } finally {
             executor.shutdown();
         }
