@@ -15,12 +15,13 @@ public class ServiceCachingPolicyBuilder {
 
     private int _maxNumServiceInstances = -1;
     private int _maxNumServiceInstancesPerEndPoint = -1;
-    private long _maxServiceInstanceIdleTimeMillis;
+    private long _maxServiceInstanceIdleTimeNanos;
     private ExhaustionAction _cacheExhaustionAction = ExhaustionAction.GROW;
 
     /**
-     * Set the maximum number of cached service instances for the built policy. If never called, the policy will allow
+     * Set the maximum number of cached service instances for the built policy.  If never called, the policy will allow
      * unbounded growth by default.
+     *
      * @param maxNumServiceInstances The total maximum number of service instances in the cache.
      * @return this
      */
@@ -36,6 +37,7 @@ public class ServiceCachingPolicyBuilder {
      * the policy will allow growth bounded only by the {@link #withMaxNumServiceInstances maxNumServiceInstances}.
      * <p/>
      * NOTE: The per end point maximum must be less than or equal to the total maximum, unless either is unbounded.
+     *
      * @param maxNumServiceInstancesPerEndPoint The maximum number of service instances for one end point in the cache.
      * @return this
      */
@@ -48,24 +50,24 @@ public class ServiceCachingPolicyBuilder {
 
     /**
      * Set the amount of time a cached instance is allowed to sit idle in the cache before being eligible for
-     * expiration. If never called, cached instances will not expire solely due to idle time.
-     * <p/>
-     * NOTE: Sub-millisecond precision may be lost.
+     * expiration.  If never called, cached instances will not expire solely due to idle time.
+     *
      * @param maxServiceInstanceIdleTime The time an instance may be idle before allowed to expire.
-     * @param unit The unit of time the {@code maxServiceInstanceIdleTime} is in.
+     * @param unit                       The unit of time the {@code maxServiceInstanceIdleTime} is in.
      * @return this
      */
     public ServiceCachingPolicyBuilder withMaxServiceInstanceIdleTime(int maxServiceInstanceIdleTime, TimeUnit unit) {
-        checkState(unit.toMillis(maxServiceInstanceIdleTime) > 0);
+        checkState(maxServiceInstanceIdleTime > 0);
         checkNotNull(unit);
 
-        _maxServiceInstanceIdleTimeMillis = unit.toMillis(maxServiceInstanceIdleTime);
+        _maxServiceInstanceIdleTimeNanos = unit.toNanos(maxServiceInstanceIdleTime);
         return this;
     }
 
     /**
-     * Set the {@code ExhaustionAction} for the built caching policy. If never called, will default to
+     * Set the {@code ExhaustionAction} for the built caching policy.  If never called, will default to
      * {@code ExhaustionAction.GROW}.
+     *
      * @param action The action to take when the cache is exhausted, either completely or for a requested end point.
      * @return this
      */
@@ -78,6 +80,7 @@ public class ServiceCachingPolicyBuilder {
 
     /**
      * Build the {@code ServiceCachingPolicy} specified by this builder.
+     *
      * @return The {@code ServiceCachingPolicy} that was constructed.
      */
     public ServiceCachingPolicy build() {
@@ -85,7 +88,7 @@ public class ServiceCachingPolicyBuilder {
 
         final int maxNumServiceInstances = _maxNumServiceInstances;
         final int maxNumServiceInstancesPerEndPoint = _maxNumServiceInstancesPerEndPoint;
-        final long maxServiceInstanceIdleTimeMillis = _maxServiceInstanceIdleTimeMillis;
+        final long maxServiceInstanceIdleTimeNanos = _maxServiceInstanceIdleTimeNanos;
         final ExhaustionAction cacheExhaustionAction = _cacheExhaustionAction;
 
         return new ServiceCachingPolicy() {
@@ -101,7 +104,7 @@ public class ServiceCachingPolicyBuilder {
 
             @Override
             public long getMaxServiceInstanceIdleTime(TimeUnit unit) {
-                return unit.convert(maxServiceInstanceIdleTimeMillis, TimeUnit.MILLISECONDS);
+                return unit.convert(maxServiceInstanceIdleTimeNanos, TimeUnit.NANOSECONDS);
             }
 
             @Override

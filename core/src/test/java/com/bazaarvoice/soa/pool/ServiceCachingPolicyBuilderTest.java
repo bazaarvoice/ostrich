@@ -11,55 +11,55 @@ public class ServiceCachingPolicyBuilderTest {
     public void testCacheExhaustionActionSet() {
         ServiceCachingPolicyBuilder builder = new ServiceCachingPolicyBuilder();
         builder.withCacheExhaustionAction(ServiceCachingPolicy.ExhaustionAction.GROW);
-        assertEquals(builder.build().getCacheExhaustionAction(), ServiceCachingPolicy.ExhaustionAction.GROW);
+
+        assertEquals(ServiceCachingPolicy.ExhaustionAction.GROW, builder.build().getCacheExhaustionAction());
     }
     
     @Test
     public void testMaxNumServiceInstancesSet() {
         ServiceCachingPolicyBuilder builder = new ServiceCachingPolicyBuilder();
         builder.withMaxNumServiceInstances(1);
-        assertEquals(builder.build().getMaxNumServiceInstances(), 1);
+
+        assertEquals(1, builder.build().getMaxNumServiceInstances());
     }
     
     @Test
     public void testMaxNumServiceInstancesPerEndPointSet() {
         ServiceCachingPolicyBuilder builder = new ServiceCachingPolicyBuilder();
         builder.withMaxNumServiceInstancesPerEndPoint(1);
-        assertEquals(builder.build().getMaxNumServiceInstancesPerEndPoint(), 1);
+
+        assertEquals(1, builder.build().getMaxNumServiceInstancesPerEndPoint());
     }
     
     @Test
     public void testMinIdleTimeBeforeEvictionSet() {
         ServiceCachingPolicyBuilder builder = new ServiceCachingPolicyBuilder();
         builder.withMaxServiceInstanceIdleTime(10, TimeUnit.SECONDS);
-        assertEquals(builder.build().getMaxServiceInstanceIdleTime(TimeUnit.SECONDS), 10);
+
+        assertEquals(10, builder.build().getMaxServiceInstanceIdleTime(TimeUnit.SECONDS));
     }
 
     @Test(expected = NullPointerException.class)
     public void testNullExhaustionAction() {
         ServiceCachingPolicyBuilder builder = new ServiceCachingPolicyBuilder();
         builder.withCacheExhaustionAction(null);
-        builder.build();
     }
 
     @Test(expected = IllegalStateException.class)
     public void testInvalidMaxNumServiceInstances() {
         ServiceCachingPolicyBuilder builder = new ServiceCachingPolicyBuilder();
         builder.withMaxNumServiceInstances(-1);
-        builder.build();
     }
 
     @Test(expected = IllegalStateException.class)
     public void testInvalidMaxNumServiceInstancesPerEndPoint() {
         ServiceCachingPolicyBuilder builder = new ServiceCachingPolicyBuilder();
         builder.withMaxNumServiceInstancesPerEndPoint(-1);
-        builder.build();
     }
 
     @Test(expected = IllegalStateException.class)
     public void testInvalidMaxServiceInstanceIdleTime() {
         ServiceCachingPolicyBuilder builder = new ServiceCachingPolicyBuilder();
         builder.withMaxServiceInstanceIdleTime(0, TimeUnit.MILLISECONDS);
-        builder.build();
     }
 }

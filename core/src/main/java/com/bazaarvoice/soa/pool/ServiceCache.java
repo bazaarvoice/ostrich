@@ -8,7 +8,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
 import com.google.common.collect.MapMaker;
 import com.google.common.collect.Maps;
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.pool.BaseKeyedPoolableObjectFactory;
 import org.apache.commons.pool.impl.GenericKeyedObjectPool;
@@ -39,8 +38,7 @@ class ServiceCache<S> implements Closeable {
     @VisibleForTesting
     static final long EVICTION_DURATION_IN_SECONDS = 300;
 
-    @VisibleForTesting
-    final GenericKeyedObjectPool<ServiceEndPoint, S> _pool;
+    private final GenericKeyedObjectPool<ServiceEndPoint, S> _pool;
     private final AtomicLong _revisionNumber = new AtomicLong();
     private final Map<ServiceEndPoint, Long> _invalidRevisions = new MapMaker().weakKeys().makeMap();
     private final Map<S, Long> _checkOutRevisions = Maps.newConcurrentMap();
@@ -93,26 +91,31 @@ class ServiceCache<S> implements Closeable {
         poolConfig.maxActive = policy.getMaxNumServiceInstancesPerEndPoint();
         poolConfig.maxIdle = policy.getMaxNumServiceInstancesPerEndPoint();
 
-        // Make sure entire pool is checked for idle time on eviction runs.
+        // Make sure all instances in the pool are checked for staleness during eviction runs.
         poolConfig.numTestsPerEvictionRun = policy.getMaxNumServiceInstances();
 
         _pool = new GenericKeyedObjectPool<ServiceEndPoint, S>(new PoolServiceFactory<S>(serviceFactory), poolConfig);
+
         // Don't schedule eviction if not caching or not expiring stale instances.
-        if (_pool.getMaxIdle() == 0 || _pool.getMaxTotal() == 0
-                || policy.getMaxServiceInstanceIdleTime(TimeUnit.MILLISECONDS) == 0) {
-            _evictionFuture = Futures.immediateFuture(null);
-        } else {
-            _evictionFuture = executor.scheduleAtFixedRate(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        _pool.evict();
-                    } catch (Exception e) {
-                        // TODO: Log?
-                    }
-                }
-            }, EVICTION_DURATION_IN_SECONDS, EVICTION_DURATION_IN_SECONDS, TimeUnit.SECONDS);
-        }
+        _evictionFuture = (policy.getMaxNumServiceInstances() != 0)
+                || (policy.getMaxNumServiceInstancesPerEndPoint() != 0)
+                || (policy.getMaxServiceInstanceIdleTime(TimeUnit.MILLISECONDS) > 0)
+                ? executor.scheduleAtFixedRate(new Runnable() {
+                      @Override
+                      public void run() {
+                          try {
+                              _pool.evict();
+                          } catch (Exception e) {
+                              // TODO: Log?
+                          }
+                      }
+                  }, EVICTION_DURATION_IN_SECONDS, EVICTION_DURATION_IN_SECONDS, TimeUnit.SECONDS)
+                : null;
+    }
+
+    @VisibleForTesting
+    GenericKeyedObjectPool<ServiceEndPoint, S> getPool() {
+        return _pool;
     }
 
     /**
@@ -164,7 +167,7 @@ class ServiceCache<S> implements Closeable {
         Long serviceRevision = _checkOutRevisions.remove(service);
 
         try {
-            if (invalidRevision != null && serviceRevision < invalidRevision || _isClosed) {
+            if (_isClosed || (invalidRevision != null && serviceRevision < invalidRevision)) {
                 _pool.invalidateObject(endPoint, service);
             } else {
                 _pool.returnObject(endPoint, service);
@@ -178,7 +181,11 @@ class ServiceCache<S> implements Closeable {
     @Override
     public void close() {
         _isClosed = true;
-        _evictionFuture.cancel(false);
+
+        if (_evictionFuture != null) {
+            _evictionFuture.cancel(false);
+        }
+
         _pool.clear();
     }
 

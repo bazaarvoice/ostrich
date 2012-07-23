@@ -27,7 +27,7 @@ public interface ServiceCachingPolicy {
      * instance.
      * <p/>
      * NOTE: There is no guaranteed eviction time, so an idle service instance can be evicted as early as this time,
-     * but not before. A non-positive value indicates service instances will never be evicted based on idle time.
+     * but not before.  A non-positive value indicates service instances will never be evicted based on idle time.
      */
     long getMaxServiceInstanceIdleTime(TimeUnit unit);
 

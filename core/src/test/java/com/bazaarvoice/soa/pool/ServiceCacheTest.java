@@ -79,16 +79,13 @@ public class ServiceCacheTest {
         when(_cachingPolicy.getMaxNumServiceInstancesPerEndPoint()).thenReturn(5);
         when(_cachingPolicy.getMaxServiceInstanceIdleTime(TimeUnit.MILLISECONDS)).thenReturn(10L);
 
-        GenericKeyedObjectPool<ServiceEndPoint, Service> pool = newCache()._pool;
-
-        assertEquals(pool.getMaxActive(), 5);
-        assertEquals(pool.getMaxIdle(), 5);
-        assertEquals(pool.getMaxTotal(), 20);
-        assertEquals(pool.getMinEvictableIdleTimeMillis(), 10L);
-        // GenericKeyedObjectPool calculates the number of tests to run differently if NumTestsPerEviction is positive
-        // or negative. We don't care which is used so long as all idle objects are checkd on each eviction run.
-        assert(pool.getNumTestsPerEvictionRun() >= 20 || pool.getNumTestsPerEvictionRun() == -1);
-        assertEquals(pool.getWhenExhaustedAction(), GenericKeyedObjectPool.WHEN_EXHAUSTED_GROW);
+        GenericKeyedObjectPool<ServiceEndPoint, Service> pool = newCache().getPool();
+        assertEquals(GenericKeyedObjectPool.WHEN_EXHAUSTED_GROW, pool.getWhenExhaustedAction());
+        assertEquals(20, pool.getMaxTotal());
+        assertEquals(5, pool.getMaxActive());
+        assertEquals(5, pool.getMaxIdle());
+        assertEquals(10L, pool.getMinEvictableIdleTimeMillis());
+        assertEquals(20, pool.getNumTestsPerEvictionRun());
     }
 
     @Test(expected = NullPointerException.class)
