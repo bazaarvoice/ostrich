@@ -3,6 +3,8 @@ package com.bazaarvoice.soa.examples.calculator;
 import com.bazaarvoice.soa.ServiceCallback;
 import com.bazaarvoice.soa.ServicePool;
 import com.bazaarvoice.soa.exceptions.ServiceException;
+import com.bazaarvoice.soa.pool.ServiceCachingPolicy;
+import com.bazaarvoice.soa.pool.ServiceCachingPolicyBuilder;
 import com.bazaarvoice.soa.pool.ServicePoolBuilder;
 import com.bazaarvoice.soa.retry.RetryNTimes;
 import com.bazaarvoice.soa.zookeeper.ZooKeeperConfiguration;
@@ -61,9 +63,16 @@ public class CalculatorUser {
                 .withBoundedExponentialBackoffRetry(10, 1000, 3)
                 .connect();
 
+        ServiceCachingPolicy cachingPolicy = new ServiceCachingPolicyBuilder()
+                .withMaxNumServiceInstances(10)
+                .withMaxNumServiceInstancesPerEndPoint(1)
+                .withMaxServiceInstanceIdleTime(5, TimeUnit.MINUTES)
+                .build();
+
         ServicePool<CalculatorService> pool = ServicePoolBuilder.create(CalculatorService.class)
                 .withZooKeeperHostDiscovery(connection)
                 .withServiceFactory(new CalculatorServiceFactory())
+                .withCachingPolicy(cachingPolicy)
                 .build();
 
         CalculatorUser user = new CalculatorUser(pool);

@@ -1,23 +1,48 @@
 package com.bazaarvoice.soa.pool;
 
-import com.bazaarvoice.soa.*;
-import com.bazaarvoice.soa.ServicePool;
+import com.bazaarvoice.soa.HostDiscovery;
+import com.bazaarvoice.soa.HostDiscoverySource;
+import com.bazaarvoice.soa.LoadBalanceAlgorithm;
+import com.bazaarvoice.soa.RetryPolicy;
+import com.bazaarvoice.soa.ServiceFactory;
 import com.bazaarvoice.soa.zookeeper.ZooKeeperConfiguration;
 import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
 import com.google.common.io.Closeables;
 import com.netflix.curator.test.TestingServer;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.concurrent.ScheduledExecutorService;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class ServicePoolBuilderTest {
+    private ServiceFactory<Service> _serviceFactory;
+    private ServiceCachingPolicy _cachingPolicy;
+    private HostDiscovery _hostDiscovery;
+    private ScheduledExecutorService _healthCheckExecutor;
+
+    @SuppressWarnings("unchecked")
+    @Before
+    public void setup() {
+        _serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
+        when(_serviceFactory.getLoadBalanceAlgorithm()).thenReturn(mock(LoadBalanceAlgorithm.class));
+        when(_serviceFactory.getServiceName()).thenReturn("serviceName");
+
+        _cachingPolicy = mock(ServiceCachingPolicy.class);
+        when(_cachingPolicy.getCacheExhaustionAction()).thenReturn(ServiceCachingPolicy.ExhaustionAction.GROW);
+
+        _hostDiscovery = mock(HostDiscovery.class);
+        _healthCheckExecutor = mock(ScheduledExecutorService.class);
+
+    }
+
     @Test(expected = NullPointerException.class)
     public void testNullHostDiscovery() {
         ServicePoolBuilder.create(Service.class).withHostDiscovery(null);
@@ -34,59 +59,55 @@ public class ServicePoolBuilderTest {
     }
 
     @Test(expected = NullPointerException.class)
+    public void testNullCachingPolicy() {
+        ServicePoolBuilder.create(Service.class).withCachingPolicy(null);
+    }
+
+    @Test(expected = NullPointerException.class)
     public void testNullHealthCheckExecutor() {
         ServicePoolBuilder.create(Service.class).withHealthCheckExecutor(null);
     }
 
-    @SuppressWarnings("unchecked")
     @Test(expected = IllegalStateException.class)
     public void testBuildWithNoHostDiscoveryAndNoZooKeeperConnection() {
-        ServiceFactory<Service> serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
-        ScheduledExecutorService healthCheckExecutor = mock(ScheduledExecutorService.class);
         ServicePoolBuilder.create(Service.class)
-                .withServiceFactory(serviceFactory)
-                .withHealthCheckExecutor(healthCheckExecutor)
+                .withServiceFactory(_serviceFactory)
+                .withCachingPolicy(_cachingPolicy)
+                .withHealthCheckExecutor(_healthCheckExecutor)
                 .build();
     }
 
     @Test(expected = NullPointerException.class)
     public void testBuildWithNoServiceFactory() {
-        HostDiscovery hostDiscovery = mock(HostDiscovery.class);
-        ScheduledExecutorService healthCheckExecutor = mock(ScheduledExecutorService.class);
         ServicePoolBuilder.create(Service.class)
-                .withHostDiscovery(hostDiscovery)
-                .withHealthCheckExecutor(healthCheckExecutor)
+                .withCachingPolicy(_cachingPolicy)
+                .withHostDiscovery(_hostDiscovery)
+                .withHealthCheckExecutor(_healthCheckExecutor)
                 .build();
     }
 
-    @SuppressWarnings("unchecked")
     @Test(expected = NullPointerException.class)
     public void testBuildWithNullLoadBalanceAlgorithm() {
-        HostDiscovery hostDiscovery = mock(HostDiscovery.class);
-        ServiceFactory<Service> serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
-        ScheduledExecutorService healthCheckExecutor = mock(ScheduledExecutorService.class);
+        when(_serviceFactory.getLoadBalanceAlgorithm()).thenReturn(null);
 
         ServicePoolBuilder.create(Service.class)
-                .withServiceFactory(serviceFactory)
-                .withHostDiscovery(hostDiscovery)
-                .withHealthCheckExecutor(healthCheckExecutor)
+                .withServiceFactory(_serviceFactory)
+                .withCachingPolicy(_cachingPolicy)
+                .withHostDiscovery(_hostDiscovery)
+                .withHealthCheckExecutor(_healthCheckExecutor)
                 .build();
     }
 
-    @SuppressWarnings("unchecked")
     @Test
     public void testBuildWithZooKeeperConnection() throws Exception {
-        ServiceFactory<Service> serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
-        when(serviceFactory.getServiceName()).thenReturn("serviceName");
-        when(serviceFactory.getLoadBalanceAlgorithm()).thenReturn(mock(LoadBalanceAlgorithm.class));
-
         TestingServer zooKeeperServer = new TestingServer();
         ZooKeeperConnection connection = null;
         try {
             connection = new ZooKeeperConfiguration().withConnectString(zooKeeperServer.getConnectString()).connect();
 
             ServicePoolBuilder.create(Service.class)
-                    .withServiceFactory(serviceFactory)
+                    .withServiceFactory(_serviceFactory)
+                    .withCachingPolicy(_cachingPolicy)
                     .withZooKeeperHostDiscovery(connection)
                     .build();
         } finally {
@@ -95,87 +116,70 @@ public class ServicePoolBuilderTest {
         }
     }
 
-    @SuppressWarnings("unchecked")
     @Test
     public void testHostDiscoverySourceOverride() {
-        ServiceFactory<Service> serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
-        when(serviceFactory.getLoadBalanceAlgorithm()).thenReturn(mock(LoadBalanceAlgorithm.class));
+        HostDiscovery overrideDiscovery = mock(HostDiscovery.class);
 
-        final HostDiscovery overrideDiscovery = mock(HostDiscovery.class);
-        HostDiscovery baseDiscovery = mock(HostDiscovery.class);
-        ServicePool<Service> pool = ServicePoolBuilder.create(Service.class)
-                .withHostDiscoverySource(new HostDiscoverySource() {
-                    @Override
-                    public HostDiscovery forService(String serviceName) {
-                        return overrideDiscovery;
-                    }
-                })
-                .withHostDiscovery(baseDiscovery)
-                .withServiceFactory(serviceFactory)
-                .build();
-        assertEquals(overrideDiscovery, ((com.bazaarvoice.soa.pool.ServicePool) pool).getHostDiscovery());
+        HostDiscoverySource source = mock(HostDiscoverySource.class);
+        when(source.forService(anyString())).thenReturn(overrideDiscovery);
+
+        com.bazaarvoice.soa.pool.ServicePool<Service> pool = ServicePoolBuilder.create(Service.class)
+                .withHostDiscoverySource(source)
+                .withHostDiscovery(_hostDiscovery)
+                .withServiceFactory(_serviceFactory)
+                .withCachingPolicy(_cachingPolicy)
+                .buildInternal();
+        assertSame(overrideDiscovery, pool.getHostDiscovery());
     }
 
-    @SuppressWarnings("unchecked")
     @Test
     public void testHostDiscoverySourceFallThrough() {
-        ServiceFactory<Service> serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
-        when(serviceFactory.getLoadBalanceAlgorithm()).thenReturn(mock(LoadBalanceAlgorithm.class));
+        HostDiscoverySource source = mock(HostDiscoverySource.class);
+        when(source.forService(anyString())).thenReturn(null);
 
-        HostDiscovery hostDiscovery = mock(HostDiscovery.class);
-        ServicePool<Service> pool = ServicePoolBuilder.create(Service.class)
-                .withHostDiscoverySource(new HostDiscoverySource() {
-                    @Override
-                    public HostDiscovery forService(String serviceName) {
-                        return null;
-                    }
-                })
-                .withHostDiscovery(hostDiscovery)
-                .withServiceFactory(serviceFactory)
-                .build();
-        assertEquals(hostDiscovery, ((com.bazaarvoice.soa.pool.ServicePool) pool).getHostDiscovery());
+        com.bazaarvoice.soa.pool.ServicePool<Service> pool = ServicePoolBuilder.create(Service.class)
+                .withHostDiscoverySource(source)
+                .withHostDiscovery(_hostDiscovery)
+                .withServiceFactory(_serviceFactory)
+                .withCachingPolicy(_cachingPolicy)
+                .buildInternal();
+        assertSame(_hostDiscovery, pool.getHostDiscovery());
     }
 
-    @SuppressWarnings("unchecked")
     @Test
     public void testBuildWithNoHealthCheckExecutor() {
-        LoadBalanceAlgorithm loadBalanceAlgorithm = mock(LoadBalanceAlgorithm.class);
-        HostDiscovery hostDiscovery = mock(HostDiscovery.class);
-
-        ServiceFactory<Service> serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
-        when(serviceFactory.getLoadBalanceAlgorithm()).thenReturn(loadBalanceAlgorithm);
-
         ServicePoolBuilder.create(Service.class)
-                .withServiceFactory(serviceFactory)
-                .withHostDiscovery(hostDiscovery)
+                .withServiceFactory(_serviceFactory)
+                .withCachingPolicy(_cachingPolicy)
+                .withHostDiscovery(_hostDiscovery)
                 .build();
     }
 
-    @SuppressWarnings("unchecked")
     @Test
     public void testBuildWithNoTicker() {
-        LoadBalanceAlgorithm loadBalanceAlgorithm = mock(LoadBalanceAlgorithm.class);
-        HostDiscovery hostDiscovery = mock(HostDiscovery.class);
-        ScheduledExecutorService healthCheckExecutor = mock(ScheduledExecutorService.class);
-
-        ServiceFactory<Service> serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
-        when(serviceFactory.getLoadBalanceAlgorithm()).thenReturn(loadBalanceAlgorithm);
-
         ServicePoolBuilder.create(Service.class)
-                .withServiceFactory(serviceFactory)
-                .withHostDiscovery(hostDiscovery)
-                .withHealthCheckExecutor(healthCheckExecutor)
+                .withServiceFactory(_serviceFactory)
+                .withCachingPolicy(_cachingPolicy)
+                .withHostDiscovery(_hostDiscovery)
+                .withHealthCheckExecutor(_healthCheckExecutor)
                 .build();
     }
 
-    @SuppressWarnings("unchecked")
+    @Test
+    public void testBuildWithNoCachingPolicy() {
+        ServicePoolBuilder.create(Service.class)
+                .withServiceFactory(_serviceFactory)
+                .withHostDiscovery(_hostDiscovery)
+                .withHealthCheckExecutor(_healthCheckExecutor)
+                .build();
+    }
+
     @Test
     public void testBuildProxy() throws IOException {
-        ServiceFactory serviceFactory = mock(ServiceFactory.class);
-        when(serviceFactory.getLoadBalanceAlgorithm()).thenReturn(mock(LoadBalanceAlgorithm.class));
         Service service = ServicePoolBuilder.create(Service.class)
-                .withHostDiscovery(mock(HostDiscovery.class))
-                .withServiceFactory(serviceFactory)
+                .withServiceFactory(_serviceFactory)
+                .withCachingPolicy(_cachingPolicy)
+                .withHostDiscovery(_hostDiscovery)
                 .buildProxy(mock(RetryPolicy.class));
         assertTrue(service instanceof Closeable);
     }
