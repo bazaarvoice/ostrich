@@ -5,6 +5,7 @@ import com.bazaarvoice.soa.ServiceFactory;
 import com.bazaarvoice.soa.exceptions.NoCachedConnectionAvailableException;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import org.apache.commons.pool.impl.GenericKeyedObjectPool;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -24,6 +25,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
@@ -67,6 +69,26 @@ public class ServiceCacheTest {
         for (ServiceCache<?> cache : _caches) {
             cache.close();
         }
+    }
+
+    @Test
+    public void testKeyedObjectPoolIsCorrectlyConfigured() {
+        // Set values to be different from corresponding GenericKeyedObjectPool defaults.
+        when(_cachingPolicy.getCacheExhaustionAction()).thenReturn(ServiceCachingPolicy.ExhaustionAction.GROW);
+        when(_cachingPolicy.getMaxNumServiceInstances()).thenReturn(20);
+        when(_cachingPolicy.getMaxNumServiceInstancesPerEndPoint()).thenReturn(5);
+        when(_cachingPolicy.getMaxServiceInstanceIdleTime(TimeUnit.MILLISECONDS)).thenReturn(10L);
+
+        GenericKeyedObjectPool<ServiceEndPoint, Service> pool = newCache()._pool;
+
+        assertEquals(pool.getMaxActive(), 5);
+        assertEquals(pool.getMaxIdle(), 5);
+        assertEquals(pool.getMaxTotal(), 20);
+        assertEquals(pool.getMinEvictableIdleTimeMillis(), 10L);
+        // GenericKeyedObjectPool calculates the number of tests to run differently if NumTestsPerEviction is positive
+        // or negative. We don't care which is used so long as all idle objects are checkd on each eviction run.
+        assert(pool.getNumTestsPerEvictionRun() >= 20 || pool.getNumTestsPerEvictionRun() == -1);
+        assertEquals(pool.getWhenExhaustedAction(), GenericKeyedObjectPool.WHEN_EXHAUSTED_GROW);
     }
 
     @Test(expected = NullPointerException.class)
@@ -221,6 +243,7 @@ public class ServiceCacheTest {
 
     @Test
     public void testSchedulesPeriodicEvictionCheckUponCreation() {
+        when(_cachingPolicy.getMaxServiceInstanceIdleTime(any(TimeUnit.class))).thenReturn(10L);
         ScheduledExecutorService executor = mock(ScheduledExecutorService.class);
         when(executor.scheduleAtFixedRate(any(Runnable.class), anyLong(), anyLong(), any(TimeUnit.class))).thenAnswer(
                 new Answer<ScheduledFuture<?>>() {
@@ -242,6 +265,7 @@ public class ServiceCacheTest {
     @SuppressWarnings("unchecked")
     @Test
     public void testCloseCancelsEvictionFuture() {
+        when(_cachingPolicy.getMaxServiceInstanceIdleTime(any(TimeUnit.class))).thenReturn(10L);
         ScheduledExecutorService executor = mock(ScheduledExecutorService.class);
         ScheduledFuture future = mock(ScheduledFuture.class);
         when(executor.scheduleAtFixedRate(

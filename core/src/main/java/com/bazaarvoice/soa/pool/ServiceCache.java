@@ -8,6 +8,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
 import com.google.common.collect.MapMaker;
 import com.google.common.collect.Maps;
+import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.pool.BaseKeyedPoolableObjectFactory;
 import org.apache.commons.pool.impl.GenericKeyedObjectPool;
@@ -38,11 +39,13 @@ class ServiceCache<S> implements Closeable {
     @VisibleForTesting
     static final long EVICTION_DURATION_IN_SECONDS = 300;
 
-    private final GenericKeyedObjectPool<ServiceEndPoint, S> _pool;
+    @VisibleForTesting
+    final GenericKeyedObjectPool<ServiceEndPoint, S> _pool;
     private final AtomicLong _revisionNumber = new AtomicLong();
     private final Map<ServiceEndPoint, Long> _invalidRevisions = new MapMaker().weakKeys().makeMap();
     private final Map<S, Long> _checkOutRevisions = Maps.newConcurrentMap();
     private final Future<?> _evictionFuture;
+    private volatile boolean _isClosed = false;
 
     /**
      * Builds a basic service cache.
@@ -72,7 +75,7 @@ class ServiceCache<S> implements Closeable {
         // Global configuration
         poolConfig.maxTotal = policy.getMaxNumServiceInstances();
         poolConfig.numTestsPerEvictionRun = policy.getMaxNumServiceInstances();
-        poolConfig.minEvictableIdleTimeMillis = policy.getMinIdleTimeBeforeEviction(TimeUnit.MILLISECONDS);
+        poolConfig.minEvictableIdleTimeMillis = policy.getMaxServiceInstanceIdleTime(TimeUnit.MILLISECONDS);
 
         switch (policy.getCacheExhaustionAction()) {
             case FAIL:
@@ -90,17 +93,26 @@ class ServiceCache<S> implements Closeable {
         poolConfig.maxActive = policy.getMaxNumServiceInstancesPerEndPoint();
         poolConfig.maxIdle = policy.getMaxNumServiceInstancesPerEndPoint();
 
+        // Make sure entire pool is checked for idle time on eviction runs.
+        poolConfig.numTestsPerEvictionRun = policy.getMaxNumServiceInstances();
+
         _pool = new GenericKeyedObjectPool<ServiceEndPoint, S>(new PoolServiceFactory<S>(serviceFactory), poolConfig);
-        _evictionFuture = executor.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    evict();
-                } catch (Exception e) {
-                    // TODO: Log?
+        // Don't schedule eviction if not caching or not expiring stale instances.
+        if (_pool.getMaxIdle() == 0 || _pool.getMaxTotal() == 0
+                || policy.getMaxServiceInstanceIdleTime(TimeUnit.MILLISECONDS) == 0) {
+            _evictionFuture = Futures.immediateFuture(null);
+        } else {
+            _evictionFuture = executor.scheduleAtFixedRate(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        _pool.evict();
+                    } catch (Exception e) {
+                        // TODO: Log?
+                    }
                 }
-            }
-        }, EVICTION_DURATION_IN_SECONDS, EVICTION_DURATION_IN_SECONDS, TimeUnit.SECONDS);
+            }, EVICTION_DURATION_IN_SECONDS, EVICTION_DURATION_IN_SECONDS, TimeUnit.SECONDS);
+        }
     }
 
     /**
@@ -147,12 +159,12 @@ class ServiceCache<S> implements Closeable {
         checkNotNull(service);
 
         // Figure out if we should check this revision in.  If it was created before the last known invalid revision
-        // for this particular end point then we shouldn't check it in.
+        // for this particular end point, or the cache is closed, then we shouldn't check it in.
         Long invalidRevision = _invalidRevisions.get(endPoint);
         Long serviceRevision = _checkOutRevisions.remove(service);
 
         try {
-            if (invalidRevision != null && serviceRevision < invalidRevision) {
+            if (invalidRevision != null && serviceRevision < invalidRevision || _isClosed) {
                 _pool.invalidateObject(endPoint, service);
             } else {
                 _pool.returnObject(endPoint, service);
@@ -165,7 +177,7 @@ class ServiceCache<S> implements Closeable {
 
     @Override
     public void close() {
-        // TODO: Transition states and don't permit usage after closing?
+        _isClosed = true;
         _evictionFuture.cancel(false);
         _pool.clear();
     }
@@ -176,10 +188,6 @@ class ServiceCache<S> implements Closeable {
         // Mark all service instances created prior to now as invalid so that we don't inadvertently check them back in
         _invalidRevisions.put(endPoint, _revisionNumber.incrementAndGet());
         _pool.clear(endPoint);
-    }
-
-    private void evict() throws Exception {
-        _pool.evict();
     }
 
     private static class PoolServiceFactory<S> extends BaseKeyedPoolableObjectFactory<ServiceEndPoint, S> {

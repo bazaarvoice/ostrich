@@ -46,7 +46,7 @@ public class ServicePoolCachingTest {
     private static final RetryPolicy NEVER_RETRY = mock(RetryPolicy.class);
 
     private static final ServiceCachingPolicy CACHE_ONE_INSTANCE_PER_ENDPOINT = new ServiceCachingPolicyBuilder()
-            .withMaxNumConnectionsPerEndpoint(1)
+            .withMaxNumServiceInstancesPerEndPoint(1)
             .build();
 
     private static final ServiceCallback<Service, Service> IDENTITY_CALLBACK = new ServiceCallback<Service, Service>() {

@@ -22,13 +22,14 @@ public interface ServiceCachingPolicy {
     int getMaxNumServiceInstancesPerEndPoint();
 
     /**
-     * The amount of time that a service instance is allowed to be idle for before it is considered for eviction from
-     * the cache.
+     * The amount of time that a service instance is allowed to be idle for before it can be expired from the cache.
+     * An instance may still be evicted before this amount of time if the cache is full and needs to make room for a new
+     * instance.
      * <p/>
      * NOTE: There is no guaranteed eviction time, so an idle service instance can be evicted as early as this time,
-     * but not before.
+     * but not before. A non-positive value indicates service instances will never be evicted based on idle time.
      */
-    long getMinIdleTimeBeforeEviction(TimeUnit unit);
+    long getMaxServiceInstanceIdleTime(TimeUnit unit);
 
     /**
      * What action to take when it is not possible to allocate a new service instance because the cache is at its limit

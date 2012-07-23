@@ -23,21 +23,24 @@ ZooKeeperConnection zookeeper = new ZooKeeperConfiguration()
 
 ### 2. Set up a caching policy (optional)
 
-If you want the service pool to cache connections, you'll need to set up a policy to handle caching connections.
-Note that you'll want to choose settings suitable for your application depending on the nature of the service.
+If you want the service pool to cache service instances, you'll need to set up a policy to handle caching service
+instances. Note that you'll want to choose settings suitable for your application depending on the nature of the
+service.
 The cache configuration options are:
 
-* maxTotalConnections - The maximum total number of connections to be cached.
-* mxConnectionsPerEndPoint - The maximum number of cached connections for a single end point.
-* minConnectionIdleTimeBeforeEviction - The amount of time a cached connection must be unused before it can be evicted.
-* idleConnectionEvictionFrequency - The time period between cache eviction runs.
-* unit - The TimeUnit of the previous two values.
+* maxTotalServiceInstances - The maximum total number of service instances to be cached.
+* maxServiceInstancesPerEndPoint - The maximum number of cached service instances for a single end point.
+* maxServiceInstanceIdleTime - The amount of time a cached connection must be unused before it can be evicted.
 
-Here's an example of creating a caching policy of size 100, 10 max per endpoint, 15 seconds idle before potential
-eviction, and 5 seconds between eviction runs.
+Here's an example of creating a caching policy of size 100, 10 max per endpoint, and 10 minutes idle before potential
+eviction:
 
 ```java
-ServiceCachingPolicy cachingPolicy = new ServiceCachingPolicy(100, 10, 15, 5, TimeUnit.SECONDS);
+ServiceCachingPolicy cachingPolicy = new ServiceCachingPolicyBuilder()
+        .withMaxNumServiceInstances(100)
+        .withMaxNumServiceInstancesPerEndPoint(10)
+        .withMaxServiceInstanceIdleTime(5, TimeUnit.MINUTES)
+        .build();
 ```
 
 #### 3. Create a `ServicePool` instance

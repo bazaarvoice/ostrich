@@ -64,9 +64,9 @@ public class CalculatorUser {
                 .connect();
 
         ServiceCachingPolicy cachingPolicy = new ServiceCachingPolicyBuilder()
-                .withMaxNumConnections(10)
-                .withMaxNumConnectionsPerEndpoint(1)
-                .withMaxConnectionIdleTime(5, TimeUnit.SECONDS)
+                .withMaxNumServiceInstances(10)
+                .withMaxNumServiceInstancesPerEndPoint(1)
+                .withMaxServiceInstanceIdleTime(5, TimeUnit.MINUTES)
                 .build();
 
         ServicePool<CalculatorService> pool = ServicePoolBuilder.create(CalculatorService.class)

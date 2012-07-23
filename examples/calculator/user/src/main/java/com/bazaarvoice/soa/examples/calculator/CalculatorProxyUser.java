@@ -64,9 +64,9 @@ public class CalculatorProxyUser {
 
         // Connection caching is optional, but included here for the sake of demonstration.
         ServiceCachingPolicy cachingPolicy = new ServiceCachingPolicyBuilder()
-                .withMaxNumConnections(10)
-                .withMaxNumConnectionsPerEndpoint(1)
-                .withMaxConnectionIdleTime(5, TimeUnit.SECONDS)
+                .withMaxNumServiceInstances(10)
+                .withMaxNumServiceInstancesPerEndPoint(1)
+                .withMaxServiceInstanceIdleTime(5, TimeUnit.MINUTES)
                 .build();
 
         CalculatorService service = ServicePoolBuilder.create(CalculatorService.class)
