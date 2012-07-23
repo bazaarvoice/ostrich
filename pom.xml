@@ -129,6 +129,12 @@
             </dependency>
 
             <dependency>
+                <groupId>commons-pool</groupId>
+                <artifactId>commons-pool</artifactId>
+                <version>1.6</version>
+            </dependency>
+
+            <dependency>
                 <groupId>junit</groupId>
                 <artifactId>junit</artifactId>
                 <version>4.10</version>

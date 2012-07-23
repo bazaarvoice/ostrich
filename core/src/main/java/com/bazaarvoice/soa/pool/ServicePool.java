@@ -53,9 +53,11 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
     private final Predicate<ServiceEndPoint> _badEndpointFilter;
     private final Set<ServiceEndPoint> _recentlyRemovedEndpoints;
     private final Future<?> _batchHealthChecksFuture;
+    private final ServiceCache<S> _serviceCache;
 
-    ServicePool(Class<S> serviceType, Ticker ticker, HostDiscovery hostDiscovery, ServiceFactory<S> serviceFactory,
-                ScheduledExecutorService healthCheckExecutor, boolean shutdownExecutorOnClose) {
+    ServicePool(Class<S> serviceType, Ticker ticker, HostDiscovery hostDiscovery,
+                        ServiceFactory<S> serviceFactory, ServiceCachingPolicy cachingPolicy,
+                        ScheduledExecutorService healthCheckExecutor, boolean shutdownExecutorOnClose) {
         _serviceType = serviceType;
         _ticker = checkNotNull(ticker);
         _hostDiscovery = checkNotNull(hostDiscovery);
@@ -70,6 +72,7 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
                 .expireAfterWrite(10, TimeUnit.MINUTES)  // TODO: Make this a constant
                 .<ServiceEndPoint, Boolean>build()
                 .asMap());
+        _serviceCache = new ServiceCache<S>(checkNotNull(cachingPolicy), serviceFactory);
 
         // Watch endpoints as they are removed from host discovery so that we can remove them from our set of bad
         // endpoints as well.  This will prevent the badEndpoints set from growing in an unbounded fashion.  There is a
@@ -130,7 +133,8 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
                 throw new NoSuitableHostsException();
             }
 
-            S service = _serviceFactory.create(endpoint);
+            S service = _serviceCache.checkOut(endpoint);
+
             try {
                 return callback.call(service);
             } catch (ServiceException e) {
@@ -140,6 +144,10 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
                 markEndpointAsBad(endpoint);
             } catch (Exception e) {
                 throw Throwables.propagate(e);
+            } finally {
+                if (service != null) {
+                    _serviceCache.checkIn(endpoint, service);
+                }
             }
         } while (retry.allowRetry(++numAttempts, sw.elapsedMillis()));
 
@@ -221,9 +229,12 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
         // endpoints ensures that this memory leak doesn't happen.
         _recentlyRemovedEndpoints.add(endpoint);
         _badEndpoints.remove(endpoint);
+        _serviceCache.evict(endpoint);
     }
 
     private synchronized void markEndpointAsBad(ServiceEndPoint endpoint) {
+        _serviceCache.evict(endpoint);
+
         if (_recentlyRemovedEndpoints.contains(endpoint)) {
             // Nothing to do, we've already removed this endpoint
             return;
