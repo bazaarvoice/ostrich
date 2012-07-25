@@ -6,6 +6,7 @@ import com.bazaarvoice.soa.RetryPolicy;
 import com.bazaarvoice.soa.ServiceCallback;
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceFactory;
+import com.bazaarvoice.soa.ServicePoolStatistics;
 import com.bazaarvoice.soa.exceptions.MaxRetriesException;
 import com.bazaarvoice.soa.exceptions.NoAvailableHostsException;
 import com.bazaarvoice.soa.exceptions.NoSuitableHostsException;
@@ -27,7 +28,9 @@ import org.mockito.stubbing.Answer;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -37,6 +40,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -97,7 +101,8 @@ public class ServicePoolTest {
         when(_serviceFactory.create(FOO_ENDPOINT)).thenReturn(FOO_SERVICE);
         when(_serviceFactory.create(BAR_ENDPOINT)).thenReturn(BAR_SERVICE);
         when(_serviceFactory.create(BAZ_ENDPOINT)).thenReturn(BAZ_SERVICE);
-        when(_serviceFactory.getLoadBalanceAlgorithm()).thenReturn(_loadBalanceAlgorithm);
+        when(_serviceFactory.getLoadBalanceAlgorithm(any(ServicePoolStatistics.class)))
+                .thenReturn(_loadBalanceAlgorithm);
 
         _healthCheckExecutor = mock(ScheduledExecutorService.class);
         when(_healthCheckExecutor.submit(any(Runnable.class))).then(new Answer<Future<?>>() {
@@ -341,6 +346,78 @@ public class ServicePoolTest {
     }
 
     @Test
+    public void testLoadBalancerGivenStats() {
+        ArgumentCaptor<ServicePoolStatistics> captor = ArgumentCaptor.forClass(ServicePoolStatistics.class);
+
+        verify(_serviceFactory).getLoadBalanceAlgorithm(captor.capture());
+        assertNotNull(captor.getValue());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testStatisticsAreAccurate() throws Exception {
+        LoadBalanceAlgorithm loadBalanceAlgorithm = mock(LoadBalanceAlgorithm.class);
+        when(loadBalanceAlgorithm.choose(any(Iterable.class))).thenReturn(FOO_ENDPOINT);
+
+        ServiceFactory<Service> serviceFactory = mock(ServiceFactory.class);
+        when(serviceFactory.create(FOO_ENDPOINT)).thenReturn(FOO_SERVICE);
+        when(serviceFactory.getLoadBalanceAlgorithm(any(ServicePoolStatistics.class))).thenReturn(loadBalanceAlgorithm);
+
+        // Allow caching so idle stats can be nonzero.
+        ServiceCachingPolicy cachingPolicy = mock(ServiceCachingPolicy.class);
+        when(cachingPolicy.getCacheExhaustionAction()).thenReturn(ServiceCachingPolicy.ExhaustionAction.FAIL);
+        when(cachingPolicy.getMaxNumServiceInstances()).thenReturn(-1);
+        when(cachingPolicy.getMaxNumServiceInstancesPerEndPoint()).thenReturn(-1);
+        when(cachingPolicy.getMaxServiceInstanceIdleTime(any(TimeUnit.class))).thenReturn(0L);
+
+        ArgumentCaptor<ServicePoolStatistics> captor = ArgumentCaptor.forClass(ServicePoolStatistics.class);
+
+        final ServicePool<Service> pool = new ServicePool<Service>(Service.class, _ticker, _hostDiscovery,
+                serviceFactory, cachingPolicy, _healthCheckExecutor, true);
+
+        verify(serviceFactory).getLoadBalanceAlgorithm(captor.capture());
+        ServicePoolStatistics stats = captor.getValue();
+
+        // Stats should start at 0.
+        assertEquals(0, stats.getNumIdleCachedInstances(FOO_ENDPOINT));
+        assertEquals(0, stats.getNumActiveInstances(FOO_ENDPOINT));
+
+        // Start a service instance.
+        final CountDownLatch inCallable = new CountDownLatch(1);
+        final CountDownLatch mayContinue = new CountDownLatch(1);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Future<Void> serviceFuture = executor.submit(new Callable<Void>() {
+            @Override
+            public Void call()
+                    throws Exception {
+                pool.execute(NEVER_RETRY, new ServiceCallback<Service, Void>() {
+                    @Override
+                    public Void call(Service service)
+                            throws ServiceException {
+                        inCallable.countDown();
+                        try {
+                            mayContinue.await(1, TimeUnit.SECONDS);
+                        } catch (InterruptedException e) {
+                            fail();
+                        }
+                        return null;
+                    }
+                });
+                return null;
+            }
+        });
+
+        inCallable.await(1, TimeUnit.SECONDS);
+        assertEquals(1, stats.getNumActiveInstances(FOO_ENDPOINT));
+        assertEquals(0, stats.getNumIdleCachedInstances(FOO_ENDPOINT));
+
+        mayContinue.countDown();
+        serviceFuture.get(1, TimeUnit.SECONDS);
+        assertEquals(0, stats.getNumActiveInstances(FOO_ENDPOINT));
+        assertEquals(1, stats.getNumIdleCachedInstances(FOO_ENDPOINT));
+    }
+
+    @Test
     public void testCancelsPeriodicHealthCheckAfterClose() {
         // Future shouldn't be used until after we close...
         verifyZeroInteractions(_healthCheckScheduledFuture);
@@ -556,7 +633,8 @@ public class ServicePoolTest {
     @Test
     public void testDoesNotShutdownExecutorOnClose() {
         ServicePool<Service> pool = new ServicePool<Service>(Service.class, _ticker, _hostDiscovery, _serviceFactory,
-                ServiceCachingPolicyBuilder.NO_CACHING, _healthCheckExecutor, false);
+                ServiceCachingPolicyBuilder.NO_CACHING, _healthCheckExecutor, false
+        );
         pool.close();
 
         verify(_healthCheckExecutor, never()).shutdownNow();
@@ -565,7 +643,8 @@ public class ServicePoolTest {
     @Test
     public void testDoesShutdownExecutorOnClose() {
         ServicePool<Service> pool = new ServicePool<Service>(Service.class, _ticker, _hostDiscovery, _serviceFactory,
-                ServiceCachingPolicyBuilder.NO_CACHING, _healthCheckExecutor, true);
+                ServiceCachingPolicyBuilder.NO_CACHING, _healthCheckExecutor, true
+        );
         pool.close();
 
         verify(_healthCheckExecutor).shutdownNow();

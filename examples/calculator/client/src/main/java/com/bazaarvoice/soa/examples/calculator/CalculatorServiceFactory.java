@@ -3,6 +3,9 @@ package com.bazaarvoice.soa.examples.calculator;
 import com.bazaarvoice.soa.LoadBalanceAlgorithm;
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceFactory;
+import com.bazaarvoice.soa.ServicePoolStatistics;
+import com.bazaarvoice.soa.loadbalance.FirstEndPointAlgorithm;
+import com.bazaarvoice.soa.loadbalance.PreferCachedDelegatingAlgorithm;
 import com.bazaarvoice.soa.loadbalance.RandomAlgorithm;
 
 import java.util.Map;
@@ -16,7 +19,7 @@ public class CalculatorServiceFactory implements ServiceFactory<CalculatorServic
     }
 
     @Override
-    public LoadBalanceAlgorithm getLoadBalanceAlgorithm() {
+    public LoadBalanceAlgorithm getLoadBalanceAlgorithm(ServicePoolStatistics stats) {
         return new RandomAlgorithm();
     }
 

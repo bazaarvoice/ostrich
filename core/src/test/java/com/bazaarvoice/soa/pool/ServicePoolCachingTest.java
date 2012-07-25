@@ -6,6 +6,7 @@ import com.bazaarvoice.soa.RetryPolicy;
 import com.bazaarvoice.soa.ServiceCallback;
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceFactory;
+import com.bazaarvoice.soa.ServicePoolStatistics;
 import com.bazaarvoice.soa.exceptions.MaxRetriesException;
 import com.bazaarvoice.soa.exceptions.ServiceException;
 import com.google.common.base.Throwables;
@@ -86,7 +87,8 @@ public class ServicePoolCachingTest {
                 return mock(Service.class);
             }
         });
-        when(_serviceFactory.getLoadBalanceAlgorithm()).thenReturn(loadBalanceAlgorithm);
+        when(_serviceFactory.getLoadBalanceAlgorithm(any(ServicePoolStatistics.class)))
+                .thenReturn(loadBalanceAlgorithm);
 
         _healthCheckExecutor = mock(ScheduledExecutorService.class);
         when(_healthCheckExecutor.submit(any(Runnable.class))).then(new Answer<Future<?>>() {

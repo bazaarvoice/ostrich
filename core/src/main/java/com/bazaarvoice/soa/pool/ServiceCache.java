@@ -2,7 +2,6 @@ package com.bazaarvoice.soa.pool;
 
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceFactory;
-import com.bazaarvoice.soa.exceptions.InvalidEndPointCheckOutAttemptException;
 import com.bazaarvoice.soa.exceptions.NoCachedConnectionAvailableException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
@@ -125,11 +124,8 @@ class ServiceCache<S> implements Closeable {
      *
      * @param endPoint The end point to retrieve a cached service instance for.
      * @return A cached service instance for the requested end point.
-     * @throws NoCachedConnectionAvailableException
-     *          If the cache has reached total maximum capacity, or maximum capacity
-     *          for the requested end point, and no connections that aren't already checked out are available.
-     * @throws InvalidEndPointCheckOutAttemptException
-     *          the predicate
+     * @throws NoCachedConnectionAvailableException If the cache has reached total maximum capacity, or maximum capacity
+     *         for the requested end point, and no connections that aren't already checked out are available.
      */
     public S checkOut(ServiceEndPoint endPoint) {
         checkNotNull(endPoint);
@@ -176,6 +172,16 @@ class ServiceCache<S> implements Closeable {
             // Should never happen.
             throw Throwables.propagate(e);
         }
+    }
+
+    public int getNumIdleInstances(ServiceEndPoint endPoint) {
+        checkNotNull(endPoint);
+        return _pool.getNumIdle(endPoint);
+    }
+
+    public int getNumActiveInstances(ServiceEndPoint endPoint) {
+        checkNotNull(endPoint);
+        return _pool.getNumActive(endPoint);
     }
 
     @Override

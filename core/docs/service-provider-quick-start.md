@@ -101,7 +101,7 @@ public class CalculatorServiceFactory implements ServiceFactory<CalculatorServic
   }
 
   @Override
-  public LoadBalanceAlgorithm getLoadBalanceAlgorithm() {
+  public LoadBalanceAlgorithm getLoadBalanceAlgorithm(ServicePoolStatistics stats) {
     return new RandomAlgorithm();
   }
 
