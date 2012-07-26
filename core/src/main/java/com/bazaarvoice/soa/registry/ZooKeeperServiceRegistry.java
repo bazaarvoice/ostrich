@@ -31,7 +31,7 @@ public class ZooKeeperServiceRegistry implements ServiceRegistry
 {
     /** The root path in ZooKeeper for where service registrations are stored. */
     @VisibleForTesting
-    static final String ROOT_SERVICES_PATH = "services";
+    static final String ROOT_SERVICES_PATH = "ostrich";
 
     /** Maximum number of bytes that can be stored on a node in ZooKeeper. */
     @VisibleForTesting
