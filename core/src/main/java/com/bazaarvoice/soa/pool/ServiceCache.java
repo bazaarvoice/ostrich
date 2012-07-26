@@ -174,6 +174,16 @@ class ServiceCache<S> implements Closeable {
         }
     }
 
+    public int getNumIdleInstances(ServiceEndPoint endPoint) {
+        checkNotNull(endPoint);
+        return _pool.getNumIdle(endPoint);
+    }
+
+    public int getNumActiveInstances(ServiceEndPoint endPoint) {
+        checkNotNull(endPoint);
+        return _pool.getNumActive(endPoint);
+    }
+
     @Override
     public void close() {
         _isClosed = true;

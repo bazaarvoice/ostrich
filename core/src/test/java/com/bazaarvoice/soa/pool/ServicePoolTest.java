@@ -6,6 +6,7 @@ import com.bazaarvoice.soa.RetryPolicy;
 import com.bazaarvoice.soa.ServiceCallback;
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceFactory;
+import com.bazaarvoice.soa.ServicePoolStatistics;
 import com.bazaarvoice.soa.exceptions.MaxRetriesException;
 import com.bazaarvoice.soa.exceptions.NoAvailableHostsException;
 import com.bazaarvoice.soa.exceptions.NoSuitableHostsException;
@@ -58,6 +59,7 @@ public class ServicePoolTest {
     private static final Service BAR_SERVICE = mock(Service.class);
     private static final Service BAZ_SERVICE = mock(Service.class);
     private static final RetryPolicy NEVER_RETRY = mock(RetryPolicy.class);
+    private static final ServiceCachingPolicy UNLIMITED_CACHING = new ServiceCachingPolicyBuilder().build();
 
     private Ticker _ticker;
     private HostDiscovery _hostDiscovery;
@@ -66,6 +68,7 @@ public class ServicePoolTest {
     private ScheduledExecutorService _healthCheckExecutor;
     private ScheduledFuture<?> _healthCheckScheduledFuture;
     private ServicePool<Service> _pool;
+    private ServicePoolStatistics _servicePoolStatistics;
 
     @SuppressWarnings("unchecked")
     @Before
@@ -91,11 +94,15 @@ public class ServicePoolTest {
             }
         });
 
+        ArgumentCaptor<ServicePoolStatistics> statsCaptor = (ArgumentCaptor)
+                ArgumentCaptor.forClass(ServicePoolStatistics.class);
+
         _serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
         when(_serviceFactory.create(FOO_ENDPOINT)).thenReturn(FOO_SERVICE);
         when(_serviceFactory.create(BAR_ENDPOINT)).thenReturn(BAR_SERVICE);
         when(_serviceFactory.create(BAZ_ENDPOINT)).thenReturn(BAZ_SERVICE);
-        when(_serviceFactory.getLoadBalanceAlgorithm()).thenReturn(_loadBalanceAlgorithm);
+        when(_serviceFactory.getLoadBalanceAlgorithm(statsCaptor.capture()))
+                .thenReturn(_loadBalanceAlgorithm);
 
         _healthCheckExecutor = mock(ScheduledExecutorService.class);
         when(_healthCheckExecutor.submit(any(Runnable.class))).then(new Answer<Future<?>>() {
@@ -121,8 +128,10 @@ public class ServicePoolTest {
                 }
         );
 
-        _pool = new ServicePool<Service>(Service.class, _ticker, _hostDiscovery, _serviceFactory,
-                ServiceCachingPolicyBuilder.NO_CACHING, _healthCheckExecutor, true);
+        _pool = new ServicePool<Service>(Service.class, _ticker, _hostDiscovery, _serviceFactory, UNLIMITED_CACHING,
+                _healthCheckExecutor, true);
+
+        _servicePoolStatistics = statsCaptor.getValue();
     }
 
     @After
@@ -336,6 +345,82 @@ public class ServicePoolTest {
                 eq(com.bazaarvoice.soa.pool.ServicePool.HEALTH_CHECK_POLL_INTERVAL_IN_SECONDS),
                 eq(com.bazaarvoice.soa.pool.ServicePool.HEALTH_CHECK_POLL_INTERVAL_IN_SECONDS),
                 eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    public void testStatsNumActiveInstancesIncrementsDuringExecute() {
+        // Make sure we only get FOO_ENDPOINT.
+        reset(_loadBalanceAlgorithm);
+        when(_loadBalanceAlgorithm.choose(Matchers.<Iterable<ServiceEndPoint>>any())).thenReturn(FOO_ENDPOINT);
+
+        int numActiveInitially = _servicePoolStatistics.getNumActiveInstances(FOO_ENDPOINT);
+
+        int numActiveDuringExecute = _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Integer>() {
+            @Override
+            public Integer call(Service service) throws ServiceException {
+                return _servicePoolStatistics.getNumActiveInstances(FOO_ENDPOINT);
+            }
+        });
+
+        assertEquals(numActiveInitially + 1, numActiveDuringExecute);
+    }
+
+    @Test
+    public void testStatsNumActiveInstancesDecrementsAfterExecute() {
+        // Make sure we only get FOO_ENDPOINT.
+        reset(_loadBalanceAlgorithm);
+        when(_loadBalanceAlgorithm.choose(Matchers.<Iterable<ServiceEndPoint>>any())).thenReturn(FOO_ENDPOINT);
+
+        int numActiveDuringExecute = _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Integer>() {
+            @Override
+            public Integer call(Service service) throws ServiceException {
+                return _servicePoolStatistics.getNumActiveInstances(FOO_ENDPOINT);
+            }
+        });
+
+        int numActiveAfterExecute = _servicePoolStatistics.getNumActiveInstances(FOO_ENDPOINT);
+
+        assertEquals(numActiveDuringExecute - 1, numActiveAfterExecute);
+    }
+
+    @Test
+    public void testStatsNumIdleCachedInstancesIncrementsAfterExecute() {
+        // Make sure we only get FOO_ENDPOINT.
+        reset(_loadBalanceAlgorithm);
+        when(_loadBalanceAlgorithm.choose(Matchers.<Iterable<ServiceEndPoint>>any())).thenReturn(FOO_ENDPOINT);
+
+        int numIdleDuringExecute = _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Integer>() {
+            @Override
+            public Integer call(Service service) throws ServiceException {
+                return _servicePoolStatistics.getNumIdleCachedInstances(FOO_ENDPOINT);
+            }
+        });
+
+        int numIdleAfterExecute = _servicePoolStatistics.getNumIdleCachedInstances(FOO_ENDPOINT);
+
+        assertEquals(numIdleDuringExecute + 1, numIdleAfterExecute);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testStatsNumIdleCachedInstancesDecrementsDuringExecute() {
+        // Make sure we only get FOO_ENDPOINT.
+        reset(_loadBalanceAlgorithm);
+        when(_loadBalanceAlgorithm.choose(Matchers.<Iterable<ServiceEndPoint>>any())).thenReturn(FOO_ENDPOINT);
+
+        // Prime the cache.
+        _pool.execute(NEVER_RETRY, mock(ServiceCallback.class));
+
+        int numIdleInitially = _servicePoolStatistics.getNumIdleCachedInstances(FOO_ENDPOINT);
+
+        int numIdleDuringExecute = _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Integer>() {
+            @Override
+            public Integer call(Service service) throws ServiceException {
+                return _servicePoolStatistics.getNumIdleCachedInstances(FOO_ENDPOINT);
+            }
+        });
+
+        assertEquals(numIdleInitially - 1, numIdleDuringExecute);
     }
 
     @Test

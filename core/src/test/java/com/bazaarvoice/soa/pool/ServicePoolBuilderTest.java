@@ -5,6 +5,7 @@ import com.bazaarvoice.soa.HostDiscoverySource;
 import com.bazaarvoice.soa.LoadBalanceAlgorithm;
 import com.bazaarvoice.soa.RetryPolicy;
 import com.bazaarvoice.soa.ServiceFactory;
+import com.bazaarvoice.soa.ServicePoolStatistics;
 import com.bazaarvoice.soa.zookeeper.ZooKeeperConfiguration;
 import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
 import com.google.common.io.Closeables;
@@ -18,6 +19,7 @@ import java.util.concurrent.ScheduledExecutorService;
 
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -32,7 +34,8 @@ public class ServicePoolBuilderTest {
     @Before
     public void setup() {
         _serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
-        when(_serviceFactory.getLoadBalanceAlgorithm()).thenReturn(mock(LoadBalanceAlgorithm.class));
+        when(_serviceFactory.getLoadBalanceAlgorithm(any(ServicePoolStatistics.class)))
+                .thenReturn(mock(LoadBalanceAlgorithm.class));
         when(_serviceFactory.getServiceName()).thenReturn("serviceName");
 
         _cachingPolicy = mock(ServiceCachingPolicy.class);
@@ -88,7 +91,7 @@ public class ServicePoolBuilderTest {
 
     @Test(expected = NullPointerException.class)
     public void testBuildWithNullLoadBalanceAlgorithm() {
-        when(_serviceFactory.getLoadBalanceAlgorithm()).thenReturn(null);
+        when(_serviceFactory.getLoadBalanceAlgorithm(any(ServicePoolStatistics.class))).thenReturn(null);
 
         ServicePoolBuilder.create(Service.class)
                 .withServiceFactory(_serviceFactory)

@@ -5,6 +5,7 @@ import com.bazaarvoice.soa.LoadBalanceAlgorithm;
 import com.bazaarvoice.soa.RetryPolicy;
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceFactory;
+import com.bazaarvoice.soa.ServicePoolStatistics;
 import com.google.common.base.Ticker;
 import com.google.common.collect.ImmutableList;
 import org.junit.After;
@@ -49,7 +50,7 @@ public class ServicePoolProxyTest {
 
         ServiceFactory<Service> serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
         when(serviceFactory.create(FOO_ENDPOINT)).thenReturn(FOO_SERVICE);
-        when(serviceFactory.getLoadBalanceAlgorithm()).thenReturn(loadBalanceAlgorithm);
+        when(serviceFactory.getLoadBalanceAlgorithm(any(ServicePoolStatistics.class))).thenReturn(loadBalanceAlgorithm);
 
         _healthCheckExecutor = mock(ScheduledExecutorService.class);
         when(_healthCheckExecutor.scheduleAtFixedRate((Runnable) any(), anyLong(), anyLong(), (TimeUnit) any())).then(

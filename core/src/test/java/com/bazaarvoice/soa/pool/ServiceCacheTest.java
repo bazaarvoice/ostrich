@@ -259,6 +259,76 @@ public class ServiceCacheTest {
                 eq(TimeUnit.SECONDS));
     }
 
+    @Test(expected = NullPointerException.class)
+    public void testNumIdleNullEndPoint() {
+        ServiceCache<Service> cache = newCache();
+        cache.getNumIdleInstances(null);
+    }
+
+    @Test(expected = NullPointerException.class)
+    public void testNumActiveNullEndPoint() {
+        ServiceCache<Service> cache = newCache();
+        cache.getNumActiveInstances(null);
+    }
+
+    @Test
+    public void testNumIdleStartsAtZero() {
+        ServiceCache<Service> cache = newCache();
+
+        assertEquals(0, cache.getNumIdleInstances(END_POINT));
+    }
+
+    @Test
+    public void testNumActiveStartsAtZero() {
+        ServiceCache<Service> cache = newCache();
+
+        assertEquals(0, cache.getNumActiveInstances(END_POINT));
+    }
+
+    @Test
+    public void testNumActiveUpdatedOnCheckOut() {
+        ServiceCache<Service> cache = newCache();
+        cache.checkOut(END_POINT);
+
+        assertEquals(1, cache.getNumActiveInstances(END_POINT));
+    }
+
+    @Test
+    public void testNumIdleUpdatedOnCheckIn() {
+        ServiceCache<Service> cache = newCache();
+        cache.checkIn(END_POINT, cache.checkOut(END_POINT));
+
+        assertEquals(1, cache.getNumIdleInstances(END_POINT));
+    }
+
+    @Test
+    public void testActiveServiceNotCountedIdle() {
+        ServiceCache<Service> cache = newCache();
+        cache.checkOut(END_POINT);
+
+        assertEquals(0, cache.getNumIdleInstances(END_POINT));
+    }
+
+    @Test
+    public void testIdleServiceNotCountedActive() {
+        ServiceCache<Service> cache = newCache();
+        cache.checkIn(END_POINT, cache.checkOut(END_POINT));
+
+        assertEquals(0, cache.getNumActiveInstances(END_POINT));
+    }
+
+    @Test
+    public void testActiveCountAccurateWhenGrowing() {
+        when(_cachingPolicy.getMaxNumServiceInstancesPerEndPoint()).thenReturn(1);
+        when(_cachingPolicy.getCacheExhaustionAction()).thenReturn(ServiceCachingPolicy.ExhaustionAction.GROW);
+
+        ServiceCache<Service> cache = newCache();
+        cache.checkOut(END_POINT);
+        cache.checkOut(END_POINT);
+
+        assertEquals(2, cache.getNumActiveInstances(END_POINT));
+    }
+
     @SuppressWarnings("unchecked")
     @Test
     public void testCloseCancelsEvictionFuture() {

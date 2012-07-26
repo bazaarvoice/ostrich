@@ -6,6 +6,7 @@ import com.bazaarvoice.soa.RetryPolicy;
 import com.bazaarvoice.soa.ServiceCallback;
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceFactory;
+import com.bazaarvoice.soa.ServicePoolStatistics;
 import com.bazaarvoice.soa.exceptions.MaxRetriesException;
 import com.bazaarvoice.soa.exceptions.NoAvailableHostsException;
 import com.bazaarvoice.soa.exceptions.NoSuitableHostsException;
@@ -64,7 +65,6 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
         _serviceFactory = checkNotNull(serviceFactory);
         _healthCheckExecutor = checkNotNull(healthCheckExecutor);
         _shutdownHealthCheckExecutorOnClose = shutdownHealthCheckExecutorOnClose;
-        _loadBalanceAlgorithm = checkNotNull(_serviceFactory.getLoadBalanceAlgorithm());
         _badEndpoints = Sets.newSetFromMap(Maps.<ServiceEndPoint, Boolean>newConcurrentMap());
         _badEndpointFilter = Predicates.not(Predicates.in(_badEndpoints));
         _recentlyRemovedEndpoints = Sets.newSetFromMap(CacheBuilder.newBuilder()
@@ -72,7 +72,19 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
                 .expireAfterWrite(10, TimeUnit.MINUTES)  // TODO: Make this a constant
                 .<ServiceEndPoint, Boolean>build()
                 .asMap());
-        _serviceCache = new ServiceCache<S>(checkNotNull(cachingPolicy), serviceFactory);
+        checkNotNull(cachingPolicy);
+        _serviceCache = new ServiceCache<S>(cachingPolicy, serviceFactory);
+        _loadBalanceAlgorithm = checkNotNull(_serviceFactory.getLoadBalanceAlgorithm(new ServicePoolStatistics() {
+            @Override
+            public int getNumIdleCachedInstances(ServiceEndPoint endPoint) {
+                return _serviceCache.getNumIdleInstances(endPoint);
+            }
+
+            @Override
+            public int getNumActiveInstances(ServiceEndPoint endPoint) {
+                return _serviceCache.getNumActiveInstances(endPoint);
+            }
+        }));
 
         // Watch endpoints as they are removed from host discovery so that we can remove them from our set of bad
         // endpoints as well.  This will prevent the badEndpoints set from growing in an unbounded fashion.  There is a
