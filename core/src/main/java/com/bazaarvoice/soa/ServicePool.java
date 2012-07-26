@@ -42,23 +42,13 @@ public interface ServicePool<S> extends Closeable {
     <R> R execute(RetryPolicy retryPolicy, ServiceCallback<S, R> callback);
 
     /**
-     * Execute a request asynchronously against one of the remote services in this <code>ServicePool</code>.  A
-     * <code>ListenableFuture</code> is returned that will eventually contain the result of the operation.
-     *
-     * @param retryPolicy The retry policy for the operation.
-     * @param callback The user provided callback to invoke with a service endpoint.
-     * @param <R> The return type for the call.
-     */
-    <R> Future<R> executeAsync(RetryPolicy retryPolicy, ServiceCallback<S, R> callback);
-
-    /**
      * Returns a dynamic proxy that implements the service interface and implicitly wraps every call to a service
      * method with a call to the {@link #execute} method.  This is appropriate for stateless services where it's
      * sensible for the same retry policy to apply to every method.
-     * <p>
+     * <p/>
      * In contrast to proxies created with {@link com.bazaarvoice.soa.pool.ServicePoolBuilder#buildProxy(RetryPolicy)},
      * proxies returned by this method do not provide a {@code close} method that closes the service pool.
-     * <p>
+     * <p/>
      * Implementation restriction: dynamic proxies are only supported when the service interface {@code S} is an
      * interface.  They're not supported when {@code S} is a concrete class.
      *

@@ -20,6 +20,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.String.format;
 
 public class ServicePoolBuilder<S> {
+    private static final int DEFAULT_NUM_HEALTH_CHECK_THREADS = 1;
+
     private final Class<S> _serviceType;
     private final List<HostDiscoverySource> _hostDiscoverySources = Lists.newArrayList();
     private ServiceFactory<S> _serviceFactory;
@@ -137,6 +139,21 @@ public class ServicePoolBuilder<S> {
         return buildInternal();
     }
 
+    /**
+     * Builds a dynamic proxy that wraps a {@code ServicePool} and implements the service interface directly.  This is
+     * appropriate for stateless services where it's sensible for the same retry policy to apply to every method.
+     * <p/>
+     * It is the caller's responsibility to shutdown the service pool when they're done with it by casting the proxy
+     * to {@link java.io.Closeable} and calling the {@link java.io.Closeable#close()} method.
+     *
+     * @param retryPolicy The retry policy to apply for every service call.
+     * @return The dynamic proxy instance that implements the service interface {@code S} and the
+     *         {@link java.io.Closeable} interface.
+     */
+    public S buildProxy(RetryPolicy retryPolicy) {
+        return buildInternal().newProxy(retryPolicy, true);
+    }
+
     @VisibleForTesting
     ServicePool<S> buildInternal() {
         checkNotNull(_serviceFactory);
@@ -148,17 +165,17 @@ public class ServicePoolBuilder<S> {
             _cachingPolicy = ServiceCachingPolicyBuilder.NO_CACHING;
         }
 
-        boolean shutdownOnClose = (_healthCheckExecutor == null);
+        boolean shutdownHealthCheckExecutorOnClose = (_healthCheckExecutor == null);
         if (_healthCheckExecutor == null) {
-            ThreadFactory daemonThreadFactory = new ThreadFactoryBuilder()
-                    .setNameFormat(serviceName + "-HealthChecks-%d")
+            ThreadFactory threadFactory = new ThreadFactoryBuilder()
+                    .setNameFormat(serviceName + "-HealthCheckThread-%d")
                     .setDaemon(true)
                     .build();
-            _healthCheckExecutor = Executors.newScheduledThreadPool(1, daemonThreadFactory);
+            _healthCheckExecutor = Executors.newScheduledThreadPool(DEFAULT_NUM_HEALTH_CHECK_THREADS, threadFactory);
         }
 
-        return new ServicePool<S>(_serviceType, Ticker.systemTicker(), hostDiscovery, _serviceFactory, _cachingPolicy,
-                _healthCheckExecutor, shutdownOnClose);
+        return new ServicePool<S>(_serviceType, Ticker.systemTicker(), hostDiscovery, _serviceFactory,
+                _cachingPolicy, _healthCheckExecutor, shutdownHealthCheckExecutorOnClose);
     }
 
     private HostDiscovery findHostDiscovery(String serviceName) {
@@ -169,19 +186,5 @@ public class ServicePoolBuilder<S> {
             }
         }
         throw new IllegalStateException(format("No HostDiscovery found for service: %s", serviceName));
-    }
-
-    /**
-     * Builds a dynamic proxy that wraps a {@code ServicePool} and implements the service interface directly.  This is
-     * appropriate for stateless services where it's sensible for the same retry policy to apply to every method.
-     * <p>
-     * It is the caller's responsibility to shutdown the service pool when they're done with it by casting the proxy
-     * to {@link java.io.Closeable} and calling the {@link java.io.Closeable#close()} method.
-     * @param retryPolicy The retry policy to apply for every service call.
-     * @return The dynamic proxy instance that implements the service interface {@code S} and the
-     * {@link java.io.Closeable} interface.
-     */
-    public S buildProxy(RetryPolicy retryPolicy) {
-        return buildInternal().newProxy(retryPolicy, true);
     }
 }
