@@ -21,15 +21,15 @@ public class RandomAlgorithmTest {
 
     @Test
     public void testEmptyIterable() {
-        ServiceEndPoint endpoint = new RandomAlgorithm().choose(Collections.<ServiceEndPoint>emptyList());
-        assertNull(endpoint);
+        ServiceEndPoint endPoint = new RandomAlgorithm().choose(Collections.<ServiceEndPoint>emptyList());
+        assertNull(endPoint);
     }
 
     @Test
     public void testAllElementsCanBeSelected() {
         RandomAlgorithm algorithm = new RandomAlgorithm();
 
-        List<ServiceEndPoint> endpoints = Lists.newArrayList(
+        List<ServiceEndPoint> endPoints = Lists.newArrayList(
                 mock(ServiceEndPoint.class),
                 mock(ServiceEndPoint.class),
                 mock(ServiceEndPoint.class),
@@ -42,9 +42,9 @@ public class RandomAlgorithmTest {
         // For our purposes that's close enough to 100%.
         Set<ServiceEndPoint> seen = Sets.newIdentityHashSet();
         for (int i = 0; i < 1000; i++) {
-            seen.add(algorithm.choose(endpoints));
+            seen.add(algorithm.choose(endPoints));
         }
 
-        assertEquals(endpoints.size(), seen.size());
+        assertEquals(endPoints.size(), seen.size());
     }
 }

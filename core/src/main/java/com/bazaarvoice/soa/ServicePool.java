@@ -4,19 +4,19 @@ import java.io.Closeable;
 import java.util.concurrent.Future;
 
 /**
- * A <code>ServicePool</code> keeps track of service endpoints for a particular service.  Internally it
- * understands how requests should be load balanced across endpoints and takes a service owner's
- * <code>LoadBalanceAlgorithm</code> into account when deciding which endpoint to use.  In addition the
- * <code>ServicePool</code> is also able to monitor the health of a service endpoint if the service owner provides a
+ * A <code>ServicePool</code> keeps track of service end points for a particular service.  Internally it
+ * understands how requests should be load balanced across end points and takes a service owner's
+ * <code>LoadBalanceAlgorithm</code> into account when deciding which end point to use.  In addition the
+ * <code>ServicePool</code> is also able to monitor the health of a service end point if the service owner provides a
  * health check implementation.  It is able to use the health check information as a guide in selecting service
- * endpoints in order to avoid providing an unhealthy service endpoint to a user.
+ * end points in order to avoid providing an unhealthy service end point to a user.
  * <p/>
  * The <code>ServicePool</code> provides an automatically managed resource pool model to consumers.  A consumer
- * provides a callback to the <code>ServicePool</code>  to execute a piece of code against a service endpoint.  The
- * <code>ServicePool</code> will then select a suitable service endpoint to use and then invoke the user's callback
- * with a handle to the endpoint.  At that point the user can interact with the remote endpoint however it wants,
+ * provides a callback to the <code>ServicePool</code>  to execute a piece of code against a service end point.  The
+ * <code>ServicePool</code> will then select a suitable service end point to use and then invoke the user's callback
+ * with a handle to the end point.  At that point the user can interact with the remote end point however it wants,
  * calling any APIs necessary.  When the callback returns, the connection with the remote service is cleaned up.  If
- * during the execution of the callback a service related error occurs, the service endpoint will be marked as
+ * during the execution of the callback a service related error occurs, the service end point will be marked as
  * unhealthy, and the operation retried, as allowed by the <code>RetryPolicy</code> the user specifies.
  * <p/>
  * For example, assume that we have a mythical <code>CalculatorService</code> with <code>add</code>, <code>sub</code>,
@@ -29,14 +29,14 @@ import java.util.concurrent.Future;
  * });
  * </pre>
  *
- * @param <S> The service interface that this pool keeps track of endpoints for.
+ * @param <S> The service interface that this pool keeps track of end points for.
  */
 public interface ServicePool<S> extends Closeable {
     /**
      * Execute a request synchronously against one of the remote services in this <code>ServicePool</code>.
      *
      * @param retryPolicy The retry policy for the operation.
-     * @param callback The user provided callback to invoke with a service endpoint.
+     * @param callback The user provided callback to invoke with a service end point.
      * @param <R> The return type for the call.
      */
     <R> R execute(RetryPolicy retryPolicy, ServiceCallback<S, R> callback);

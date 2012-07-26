@@ -109,13 +109,15 @@ public class AsyncServicePoolTest {
     }
 
     private AsyncServicePool<Service> newAsyncPool(ExecutorService executor, boolean shutdownExecutorOnClose) {
-        AsyncServicePool<Service> pool = new AsyncServicePool<Service>(_mockPool, true, executor, shutdownExecutorOnClose);
+        AsyncServicePool<Service> pool =
+                new AsyncServicePool<Service>(_mockPool, true, executor, shutdownExecutorOnClose);
         _asyncServicePools.add(pool);
         return pool;
     }
 
     private AsyncServicePool<Service> newAsyncPool(ServicePool<Service> pool, boolean shutdownPoolOnClose) {
-        AsyncServicePool<Service> asyncPool = new AsyncServicePool<Service>(pool, shutdownPoolOnClose, _mockExecutor, true);
+        AsyncServicePool<Service> asyncPool =
+                new AsyncServicePool<Service>(pool, shutdownPoolOnClose, _mockExecutor, true);
         _asyncServicePools.add(asyncPool);
         return asyncPool;
     }

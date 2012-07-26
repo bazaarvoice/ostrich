@@ -9,8 +9,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class CalculatorClient implements CalculatorService {
     private final Http _service;
 
-    public CalculatorClient(ServiceEndPoint endpoint) {
-        Map<?,?> payload = JsonHelper.fromJson(endpoint.getPayload(), Map.class);
+    public CalculatorClient(ServiceEndPoint endPoint) {
+        Map<?,?> payload = JsonHelper.fromJson(endPoint.getPayload(), Map.class);
         _service = new Http((String) checkNotNull(payload.get("url")));
     }
 

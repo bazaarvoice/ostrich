@@ -120,7 +120,7 @@ public class ServiceCacheTest {
 
     @Test
     public void testInUseServiceInstanceNotReused() {
-        // Allow 2 instances per endpoint
+        // Allow 2 instances per end point
         when(_cachingPolicy.getMaxNumServiceInstancesPerEndPoint()).thenReturn(2);
 
         ServiceCache<Service> cache = newCache();

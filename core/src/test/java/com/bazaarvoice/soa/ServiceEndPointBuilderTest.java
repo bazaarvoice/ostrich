@@ -23,49 +23,49 @@ public class ServiceEndPointBuilderTest {
 
     @Test
     public void testServiceName() {
-        ServiceEndPoint endpoint = new ServiceEndPointBuilder()
+        ServiceEndPoint endPoint = new ServiceEndPointBuilder()
                 .withServiceName("service")
                 .withId("id")
                 .build();
-        assertEquals("service", endpoint.getServiceName());
+        assertEquals("service", endPoint.getServiceName());
     }
 
     @Test
     public void testId() {
-        ServiceEndPoint endpoint = new ServiceEndPointBuilder()
+        ServiceEndPoint endPoint = new ServiceEndPointBuilder()
                 .withServiceName("service")
                 .withId("id")
                 .build();
-        assertEquals("id", endpoint.getId());
+        assertEquals("id", endPoint.getId());
     }
 
     @Test
     public void testNoPayload() {
-        ServiceEndPoint endpoint = new ServiceEndPointBuilder()
+        ServiceEndPoint endPoint = new ServiceEndPointBuilder()
                 .withServiceName("service")
                 .withId("id")
                 .build();
-        assertNull(endpoint.getPayload());
+        assertNull(endPoint.getPayload());
     }
 
     @Test
     public void testEmptyPayload() {
-        ServiceEndPoint endpoint = new ServiceEndPointBuilder()
+        ServiceEndPoint endPoint = new ServiceEndPointBuilder()
                 .withServiceName("service")
                 .withId("id")
                 .withPayload("")
                 .build();
-        assertEquals("", endpoint.getPayload());
+        assertEquals("", endPoint.getPayload());
     }
 
     @Test
     public void testPayload() {
-        ServiceEndPoint endpoint = new ServiceEndPointBuilder()
+        ServiceEndPoint endPoint = new ServiceEndPointBuilder()
                 .withServiceName("service")
                 .withId("id")
                 .withPayload("payload")
                 .build();
-        assertEquals("payload", endpoint.getPayload());
+        assertEquals("payload", endPoint.getPayload());
     }
 
     @Test

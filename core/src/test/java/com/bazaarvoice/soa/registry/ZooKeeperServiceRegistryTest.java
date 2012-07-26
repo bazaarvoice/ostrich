@@ -106,7 +106,7 @@ public class ZooKeeperServiceRegistryTest extends ZooKeeperTest {
         CuratorFramework curator = newCurator();
 
         _registry.register(FOO);
-        String path = _registry.getRegisteredEndpointPath(FOO);
+        String path = _registry.getRegisteredEndPointPath(FOO);
 
         _registry.unregister(FOO);
         assertNodeDoesNotExist(path, curator);
@@ -122,7 +122,7 @@ public class ZooKeeperServiceRegistryTest extends ZooKeeperTest {
         CuratorFramework curator = newCurator();
 
         _registry.register(FOO);
-        String path = _registry.getRegisteredEndpointPath(FOO);
+        String path = _registry.getRegisteredEndPointPath(FOO);
 
         _registry.unregister(FOO);
         _registry.unregister(FOO);
@@ -134,7 +134,7 @@ public class ZooKeeperServiceRegistryTest extends ZooKeeperTest {
         CuratorFramework curator = newCurator();
 
         _registry.register(FOO);
-        String path = _registry.getRegisteredEndpointPath(FOO);
+        String path = _registry.getRegisteredEndPointPath(FOO);
 
         Trigger deletionTrigger = new Trigger();
         curator.checkExists().usingWatcher(deletionTrigger).forPath(path);
@@ -149,7 +149,7 @@ public class ZooKeeperServiceRegistryTest extends ZooKeeperTest {
         CuratorFramework curator = newCurator();
 
         _registry.register(FOO);
-        String path = _registry.getRegisteredEndpointPath(FOO);
+        String path = _registry.getRegisteredEndPointPath(FOO);
 
         Trigger deletionTrigger = new Trigger();
         curator.checkExists().usingWatcher(deletionTrigger).forPath(path);
@@ -168,7 +168,7 @@ public class ZooKeeperServiceRegistryTest extends ZooKeeperTest {
         CuratorFramework curator = newCurator();
 
         _registry.register(FOO);
-        String path = _registry.getRegisteredEndpointPath(FOO);
+        String path = _registry.getRegisteredEndPointPath(FOO);
 
         Trigger deletionTrigger = new Trigger();
         curator.checkExists().usingWatcher(deletionTrigger).forPath(path);
@@ -190,7 +190,7 @@ public class ZooKeeperServiceRegistryTest extends ZooKeeperTest {
         CuratorFramework curator = newCurator();
 
         _registry.register(FOO);
-        String path = _registry.getRegisteredEndpointPath(FOO);
+        String path = _registry.getRegisteredEndPointPath(FOO);
 
         // We should be able to disconnect multiple times and each time the registry should re-create the node.
         for (int i = 0; i < 5; i++) {
@@ -217,7 +217,7 @@ public class ZooKeeperServiceRegistryTest extends ZooKeeperTest {
         registry.register(FOO);
 
         // Use a non-namespaced curator to check that the path was created in the correct namespace
-        assertNotNull(newCurator().checkExists().forPath("/dc1" + registry.getRegisteredEndpointPath(FOO)));
+        assertNotNull(newCurator().checkExists().forPath("/dc1" + registry.getRegisteredEndPointPath(FOO)));
     }
 
     @Test
@@ -227,11 +227,11 @@ public class ZooKeeperServiceRegistryTest extends ZooKeeperTest {
         registry.register(FOO);
 
         // Use a non-namespaced curator to check that the path was created in the correct namespace
-        assertNotNull(newCurator().checkExists().forPath(registry.getRegisteredEndpointPath(FOO)));
+        assertNotNull(newCurator().checkExists().forPath(registry.getRegisteredEndPointPath(FOO)));
     }
 
-    private void assertRegistered(ServiceEndPoint endpoint, CuratorFramework curator) throws Exception {
-        String path = _registry.getRegisteredEndpointPath(endpoint);
+    private void assertRegistered(ServiceEndPoint endPoint, CuratorFramework curator) throws Exception {
+        String path = _registry.getRegisteredEndPointPath(endPoint);
         assertNotNull(curator.checkExists().forPath(path));
     }
 

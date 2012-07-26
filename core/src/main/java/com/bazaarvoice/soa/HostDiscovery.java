@@ -16,30 +16,30 @@ public interface HostDiscovery extends Closeable {
     Iterable<ServiceEndPoint> getHosts();
 
     /**
-     * Returns true if the specified endpoint is a member of the set returned by {@link #getHosts()}.
+     * Returns true if the specified end point is a member of the set returned by {@link #getHosts()}.
      *
-     * @param endpoint The endpoint to test.
-     * @return True if the specified endpoint is a member of the set returned by {@link #getHosts()}.
+     * @param endPoint The end point to test.
+     * @return True if the specified end point is a member of the set returned by {@link #getHosts()}.
      */
-    boolean contains(ServiceEndPoint endpoint);
+    boolean contains(ServiceEndPoint endPoint);
 
     /**
-     * Add an endpoint listener.
+     * Add an end point listener.
      *
-     * @param listener The endpoint listener to add.
+     * @param listener The end point listener to add.
      */
-    void addListener(EndpointListener listener);
+    void addListener(EndPointListener listener);
 
     /**
-     * Remove an endpoint listener.
+     * Remove an end point listener.
      *
-     * @param listener The endpoint listener to remove.
+     * @param listener The end point listener to remove.
      */
-    void removeListener(EndpointListener listener);
+    void removeListener(EndPointListener listener);
 
-    /** Listener interface that is notified when endpoints are added and removed. */
-    interface EndpointListener {
-        void onEndpointAdded(ServiceEndPoint endpoint);
-        void onEndpointRemoved(ServiceEndPoint endpoint);
+    /** Listener interface that is notified when end points are added and removed. */
+    interface EndPointListener {
+        void onEndPointAdded(ServiceEndPoint endPoint);
+        void onEndPointRemoved(ServiceEndPoint endPoint);
     }
 }

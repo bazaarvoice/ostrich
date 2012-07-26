@@ -22,13 +22,13 @@ public class CalculatorServiceFactory implements ServiceFactory<CalculatorServic
     }
 
     @Override
-    public CalculatorService create(ServiceEndPoint endpoint) {
-        return new CalculatorClient(endpoint);
+    public CalculatorService create(ServiceEndPoint endPoint) {
+        return new CalculatorClient(endPoint);
     }
 
     @Override
-    public boolean isHealthy(ServiceEndPoint endpoint) {
-        Map<?,?> payload = JsonHelper.fromJson(endpoint.getPayload(), Map.class);
+    public boolean isHealthy(ServiceEndPoint endPoint) {
+        Map<?,?> payload = JsonHelper.fromJson(endPoint.getPayload(), Map.class);
         Http http = new Http((String) checkNotNull(payload.get("adminUrl")));
 
         return http.HEAD("/healthcheck") == 200;

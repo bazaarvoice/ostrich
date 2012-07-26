@@ -24,16 +24,16 @@ public interface ServiceFactory<S> {
 
     /**
      * Create a service instance for a given end point.
-     * @param endpoint The end point the created instance should connect to.
+     * @param endPoint The end point the created instance should connect to.
      * @return A new service instance.
      */
-    S create(ServiceEndPoint endpoint);
+    S create(ServiceEndPoint endPoint);
 
     /**
      * Perform a health check on an end point. Typically done if a call to a service instance associated with the end
      * point fails, and the health of the end point needs to be ensured before making it available for use again.
-     * @param endpoint The end point the check the health of.
+     * @param endPoint The end point the check the health of.
      * @return {@code true} if the health check succeeded, {@code false} otherwise.
      */
-    boolean isHealthy(ServiceEndPoint endpoint);
+    boolean isHealthy(ServiceEndPoint endPoint);
 }

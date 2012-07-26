@@ -133,14 +133,14 @@ public class ServicePoolCachingTest {
         ServicePool<Service> pool = newPool(CACHE_ONE_INSTANCE_PER_ENDPOINT);
         Service service = pool.execute(NEVER_RETRY, IDENTITY_CALLBACK);
 
-        // Capture the endpoint listener that was registered with HostDiscovery
-        ArgumentCaptor<HostDiscovery.EndpointListener> listener = ArgumentCaptor.forClass(
-                HostDiscovery.EndpointListener.class);
+        // Capture the end point listener that was registered with HostDiscovery
+        ArgumentCaptor<HostDiscovery.EndPointListener> listener = ArgumentCaptor.forClass(
+                HostDiscovery.EndPointListener.class);
         verify(_hostDiscovery).addListener(listener.capture());
 
         // Remove the end point from host discovery then add it back
-        listener.getValue().onEndpointRemoved(FOO_ENDPOINT);
-        listener.getValue().onEndpointAdded(FOO_ENDPOINT);
+        listener.getValue().onEndPointRemoved(FOO_ENDPOINT);
+        listener.getValue().onEndPointAdded(FOO_ENDPOINT);
 
         assertNotSame(service, pool.execute(NEVER_RETRY, IDENTITY_CALLBACK));
     }
@@ -153,7 +153,7 @@ public class ServicePoolCachingTest {
         // Set it up so that when we health check FOO, that it becomes healthy.
         when(_serviceFactory.isHealthy(FOO_ENDPOINT)).thenReturn(true);
 
-        // Cause a service exception, the health check will happen inline and will mark the endpoint as valid again
+        // Cause a service exception, the health check will happen inline and will mark the end point as valid again
         try {
             pool.execute(NEVER_RETRY, new ServiceCallback<Service, Void>() {
                 @Override
@@ -284,14 +284,14 @@ public class ServicePoolCachingTest {
             assertTrue(callableStarted.await(10, TimeUnit.SECONDS));
 
 
-            // Capture the endpoint listener that was registered with HostDiscovery
-            ArgumentCaptor<HostDiscovery.EndpointListener> listener = ArgumentCaptor.forClass(
-                    HostDiscovery.EndpointListener.class);
+            // Capture the end point listener that was registered with HostDiscovery
+            ArgumentCaptor<HostDiscovery.EndPointListener> listener = ArgumentCaptor.forClass(
+                    HostDiscovery.EndPointListener.class);
             verify(_hostDiscovery).addListener(listener.capture());
 
             // Remove the end point from host discovery then add it back
-            listener.getValue().onEndpointRemoved(FOO_ENDPOINT);
-            listener.getValue().onEndpointAdded(FOO_ENDPOINT);
+            listener.getValue().onEndPointRemoved(FOO_ENDPOINT);
+            listener.getValue().onEndPointAdded(FOO_ENDPOINT);
 
             // Let the initial callback terminate...
             canReturn.countDown();

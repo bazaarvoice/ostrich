@@ -35,8 +35,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class ZooKeeperHostDiscovery implements HostDiscovery {
     private final CuratorFramework _curator;
-    private final Set<ServiceEndPoint> _endpoints;
-    private final Set<EndpointListener> _listeners;
+    private final Set<ServiceEndPoint> _endPoints;
+    private final Set<EndPointListener> _listeners;
     private final PathChildrenCache _pathCache;
 
     public ZooKeeperHostDiscovery(ZooKeeperConnection connection, String serviceName) {
@@ -57,20 +57,20 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
         String servicePath = ZooKeeperServiceRegistry.makeServicePath(serviceName);
 
         _curator = curator;
-        _endpoints = Sets.newSetFromMap(Maps.<ServiceEndPoint, Boolean>newConcurrentMap());
-        _listeners = Sets.newSetFromMap(Maps.<EndpointListener, Boolean>newConcurrentMap());
+        _endPoints = Sets.newSetFromMap(Maps.<ServiceEndPoint, Boolean>newConcurrentMap());
+        _listeners = Sets.newSetFromMap(Maps.<EndPointListener, Boolean>newConcurrentMap());
 
         _pathCache = new PathChildrenCache(_curator, servicePath, true, threadFactory);
         try {
             _pathCache.getListenable().addListener(new ServiceListener());
 
-            // This must be synchronized so async remove events aren't processed between start() and adding endpoints.
+            // This must be synchronized so async remove events aren't processed between start() and adding end points.
             // Use synchronous start(true) instead of asynchronous start(false) so we can tell when it's done and the
             // HostDiscovery set is usable.
             synchronized (this) {
                 _pathCache.start(true);
                 for (ChildData childData : _pathCache.getCurrentData()) {
-                    addEndpoint(toEndpoint(childData));
+                    addEndPoint(toEndPoint(childData));
                 }
             }
         } catch (Throwable t) {
@@ -81,21 +81,21 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
 
     @Override
     public Iterable<ServiceEndPoint> getHosts() {
-        return Iterables.unmodifiableIterable(_endpoints);
+        return Iterables.unmodifiableIterable(_endPoints);
     }
 
     @Override
-    public boolean contains(ServiceEndPoint endpoint) {
-        return _endpoints.contains(endpoint);
+    public boolean contains(ServiceEndPoint endPoint) {
+        return _endPoints.contains(endPoint);
     }
 
     @Override
-    public void addListener(EndpointListener listener) {
+    public void addListener(EndPointListener listener) {
         _listeners.add(listener);
     }
 
     @Override
-    public void removeListener(EndpointListener listener) {
+    public void removeListener(EndPointListener listener) {
         _listeners.remove(listener);
     }
 
@@ -103,7 +103,7 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
     public synchronized void close() throws IOException {
         _listeners.clear();
         _pathCache.close();
-        _endpoints.clear();
+        _endPoints.clear();
     }
 
     @VisibleForTesting
@@ -111,45 +111,45 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
         return _curator;
    }
 
-    private synchronized void addEndpoint(ServiceEndPoint endpoint) {
-        // synchronize the modification of _endpoints and firing of events so listeners always receive events in the
+    private synchronized void addEndPoint(ServiceEndPoint endPoint) {
+        // synchronize the modification of _endPoints and firing of events so listeners always receive events in the
         // order they occur.
-        if (_endpoints.add(endpoint)) {
-            fireAddEvent(endpoint);
+        if (_endPoints.add(endPoint)) {
+            fireAddEvent(endPoint);
         }
     }
 
-    private synchronized void removeEndpoint(ServiceEndPoint endpoint) {
-        // synchronize the modification of _endpoints and firing of events so listeners always receive events in the
+    private synchronized void removeEndPoint(ServiceEndPoint endPoint) {
+        // synchronize the modification of _endPoints and firing of events so listeners always receive events in the
         // order they occur.
-        if (_endpoints.remove(endpoint)) {
-            fireRemoveEvent(endpoint);
+        if (_endPoints.remove(endPoint)) {
+            fireRemoveEvent(endPoint);
         }
     }
 
-    private synchronized void clearEndpoints() {
-        // synchronize the modification of _endpoints and firing of events so listeners always receive events in the
+    private synchronized void clearEndPoints() {
+        // synchronize the modification of _endPoints and firing of events so listeners always receive events in the
         // order they occur.
-        Collection<ServiceEndPoint> endpoints = ImmutableList.copyOf(_endpoints);
-        _endpoints.clear();
-        for (ServiceEndPoint endpoint : endpoints) {
-            fireRemoveEvent(endpoint);
+        Collection<ServiceEndPoint> endPoints = ImmutableList.copyOf(_endPoints);
+        _endPoints.clear();
+        for (ServiceEndPoint endPoint : endPoints) {
+            fireRemoveEvent(endPoint);
         }
     }
 
-    private void fireAddEvent(ServiceEndPoint endpoint) {
-        for (EndpointListener listener : _listeners) {
-            listener.onEndpointAdded(endpoint);
+    private void fireAddEvent(ServiceEndPoint endPoint) {
+        for (EndPointListener listener : _listeners) {
+            listener.onEndPointAdded(endPoint);
         }
     }
 
-    private void fireRemoveEvent(ServiceEndPoint endpoint) {
-        for (EndpointListener listener : _listeners) {
-            listener.onEndpointRemoved(endpoint);
+    private void fireRemoveEvent(ServiceEndPoint endPoint) {
+        for (EndPointListener listener : _listeners) {
+            listener.onEndPointRemoved(endPoint);
         }
     }
 
-    private ServiceEndPoint toEndpoint(ChildData data) {
+    private ServiceEndPoint toEndPoint(ChildData data) {
         String json = new String(data.getData(), Charsets.UTF_8);
         return ServiceEndPointJsonCodec.fromJson(json);
     }
@@ -159,18 +159,18 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
         @Override
         public void childEvent(CuratorFramework client, PathChildrenCacheEvent event) throws Exception {
             if (event.getType() == PathChildrenCacheEvent.Type.RESET) {
-                clearEndpoints();
+                clearEndPoints();
                 return;
             }
 
-            ServiceEndPoint endpoint = toEndpoint(event.getData());
+            ServiceEndPoint endPoint = toEndPoint(event.getData());
             switch (event.getType()) {
                 case CHILD_ADDED:
-                    addEndpoint(endpoint);
+                    addEndPoint(endPoint);
                     break;
 
                 case CHILD_REMOVED:
-                    removeEndpoint(endpoint);
+                    removeEndPoint(endPoint);
                     break;
 
                 case CHILD_UPDATED:

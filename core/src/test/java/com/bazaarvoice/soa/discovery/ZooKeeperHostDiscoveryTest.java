@@ -103,7 +103,7 @@ public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
     }
 
     @Test
-    public void testAlreadyExistingEndpointsDoNotFireEvents() throws Exception {
+    public void testAlreadyExistingEndPointsDoNotFireEvents() throws Exception {
         _registry.register(FOO);
 
         HostDiscovery discovery = new ZooKeeperHostDiscovery(newCurator(), FOO.getServiceName());
@@ -117,7 +117,7 @@ public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
         _registry.unregister(FOO);
         assertTrue(waitUntilSize(discovery.getHosts(), 0));
 
-        assertEquals(0, eventCounter.getNumAdds());  // endpoints initially visible never fire add events
+        assertEquals(0, eventCounter.getNumAdds());  // endPoints initially visible never fire add events
     }
 
     @Test
@@ -147,7 +147,7 @@ public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
 
     @Test
     public void testRegisterServiceCallsListener() throws Exception {
-        EndpointTrigger trigger = new EndpointTrigger();
+        EndPointTrigger trigger = new EndPointTrigger();
         _discovery.addListener(trigger);
 
         _registry.register(FOO);
@@ -156,7 +156,7 @@ public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
 
     @Test
     public void testUnregisterServiceCallsListener() throws Exception {
-        EndpointTrigger trigger = new EndpointTrigger();
+        EndPointTrigger trigger = new EndPointTrigger();
         _discovery.addListener(trigger);
 
         _registry.register(FOO);
@@ -168,7 +168,7 @@ public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
 
     @Test
     public void testRemovedListenerDoesNotSeeEvents() throws Exception {
-        EndpointTrigger trigger = new EndpointTrigger();
+        EndPointTrigger trigger = new EndPointTrigger();
         _discovery.addListener(trigger);
 
         CountingListener eventCounter = new CountingListener();
@@ -186,7 +186,7 @@ public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
 
     @Test
     public void testListenerCalledWhenSessionKilled() throws Exception {
-        EndpointTrigger trigger = new EndpointTrigger();
+        EndPointTrigger trigger = new EndPointTrigger();
         _discovery.addListener(trigger);
 
         _registry.register(FOO);
@@ -200,13 +200,13 @@ public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
 
     @Test
     public void testListenerCalledWhenServiceIsReregisteredAfterSessionKilled() throws Exception {
-        EndpointTrigger initialTrigger = new EndpointTrigger();
+        EndPointTrigger initialTrigger = new EndPointTrigger();
         _discovery.addListener(initialTrigger);
 
         _registry.register(FOO);
         assertTrue(initialTrigger.addedWithin(10, TimeUnit.SECONDS));
 
-        EndpointTrigger trigger = new EndpointTrigger();
+        EndPointTrigger trigger = new EndPointTrigger();
         _discovery.addListener(trigger);
 
         killSession(_discovery.getCurator());
@@ -220,8 +220,8 @@ public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
 
     @Test
     public void testMultipleListeners() throws Exception {
-        EndpointTrigger trigger1 = new EndpointTrigger();
-        EndpointTrigger trigger2 = new EndpointTrigger();
+        EndPointTrigger trigger1 = new EndPointTrigger();
+        EndPointTrigger trigger2 = new EndPointTrigger();
         _discovery.addListener(trigger1);
         _discovery.addListener(trigger2);
 
@@ -266,18 +266,18 @@ public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
         return waitUntilSize(iterable, size, 10, TimeUnit.SECONDS);
     }
 
-    private static final class EndpointTrigger implements HostDiscovery.EndpointListener {
+    private static final class EndPointTrigger implements HostDiscovery.EndPointListener {
         private final Trigger _addTrigger = new Trigger();
         private final Trigger _removeTrigger = new Trigger();
 
         @Override
-        public void onEndpointAdded(ServiceEndPoint endpoint) {
-            _addTrigger.onEndpointAdded(endpoint);
+        public void onEndPointAdded(ServiceEndPoint endPoint) {
+            _addTrigger.onEndPointAdded(endPoint);
         }
 
         @Override
-        public void onEndpointRemoved(ServiceEndPoint endpoint) {
-            _removeTrigger.onEndpointRemoved(endpoint);
+        public void onEndPointRemoved(ServiceEndPoint endPoint) {
+            _removeTrigger.onEndPointRemoved(endPoint);
         }
 
         public boolean addedWithin(long duration, TimeUnit unit) throws InterruptedException {
@@ -289,17 +289,17 @@ public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
         }
     }
 
-    private static final class CountingListener implements HostDiscovery.EndpointListener {
+    private static final class CountingListener implements HostDiscovery.EndPointListener {
         private int _numAdds;
         private int _numRemoves;
 
         @Override
-        public void onEndpointAdded(ServiceEndPoint endpoint) {
+        public void onEndPointAdded(ServiceEndPoint endPoint) {
             _numAdds++;
         }
 
         @Override
-        public void onEndpointRemoved(ServiceEndPoint endpoint) {
+        public void onEndPointRemoved(ServiceEndPoint endPoint) {
             _numRemoves++;
         }
 

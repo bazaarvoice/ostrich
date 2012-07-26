@@ -33,12 +33,12 @@ public class FixedHostDiscovery implements HostDiscovery {
     }
 
     @Override
-    public void addListener(EndpointListener listener) {
+    public void addListener(EndPointListener listener) {
         // Nothing to do, end point collection never changes.
     }
 
     @Override
-    public void removeListener(EndpointListener listener) {
+    public void removeListener(EndPointListener listener) {
         // Nothing to do, end point collection never changes.
     }
 

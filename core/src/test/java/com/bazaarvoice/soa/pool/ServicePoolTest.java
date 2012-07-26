@@ -87,10 +87,10 @@ public class ServicePoolTest {
         when(_loadBalanceAlgorithm.choose(any(Iterable.class))).thenAnswer(new Answer<ServiceEndPoint>() {
             @Override
             public ServiceEndPoint answer(InvocationOnMock invocation) throws Throwable {
-                // Always choose the first endpoint.  This is probably fine since most tests will have just a single
-                // endpoint available anyways.
-                Iterable<ServiceEndPoint> endpoints = (Iterable<ServiceEndPoint>) invocation.getArguments()[0];
-                return endpoints.iterator().next();
+                // Always choose the first end point.  This is probably fine since most tests will have just a single
+                // end point available anyways.
+                Iterable<ServiceEndPoint> endPoints = (Iterable<ServiceEndPoint>) invocation.getArguments()[0];
+                return endPoints.iterator().next();
             }
         });
 
@@ -146,7 +146,7 @@ public class ServicePoolTest {
         // Wire our expected service into the system
         when(_serviceFactory.create(FOO_ENDPOINT)).thenReturn(expectedService);
 
-        // Don't leak service endpoints in real code!!!  This is just a test case.
+        // Don't leak service end points in real code!!!  This is just a test case.
         Service actualService = _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Service>() {
             @Override
             public Service call(Service s) {
@@ -158,17 +158,17 @@ public class ServicePoolTest {
     }
 
     @Test(expected = NoAvailableHostsException.class)
-    public void testThrowsNoAvailableHostsExceptionWhenNoEndpointsAvailable() {
-        // Host discovery sees no endpoints...
+    public void testThrowsNoAvailableHostsExceptionWhenNoEndPointsAvailable() {
+        // Host discovery sees no end points...
         when(_hostDiscovery.getHosts()).thenReturn(ImmutableList.<ServiceEndPoint>of());
         _pool.execute(NEVER_RETRY, null);
     }
 
     @Test(expected = OnlyBadHostsException.class)
-    public void testThrowsOnlyBadHostsExceptionWhenOnlyBadEndpointsAvailable() {
-        // Exhaust all of the endpoints...
-        int numEndpointsAvailable = Iterables.size(_hostDiscovery.getHosts());
-        for (int i = 0; i < numEndpointsAvailable; i++) {
+    public void testThrowsOnlyBadHostsExceptionWhenOnlyBadEndPointsAvailable() {
+        // Exhaust all of the end points...
+        int numEndPointsAvailable = Iterables.size(_hostDiscovery.getHosts());
+        for (int i = 0; i < numEndPointsAvailable; i++) {
             try {
                 _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Void>() {
                     @Override
@@ -182,7 +182,7 @@ public class ServicePoolTest {
             }
         }
 
-        // This should trigger a service exception because there are no more available endpoints.
+        // This should trigger a service exception because there are no more available end points.
         _pool.execute(NEVER_RETRY, null);
     }
 
@@ -275,11 +275,11 @@ public class ServicePoolTest {
     }
 
     @Test
-    public void testRetriesWithDifferentServiceEndpoints() {
+    public void testRetriesWithDifferentServiceEndPoints() {
         RetryPolicy retry = mock(RetryPolicy.class);
         when(retry.allowRetry(anyInt(), anyLong())).thenReturn(true, true, false);
 
-        // Each endpoint has a specific service that it's supposed to return.  Remember each service we've seen so
+        // Each end point has a specific service that it's supposed to return.  Remember each service we've seen so
         // that we can make sure we saw the correct ones.
         final Set<Service> seenServices = Sets.newHashSet();
 
@@ -481,14 +481,14 @@ public class ServicePoolTest {
     }
 
     @Test
-    public void testAllowsEndpointToBeUsedAgainAfterSuccessfulHealthCheck() {
+    public void testAllowsEndPointToBeUsedAgainAfterSuccessfulHealthCheck() {
         // Only allow BAZ to have a valid health check -- we know based on the load balance strategy that this
-        // will be the last failed endpoint
+        // will be the last failed end point
         when(_serviceFactory.isHealthy(eq(BAZ_ENDPOINT))).thenReturn(true);
 
-        // Exhaust all of the endpoints...
-        int numEndpointsAvailable = Iterables.size(_hostDiscovery.getHosts());
-        for (int i = 0; i < numEndpointsAvailable; i++) {
+        // Exhaust all of the end points...
+        int numEndPointsAvailable = Iterables.size(_hostDiscovery.getHosts());
+        for (int i = 0; i < numEndPointsAvailable; i++) {
             try {
                 _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Void>() {
                     @Override
@@ -513,10 +513,10 @@ public class ServicePoolTest {
     }
 
     @Test
-    public void testBatchHealthCheckAllowsEndpointToBeUsedAgainAfterSuccessfulHealthCheck() {
-        // Exhaust all of the endpoints...
-        int numEndpointsAvailable = Iterables.size(_hostDiscovery.getHosts());
-        for (int i = 0; i < numEndpointsAvailable; i++) {
+    public void testBatchHealthCheckAllowsEndPointToBeUsedAgainAfterSuccessfulHealthCheck() {
+        // Exhaust all of the end points...
+        int numEndPointsAvailable = Iterables.size(_hostDiscovery.getHosts());
+        for (int i = 0; i < numEndPointsAvailable; i++) {
             try {
                 _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Void>() {
                     @Override
@@ -552,8 +552,8 @@ public class ServicePoolTest {
 
     @SuppressWarnings("unchecked")
     @Test
-    public void testBadEndpointIsNoLongerHealthCheckedAfterHostDiscoveryRemovesIt() {
-        // Redefine the endpoints that HostDiscovery knows about to be only FOO
+    public void testBadEndPointIsNoLongerHealthCheckedAfterHostDiscoveryRemovesIt() {
+        // Redefine the end points that HostDiscovery knows about to be only FOO
         when(_hostDiscovery.getHosts()).thenReturn(ImmutableList.of(FOO_ENDPOINT));
 
         // Make it so that FOO is considered bad...
@@ -574,13 +574,13 @@ public class ServicePoolTest {
         // it's not going to be good for much, but the rest of this test fortunately doesn't interact with it.
         reset(_serviceFactory);
 
-        // Capture the endpoint listener that was registered with HostDiscovery
-        ArgumentCaptor<HostDiscovery.EndpointListener> listener = ArgumentCaptor.forClass(
-                HostDiscovery.EndpointListener.class);
+        // Capture the end point listener that was registered with HostDiscovery
+        ArgumentCaptor<HostDiscovery.EndPointListener> listener = ArgumentCaptor.forClass(
+                HostDiscovery.EndPointListener.class);
         verify(_hostDiscovery).addListener(listener.capture());
 
         // Now, have HostDiscovery fire an event saying that FOO has been removed
-        listener.getValue().onEndpointRemoved(FOO_ENDPOINT);
+        listener.getValue().onEndPointRemoved(FOO_ENDPOINT);
 
         // Capture the BatchHealthChecks runnable that was registered with the executor so that we can execute it.
         ArgumentCaptor<Runnable> check = ArgumentCaptor.forClass(Runnable.class);
@@ -593,13 +593,13 @@ public class ServicePoolTest {
     }
 
     @Test
-    public void testBadEndpointDisappearingFromHostDiscoveryDuringCallback() {
-        // Redefine the endpoints that HostDiscovery knows about to be only FOO
+    public void testBadEndPointDisappearingFromHostDiscoveryDuringCallback() {
+        // Redefine the end points that HostDiscovery knows about to be only FOO
         when(_hostDiscovery.getHosts()).thenReturn(ImmutableList.of(FOO_ENDPOINT));
 
-        // Capture the endpoint listener that was registered with HostDiscovery
-        final ArgumentCaptor<HostDiscovery.EndpointListener> listener = ArgumentCaptor.forClass(
-                HostDiscovery.EndpointListener.class);
+        // Capture the end point listener that was registered with HostDiscovery
+        final ArgumentCaptor<HostDiscovery.EndPointListener> listener = ArgumentCaptor.forClass(
+                HostDiscovery.EndPointListener.class);
         verify(_hostDiscovery).addListener(listener.capture());
 
         try {
@@ -607,9 +607,9 @@ public class ServicePoolTest {
                 @Override
                 public Void call(Service service) throws ServiceException {
                     // Have HostDiscovery tell the ServicePool that FOO is gone.
-                    listener.getValue().onEndpointRemoved(FOO_ENDPOINT);
+                    listener.getValue().onEndPointRemoved(FOO_ENDPOINT);
 
-                    // Now fail this request, this shouldn't result with any bad endpoints
+                    // Now fail this request, this shouldn't result with any bad end points
                     throw new ServiceException();
                 }
             });
@@ -618,8 +618,8 @@ public class ServicePoolTest {
             // Expected
         }
 
-        // At this point the bad endpoints list should be empty
-        assertTrue(_pool.getBadEndpoints().isEmpty());
+        // At this point the bad end points list should be empty
+        assertTrue(_pool.getBadEndPoints().isEmpty());
     }
 
     @Test
@@ -678,7 +678,7 @@ public class ServicePoolTest {
             }
         });
 
-        // Redefine the endpoints that HostDiscovery knows about to be only FOO
+        // Redefine the end points that HostDiscovery knows about to be only FOO
         when(_hostDiscovery.getHosts()).thenReturn(ImmutableList.of(FOO_ENDPOINT));
 
         ServicePool<Service> pool = new ServicePool<Service>(Service.class, _ticker, _hostDiscovery, _serviceFactory,

@@ -86,7 +86,7 @@ class ServiceCache<S> implements Closeable {
                 break;
         }
 
-        // Per endpoint configuration
+        // Per end point configuration
         poolConfig.maxActive = policy.getMaxNumServiceInstancesPerEndPoint();
         poolConfig.maxIdle = policy.getMaxNumServiceInstancesPerEndPoint();
 
@@ -118,7 +118,7 @@ class ServiceCache<S> implements Closeable {
     }
 
     /**
-     * Retrieves a cached service instance for an endpoint that is not currently checked out.  If no idle cached
+     * Retrieves a cached service instance for an end point that is not currently checked out.  If no idle cached
      * instance is available and the cache is not full, a new one will be created, added to the cache, and then checked
      * out.  Once the checked out instance is no longer in use, it should be returned by calling {@link #checkIn}.
      *
@@ -148,7 +148,7 @@ class ServiceCache<S> implements Closeable {
     }
 
     /**
-     * Returns a service instance for an endpoint to the cache so that it may be used by other users.
+     * Returns a service instance for an end point to the cache so that it may be used by other users.
      *
      * @param endPoint The end point that the service instance belongs to.
      * @param service  The service instance to return to the pool.

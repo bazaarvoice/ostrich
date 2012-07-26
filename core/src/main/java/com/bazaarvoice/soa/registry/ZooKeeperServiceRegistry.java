@@ -60,14 +60,14 @@ public class ZooKeeperServiceRegistry implements ServiceRegistry
 
     /** {@inheritDoc} */
     @Override
-    public void register(ServiceEndPoint endpoint) {
-        register(endpoint, true);
+    public void register(ServiceEndPoint endPoint) {
+        register(endPoint, true);
     }
 
     @VisibleForTesting
-    void register(ServiceEndPoint endpoint, boolean includeRegistrationTime) {
+    void register(ServiceEndPoint endPoint, boolean includeRegistrationTime) {
         checkState(!_closed);
-        checkNotNull(endpoint);
+        checkNotNull(endPoint);
 
         Map<String, Object> registrationData = Maps.newHashMap();
         if (includeRegistrationTime) {
@@ -75,20 +75,20 @@ public class ZooKeeperServiceRegistry implements ServiceRegistry
             registrationData.put("registration-time", ISO8601.print(now));
         }
 
-        byte[] data = ServiceEndPointJsonCodec.toJson(endpoint, registrationData).getBytes(Charsets.UTF_8);
-        checkState(data.length < MAX_DATA_SIZE, "Serialized form of ServiceEndpoint must be < 1MB.");
+        byte[] data = ServiceEndPointJsonCodec.toJson(endPoint, registrationData).getBytes(Charsets.UTF_8);
+        checkState(data.length < MAX_DATA_SIZE, "Serialized form of ServiceEndPoint must be < 1MB.");
 
-        String path = makeEndpointPath(endpoint);
+        String path = makeEndPointPath(endPoint);
         _nodes.put(path, new ZooKeeperPersistentEphemeralNode(_curator, path, data, CreateMode.EPHEMERAL));
     }
 
     /** {@inheritDoc} */
     @Override
-    public void unregister(ServiceEndPoint endpoint) {
+    public void unregister(ServiceEndPoint endPoint) {
         checkState(!_closed);
-        checkNotNull(endpoint);
+        checkNotNull(endPoint);
 
-        String path = makeEndpointPath(endpoint);
+        String path = makeEndPointPath(endPoint);
         ZooKeeperPersistentEphemeralNode node = _nodes.remove(path);
         if (node != null) {
             node.close(10, TimeUnit.SECONDS);
@@ -109,15 +109,15 @@ public class ZooKeeperServiceRegistry implements ServiceRegistry
         _nodes.clear();
     }
 
-    /** Return the curator instance used by this registry. */
+    /** @return The curator instance used by this registry. */
     @VisibleForTesting
     CuratorFramework getCurator() {
         return _curator;
     }
 
     @VisibleForTesting
-    String getRegisteredEndpointPath(ServiceEndPoint endpoint) {
-        String path = makeEndpointPath(endpoint);
+    String getRegisteredEndPointPath(ServiceEndPoint endPoint) {
+        String path = makeEndPointPath(endPoint);
         ZooKeeperPersistentEphemeralNode node = _nodes.get(path);
         return (node != null) ? node.getActualPath() : null;
     }
@@ -134,13 +134,13 @@ public class ZooKeeperServiceRegistry implements ServiceRegistry
     }
 
     /**
-     * Convert a <code>ServiceEndpoint</code> into the path in ZooKeeper where it will be registered.
-     * @param endpoint The service endpoint to get the ZooKeeper path for.
+     * Convert a <code>ServiceEndPoint</code> into the path in ZooKeeper where it will be registered.
+     * @param endPoint The service end point to get the ZooKeeper path for.
      * @return The ZooKeeper path.
      */
-    private static String makeEndpointPath(ServiceEndPoint endpoint) {
-        String servicePath = makeServicePath(endpoint.getServiceName());
-        String id = endpoint.getId();
+    private static String makeEndPointPath(ServiceEndPoint endPoint) {
+        String servicePath = makeServicePath(endPoint.getServiceName());
+        String id = endPoint.getId();
         return ZKPaths.makePath(servicePath, id);
     }
 }

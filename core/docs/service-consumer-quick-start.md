@@ -32,7 +32,7 @@ The cache configuration options are:
 * maxServiceInstancesPerEndPoint - The maximum number of cached service instances for a single end point.
 * maxServiceInstanceIdleTime - The amount of time a cached connection must be unused before it can be evicted.
 
-Here's an example of creating a caching policy of size 100, 10 max per endpoint, and 10 minutes idle before potential
+Here's an example of creating a caching policy of size 100, 10 max per end point, and 10 minutes idle before potential
 eviction:
 
 ```java
@@ -50,7 +50,7 @@ of a particular service from it to work with.  Internally it uses a host discove
 that provide the desired service interface are up and currently available.  As instances disappear or reappear they will
 automatically be managed by the service pool.  If an operation that uses a remote server fails, the service pool can
 (at your discretion) automatically retry the operation on a different server.  Additionally when an operation fails the
-service pool will remember the endpoint behind the server that failed and in the background will monitor the server's
+service pool will remember the end point behind the server that failed and in the background will monitor the server's
 health.  Ostrich will stop sending requests to the server until it declares itself as healthy again.
 
 Here's an example of creating a service pool for the hypothetical `CalculatorService` created in the [service provider

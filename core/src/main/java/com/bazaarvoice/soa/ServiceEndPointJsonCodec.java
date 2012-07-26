@@ -8,16 +8,16 @@ import java.util.Map;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public final class ServiceEndPointJsonCodec {
-    public static String toJson(ServiceEndPoint endpoint, Map<String, Object> extras) {
+    public static String toJson(ServiceEndPoint endPoint, Map<String, Object> extras) {
         Map<String, Object> data = Maps.newLinkedHashMap(extras);
-        data.put("name", endpoint.getServiceName());
-        data.put("id", endpoint.getId());
-        data.put("payload", endpoint.getPayload());
+        data.put("name", endPoint.getServiceName());
+        data.put("id", endPoint.getId());
+        data.put("payload", endPoint.getPayload());
         return JsonHelper.toJson(data);
     }
 
-    public static String toJson(ServiceEndPoint endpoint) {
-        return toJson(endpoint, Collections.<String, Object>emptyMap());
+    public static String toJson(ServiceEndPoint endPoint) {
+        return toJson(endPoint, Collections.<String, Object>emptyMap());
     }
 
     public static ServiceEndPoint fromJson(String json) {

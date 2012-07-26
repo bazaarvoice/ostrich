@@ -7,7 +7,7 @@ import java.util.concurrent.Future;
  * An asynchronous service pool.  This mimics the behavior of a {@link ServicePool}, but instead of executing its
  * callbacks synchronously, it will run them in the background.
  *
- * @param <S> The service interface that this pool keeps track of endpoints for.
+ * @param <S> The service interface that this pool keeps track of end points for.
  */
 public interface AsyncServicePool<S> extends Closeable {
     /**
@@ -15,7 +15,7 @@ public interface AsyncServicePool<S> extends Closeable {
      * a future representing the asynchronous call.
      *
      * @param retryPolicy The retry policy for the operation.
-     * @param callback The user provided callback to invoke with a service endpoint.
+     * @param callback The user provided callback to invoke with a service end point.
      * @param <R> The return type for the call.
      */
     <R> Future<R> execute(RetryPolicy retryPolicy, ServiceCallback<S, R> callback);

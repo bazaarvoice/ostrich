@@ -8,63 +8,63 @@ import static org.junit.Assert.assertFalse;
 public class ServiceEndPointTest {
     @Test
     public void testEqualsSame() {
-        ServiceEndPoint endpoint = endpoint("Foo", "server:80");
-        assertEquals(endpoint, endpoint);
+        ServiceEndPoint endPoint = endPoint("Foo", "server:80");
+        assertEquals(endPoint, endPoint);
     }
 
     @Test
     public void testEqualsEquivalent() {
-        ServiceEndPoint endpoint1 = endpoint("Foo", "server:80");
-        ServiceEndPoint endpoint2 = endpoint("Foo", "server:80");
-        assertEquals(endpoint1, endpoint2);
+        ServiceEndPoint endPoint1 = endPoint("Foo", "server:80");
+        ServiceEndPoint endPoint2 = endPoint("Foo", "server:80");
+        assertEquals(endPoint1, endPoint2);
     }
 
     @Test
     public void testEqualsNull() {
-        ServiceEndPoint endpoint = endpoint("Foo", "server:80");
-        assertNotEquals(endpoint, null);
+        ServiceEndPoint endPoint = endPoint("Foo", "server:80");
+        assertNotEquals(endPoint, null);
     }
 
     @Test
     public void testEqualsServiceName() {
-        ServiceEndPoint endpoint1 = endpoint("Foo", "server:80");
-        ServiceEndPoint endpoint2 = endpoint("Bar", "server:80");
-        assertNotEquals(endpoint1, endpoint2);
+        ServiceEndPoint endPoint1 = endPoint("Foo", "server:80");
+        ServiceEndPoint endPoint2 = endPoint("Bar", "server:80");
+        assertNotEquals(endPoint1, endPoint2);
     }
 
     @Test
     public void testEqualsId() {
-        ServiceEndPoint endpoint1 = endpoint("Foo", "server:80");
-        ServiceEndPoint endpoint2 = endpoint("Foo", "server:81");
-        assertNotEquals(endpoint1, endpoint2);
+        ServiceEndPoint endPoint1 = endPoint("Foo", "server:80");
+        ServiceEndPoint endPoint2 = endPoint("Foo", "server:81");
+        assertNotEquals(endPoint1, endPoint2);
     }
 
     @Test
     public void testEqualsEmptyPayload() {
-        ServiceEndPoint endpoint1 = endpoint("Foo", "server:80");
-        ServiceEndPoint endpoint2 = endpoint("Foo", "server:80", "");
-        assertNotEquals(endpoint1, endpoint2);
+        ServiceEndPoint endPoint1 = endPoint("Foo", "server:80");
+        ServiceEndPoint endPoint2 = endPoint("Foo", "server:80", "");
+        assertNotEquals(endPoint1, endPoint2);
     }
 
     @Test
     public void testEqualsNonEmptyPayload() {
-        ServiceEndPoint endpoint1 = endpoint("Foo", "server:80");
-        ServiceEndPoint endpoint2 = endpoint("Foo", "server:80", "payload");
-        assertNotEquals(endpoint1, endpoint2);
+        ServiceEndPoint endPoint1 = endPoint("Foo", "server:80");
+        ServiceEndPoint endPoint2 = endPoint("Foo", "server:80", "payload");
+        assertNotEquals(endPoint1, endPoint2);
     }
 
     @Test
     public void testHashCodeEquals() {
-        ServiceEndPoint endpoint1 = endpoint("Foo", "server:80");
-        ServiceEndPoint endpoint2 = endpoint("Foo", "server:80");
-        assertEquals(endpoint1.hashCode(), endpoint2.hashCode());
+        ServiceEndPoint endPoint1 = endPoint("Foo", "server:80");
+        ServiceEndPoint endPoint2 = endPoint("Foo", "server:80");
+        assertEquals(endPoint1.hashCode(), endPoint2.hashCode());
     }
 
-    private ServiceEndPoint endpoint(String serviceName, String id) {
-        return endpoint(serviceName, id, null);
+    private ServiceEndPoint endPoint(String serviceName, String id) {
+        return endPoint(serviceName, id, null);
     }
 
-    private ServiceEndPoint endpoint(String serviceName, String id, String payload) {
+    private ServiceEndPoint endPoint(String serviceName, String id, String payload) {
         return new ServiceEndPointBuilder()
                 .withServiceName(serviceName)
                 .withId(id)

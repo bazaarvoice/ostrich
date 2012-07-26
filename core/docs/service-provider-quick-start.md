@@ -27,14 +27,14 @@ Map<String, Object> payload = ImmutableMap.builder()
   .put("base-url", new URL("http", localhost.getHostAddress(), port, "/calculator"))
   .put("health-url", new URL("http", localhost.getHostAddress(), healthPort, "/healthcheck"))
   .build();
-ServiceEndPoint endpoint = new ServiceEndPointBuilder()
+ServiceEndPoint endPoint = new ServiceEndPointBuilder()
   .withServiceName("calculator")
   .withId(localhost.getHostName() + ":" + port)
   .withPayload(toJSON(payload))
   .build();
 
 ServiceRegistry registry = ...;
-registry.register(endpoint);
+registry.register(endPoint);
 ```
 
 #### 2. Create a service interface
@@ -94,8 +94,8 @@ Ostrich information about how requests to your service should be load balanced a
 ```java
 public class CalculatorServiceFactory implements ServiceFactory<CalculatorService> {
   @Override
-  public CalculatorService create(ServiceEndPoint endpoint) {
-    Map<String, Object> payload = fromJSON(endpoint.getPayload());
+  public CalculatorService create(ServiceEndPoint endPoint) {
+    Map<String, Object> payload = fromJSON(endPoint.getPayload());
     String baseUrl = (String) payload.get("base-url");
     return new CalculatorClient(baseUrl);
   }
@@ -106,8 +106,8 @@ public class CalculatorServiceFactory implements ServiceFactory<CalculatorServic
   }
 
   @Override
-  public boolean isHealthy(ServiceEndPoint endpoint) {
-    Map<String, Object> payload = fromJSON(endpoint.getPayload());
+  public boolean isHealthy(ServiceEndPoint endPoint) {
+    Map<String, Object> payload = fromJSON(endPoint.getPayload());
     String adminUrl = (String) payload.get("health-url");
     return new Http().HEAD(adminUrl) == 200;
   }

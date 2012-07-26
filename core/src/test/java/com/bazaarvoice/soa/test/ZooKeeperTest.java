@@ -87,7 +87,7 @@ public abstract class ZooKeeperTest {
         KillSession.kill(curator.getZookeeperClient().getZooKeeper(), _zooKeeperServer.getConnectString());
     }
 
-    protected static class Trigger implements Watcher, HostDiscovery.EndpointListener {
+    protected static class Trigger implements Watcher, HostDiscovery.EndPointListener {
         private final CountDownLatch _latch;
 
         public Trigger() {
@@ -100,12 +100,12 @@ public abstract class ZooKeeperTest {
         }
 
         @Override
-        public void onEndpointAdded(ServiceEndPoint endpoint) {
+        public void onEndPointAdded(ServiceEndPoint endPoint) {
             _latch.countDown();
         }
 
         @Override
-        public void onEndpointRemoved(ServiceEndPoint endpoint) {
+        public void onEndPointRemoved(ServiceEndPoint endPoint) {
             _latch.countDown();
         }
 

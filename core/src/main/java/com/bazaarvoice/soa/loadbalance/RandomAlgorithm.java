@@ -13,10 +13,10 @@ public class RandomAlgorithm implements LoadBalanceAlgorithm {
     private final Random _rnd = new Random();
 
     @Override
-    public ServiceEndPoint choose(Iterable<ServiceEndPoint> endpoints) {
-        Preconditions.checkNotNull(endpoints);
+    public ServiceEndPoint choose(Iterable<ServiceEndPoint> endPoints) {
+        Preconditions.checkNotNull(endPoints);
 
-        Iterator<ServiceEndPoint> iter = endpoints.iterator();
+        Iterator<ServiceEndPoint> iter = endPoints.iterator();
         if (!iter.hasNext()) {
             return null;
         }
