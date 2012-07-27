@@ -20,6 +20,8 @@ import com.netflix.curator.framework.recipes.cache.ChildData;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCache;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCacheEvent;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCacheListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -34,6 +36,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * available.  As hosts come and go the results of calling the <code>#getHosts</code> method changes.
  */
 public class ZooKeeperHostDiscovery implements HostDiscovery {
+    private static final Logger LOG = LoggerFactory.getLogger(ZooKeeperHostDiscovery.class);
+
     private final CuratorFramework _curator;
     private final Set<ServiceEndPoint> _endPoints;
     private final Set<EndPointListener> _listeners;
@@ -174,7 +178,8 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
                     break;
 
                 case CHILD_UPDATED:
-                    // TODO: This should never happen.  Assert?  Log?
+                    LOG.info("ServiceEndPoint data changed unexpectedly. End point ID: {}; ZooKeeperPath {}",
+                            endPoint.getId(), event.getData().getPath());
                     break;
             }
         }

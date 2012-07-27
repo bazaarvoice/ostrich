@@ -24,6 +24,9 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.reflect.AbstractInvocationHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.helpers.MessageFormatter;
 
 import java.io.Closeable;
 import java.lang.reflect.InvocationTargetException;
@@ -38,6 +41,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
 class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
+    private static final Logger LOG = LoggerFactory.getLogger(ServicePool.class);
     // By default check every minute to see if a previously unhealthy end point has become healthy.
     @VisibleForTesting
     static final long HEALTH_CHECK_POLL_INTERVAL_IN_SECONDS = 60;
@@ -154,6 +158,7 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
                 // layer while trying to communicate with the end point.  These errors are often transient, so we
                 // enqueue a health check for the end point and mark it as unavailable for the time being.
                 markEndPointAsBad(endPoint);
+                LOG.info("Bad end point discovered. End point ID: {}", endPoint.getId());
             } catch (Exception e) {
                 throw Throwables.propagate(e);
             } finally {
@@ -225,6 +230,7 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
     private synchronized void addEndPoint(ServiceEndPoint endPoint) {
         _recentlyRemovedEndPoints.remove(endPoint);
         _badEndPoints.remove(endPoint);
+        LOG.debug("End point added to service pool. End point ID: {}", endPoint.getId());
     }
 
     private synchronized void removeEndPoint(ServiceEndPoint endPoint) {
@@ -237,15 +243,16 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
         _recentlyRemovedEndPoints.add(endPoint);
         _badEndPoints.remove(endPoint);
         _serviceCache.evict(endPoint);
+        LOG.debug("End point removed from service pool. End point ID: {}", endPoint.getId());
     }
 
     private synchronized void markEndPointAsBad(ServiceEndPoint endPoint) {
-        _serviceCache.evict(endPoint);
-
         if (_recentlyRemovedEndPoints.contains(endPoint)) {
             // Nothing to do, we've already removed this end point
             return;
         }
+
+        _serviceCache.evict(endPoint);
 
         // Only schedule a health check if this is the first time we've seen this end point as bad...
         if (_badEndPoints.add(endPoint)) {
@@ -293,8 +300,13 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
         // subsequent scheduled invocations of the Runnables may not happen, and we could stop checking health checks
         // completely.  So we intentionally handle all possible exceptions here.
         try {
-            return _serviceFactory.isHealthy(endPoint);
+            boolean healthy = _serviceFactory.isHealthy(endPoint);
+            LOG.info("Health check status: {}; End point ID: {}", healthy ? "healthy" : "unhealthy", endPoint.getId());
+            return healthy;
         } catch (Throwable ignored) {
+            LOG.info(MessageFormatter.format("Health check status: error; End point ID: {}", endPoint.getId())
+                        .getMessage(),
+                    ignored);
             // If anything goes bad, we'll still consider the end point unhealthy.
             return false;
         }

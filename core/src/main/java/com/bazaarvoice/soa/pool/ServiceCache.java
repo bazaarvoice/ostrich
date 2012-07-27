@@ -10,6 +10,8 @@ import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.pool.BaseKeyedPoolableObjectFactory;
 import org.apache.commons.pool.impl.GenericKeyedObjectPool;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.util.Map;
@@ -27,6 +29,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * from a {@link ServiceEndPoint}.  Will spawn one thread (shared by all {@code ServiceCache}s) to handle evictions of
  */
 class ServiceCache<S> implements Closeable {
+    private static final Logger LOG = LoggerFactory.getLogger(ServiceCache.class);
     private static final ScheduledExecutorService EVICTION_EXECUTOR = Executors.newScheduledThreadPool(1,
             new ThreadFactoryBuilder()
                     .setNameFormat("ServiceCache-EvictionThread-%d")
@@ -105,7 +108,8 @@ class ServiceCache<S> implements Closeable {
                           try {
                               _pool.evict();
                           } catch (Exception e) {
-                              // TODO: Log?
+                              // Should never happen, but log just in case. Swallow exception so thread doesn't die.
+                              LOG.error("ServiceCache eviction run failed.", e);
                           }
                       }
                   }, EVICTION_DURATION_IN_SECONDS, EVICTION_DURATION_IN_SECONDS, TimeUnit.SECONDS)
