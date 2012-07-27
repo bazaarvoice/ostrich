@@ -1,7 +1,6 @@
 package com.bazaarvoice.soa;
 
 import java.io.Closeable;
-import java.util.concurrent.Future;
 
 /**
  * A <code>ServicePool</code> keeps track of service end points for a particular service.  Internally it
@@ -40,20 +39,4 @@ public interface ServicePool<S> extends Closeable {
      * @param <R> The return type for the call.
      */
     <R> R execute(RetryPolicy retryPolicy, ServiceCallback<S, R> callback);
-
-    /**
-     * Returns a dynamic proxy that implements the service interface and implicitly wraps every call to a service
-     * method with a call to the {@link #execute} method.  This is appropriate for stateless services where it's
-     * sensible for the same retry policy to apply to every method.
-     * <p/>
-     * In contrast to proxies created with {@link com.bazaarvoice.soa.pool.ServicePoolBuilder#buildProxy(RetryPolicy)},
-     * proxies returned by this method do not provide a {@code close} method that closes the service pool.
-     * <p/>
-     * Implementation restriction: dynamic proxies are only supported when the service interface {@code S} is an
-     * interface.  They're not supported when {@code S} is a concrete class.
-     *
-     * @param retryPolicy The retry policy for every operation.
-     * @return The dynamic proxy instance.
-     */
-    S newProxy(RetryPolicy retryPolicy);
 }

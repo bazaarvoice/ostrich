@@ -128,7 +128,7 @@ public class ServicePoolTest {
                 }
         );
 
-        _pool = new ServicePool<Service>(Service.class, _ticker, _hostDiscovery, _serviceFactory, UNLIMITED_CACHING,
+        _pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory, UNLIMITED_CACHING,
                 _healthCheckExecutor, true);
 
         _servicePoolStatistics = statsCaptor.getValue();
@@ -638,7 +638,7 @@ public class ServicePoolTest {
 
     @Test
     public void testDoesNotShutdownHealthCheckExecutorOnClose() {
-        ServicePool<Service> pool = new ServicePool<Service>(Service.class, _ticker, _hostDiscovery, _serviceFactory,
+        ServicePool<Service> pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory,
                 ServiceCachingPolicyBuilder.NO_CACHING, _healthCheckExecutor, false);
         pool.close();
 
@@ -648,7 +648,7 @@ public class ServicePoolTest {
 
     @Test
     public void testDoesShutdownHealthCheckExecutorOnClose() {
-        ServicePool<Service> pool = new ServicePool<Service>(Service.class, _ticker, _hostDiscovery, _serviceFactory,
+        ServicePool<Service> pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory,
                 ServiceCachingPolicyBuilder.NO_CACHING, _healthCheckExecutor, true);
         pool.close();
 
@@ -681,7 +681,7 @@ public class ServicePoolTest {
         // Redefine the end points that HostDiscovery knows about to be only FOO
         when(_hostDiscovery.getHosts()).thenReturn(ImmutableList.of(FOO_ENDPOINT));
 
-        ServicePool<Service> pool = new ServicePool<Service>(Service.class, _ticker, _hostDiscovery, _serviceFactory,
+        ServicePool<Service> pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory,
                 ServiceCachingPolicyBuilder.NO_CACHING, Executors.newScheduledThreadPool(1), true);
 
         // Make it so that FOO needs to be health checked...

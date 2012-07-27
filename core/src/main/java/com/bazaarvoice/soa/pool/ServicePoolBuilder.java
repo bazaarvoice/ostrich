@@ -151,7 +151,7 @@ public class ServicePoolBuilder<S> {
      *         {@link java.io.Closeable} interface.
      */
     public S buildProxy(RetryPolicy retryPolicy) {
-        return buildInternal().newProxy(retryPolicy, true);
+        return ServicePoolProxy.create(_serviceType, retryPolicy, build(), true);
     }
 
     @VisibleForTesting
@@ -174,7 +174,7 @@ public class ServicePoolBuilder<S> {
             _healthCheckExecutor = Executors.newScheduledThreadPool(DEFAULT_NUM_HEALTH_CHECK_THREADS, threadFactory);
         }
 
-        return new ServicePool<S>(_serviceType, Ticker.systemTicker(), hostDiscovery, _serviceFactory,
+        return new ServicePool<S>(Ticker.systemTicker(), hostDiscovery, _serviceFactory,
                 _cachingPolicy, _healthCheckExecutor, shutdownHealthCheckExecutorOnClose);
     }
 

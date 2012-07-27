@@ -23,30 +23,24 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.google.common.reflect.AbstractInvocationHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.helpers.MessageFormatter;
 
-import java.io.Closeable;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
 
 class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
     private static final Logger LOG = LoggerFactory.getLogger(ServicePool.class);
+
     // By default check every minute to see if a previously unhealthy end point has become healthy.
     @VisibleForTesting
     static final long HEALTH_CHECK_POLL_INTERVAL_IN_SECONDS = 60;
 
-    private final Class<S> _serviceType;
     private final Ticker _ticker;
     private final HostDiscovery _hostDiscovery;
     private final HostDiscovery.EndPointListener _hostDiscoveryListener;
@@ -60,10 +54,9 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
     private final Future<?> _batchHealthChecksFuture;
     private final ServiceCache<S> _serviceCache;
 
-    ServicePool(Class<S> serviceType, Ticker ticker, HostDiscovery hostDiscovery,
+    ServicePool(Ticker ticker, HostDiscovery hostDiscovery,
                 ServiceFactory<S> serviceFactory, ServiceCachingPolicy cachingPolicy,
                 ScheduledExecutorService healthCheckExecutor, boolean shutdownHealthCheckExecutorOnClose) {
-        _serviceType = serviceType;
         _ticker = checkNotNull(ticker);
         _hostDiscovery = checkNotNull(hostDiscovery);
         _serviceFactory = checkNotNull(serviceFactory);
@@ -171,52 +164,6 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
         throw new MaxRetriesException();
     }
 
-    @Override
-    public S newProxy(RetryPolicy retryPolicy) {
-        return newProxy(retryPolicy, false);
-    }
-
-    S newProxy(final RetryPolicy retryPolicy, final boolean shutdownPoolOnClose) {
-        checkNotNull(retryPolicy);
-        checkState(_serviceType.isInterface(), "Proxy functionality is only available for interface service types.");
-
-        ClassLoader loader = Thread.currentThread().getContextClassLoader();
-        Class<?>[] interfaces = shutdownPoolOnClose
-                ? new Class<?>[] { _serviceType, Closeable.class }
-                : new Class<?>[] { _serviceType };
-
-        Object proxy = Proxy.newProxyInstance(loader, interfaces, new AbstractInvocationHandler() {
-            @Override
-            protected Object handleInvocation(Object proxy, final Method method, final Object[] args) throws Throwable {
-                // Special case for close() allows closing the entire pool by calling close() on the proxy.
-                if (shutdownPoolOnClose && args.length == 0 && method.getName().equals("close")) {
-                    ServicePool.this.close();
-                    return null;
-                }
-
-                // Delegate the method through to a service provider in the pool.
-                return ServicePool.this.execute(retryPolicy, new ServiceCallback<S, Object>() {
-                    @Override
-                    public Object call(S service) throws ServiceException {
-                        try {
-                            return method.invoke(service, args);
-                        } catch (IllegalAccessException e) {
-                            throw Throwables.propagate(e);
-                        } catch (InvocationTargetException e) {
-                            throw Throwables.propagate(e.getTargetException());
-                        }
-                    }
-                });
-            }
-
-            @Override
-            public String toString() {
-                return "ServicePoolProxy[" + _serviceType.getName() + "]";
-            }
-        });
-        return _serviceType.cast(proxy);
-    }
-
     @VisibleForTesting
     HostDiscovery getHostDiscovery() {
         return _hostDiscovery;
@@ -305,8 +252,7 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
             return healthy;
         } catch (Throwable ignored) {
             LOG.info(MessageFormatter.format("Health check status: error; End point ID: {}", endPoint.getId())
-                        .getMessage(),
-                    ignored);
+                    .getMessage(), ignored);
             // If anything goes bad, we'll still consider the end point unhealthy.
             return false;
         }

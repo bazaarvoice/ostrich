@@ -62,7 +62,7 @@ public class ServicePoolProxyTest {
                 }
         );
 
-        _pool = new ServicePool<Service>(Service.class, ticker, hostDiscovery, serviceFactory,
+        _pool = new ServicePool<Service>(ticker, hostDiscovery, serviceFactory,
                 ServiceCachingPolicyBuilder.NO_CACHING, _healthCheckExecutor, true);
     }
 
@@ -75,7 +75,7 @@ public class ServicePoolProxyTest {
     public void testProxyDoesNotOverrideClose() throws IOException {
         // Because this proxy is created with shutdownPoolOnClose=false, the Service.close() method is passed
         // through to the underlying service implementation.
-        Service service = _pool.newProxy(NEVER_RETRY, false);
+        Service service = ServicePoolProxy.create(Service.class, NEVER_RETRY, _pool, false);
         service.close();
 
         verify(FOO_SERVICE).close();
@@ -84,21 +84,21 @@ public class ServicePoolProxyTest {
 
     @Test
     public void testProxyDoesNotImplementCloseable() throws IOException {
-        Service service = _pool.newProxy(NEVER_RETRY, false);
+        Service service = ServicePoolProxy.create(Service.class, NEVER_RETRY, _pool, false);
 
         assertFalse(service instanceof Closeable);
     }
 
     @Test
     public void testProxyImplementsCloseable() throws IOException {
-        Service service = _pool.newProxy(NEVER_RETRY, true);
+        Service service = ServicePoolProxy.create(Service.class, NEVER_RETRY, _pool, true);
 
         assertTrue(service instanceof Closeable);
     }
 
     @Test
     public void testProxyCallsExecutorShutdownOnClose() throws IOException {
-        Service service = _pool.newProxy(NEVER_RETRY, true);
+        Service service = ServicePoolProxy.create(Service.class, NEVER_RETRY, _pool, true);
         service.close();
 
         verify(_healthCheckExecutor).shutdownNow();
