@@ -84,7 +84,7 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
         }));
 
         // Watch end points as they are removed from host discovery so that we can remove them from our set of bad
-        // end points as well.  This will prevent the {@code badEndPoints} set from growing in an unbounded fashion.
+        // end points as well.  This will prevent the bad end points set from growing in an unbounded fashion.
         // There is a minor race condition that could happen here, but it's not anything to be concerned about.  The
         // HostDiscovery component could lose its connection to its backing data store and then immediately regain it
         // right afterwards.  If that happens it could remove all of its end points only to re-add them right back again
@@ -105,7 +105,7 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
         };
         _hostDiscovery.addListener(_hostDiscoveryListener);
 
-        // Periodically wake up and check any badEndPoints to see if they're now healthy.
+        // Periodically wake up and check any bad end points to see if they're now healthy.
         _batchHealthChecksFuture = _healthCheckExecutor.scheduleAtFixedRate(new BatchHealthChecks(),
                 HEALTH_CHECK_POLL_INTERVAL_IN_SECONDS, HEALTH_CHECK_POLL_INTERVAL_IN_SECONDS, TimeUnit.SECONDS);
     }
@@ -125,43 +125,67 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
         Stopwatch sw = new Stopwatch(_ticker).start();
         int numAttempts = 0;
         do {
-            Iterable<ServiceEndPoint> hosts = _hostDiscovery.getHosts();
-            if (Iterables.isEmpty(hosts)) {
-                // There were no service end points available, we have no choice but to stop trying and just exit.
-                throw new NoAvailableHostsException();
-            }
-
-            Iterable<ServiceEndPoint> goodHosts = Iterables.filter(hosts, _badEndPointFilter);
-            if (Iterables.isEmpty(goodHosts)) {
-                // All available hosts are bad, so we must give up.
-                throw new OnlyBadHostsException();
-            }
-
+            Iterable<ServiceEndPoint> goodHosts = getValidEndPoints();
             ServiceEndPoint endPoint = _loadBalanceAlgorithm.choose(goodHosts);
             if (endPoint == null) {
                 throw new NoSuitableHostsException();
             }
 
-            S service = _serviceCache.checkOut(endPoint);
-
             try {
-                return callback.call(service);
+                return executeOnEndpoint(endPoint, callback);
             } catch (ServiceException e) {
-                // This is a known and supported exception indicating that something went wrong somewhere in the service
-                // layer while trying to communicate with the end point.  These errors are often transient, so we
-                // enqueue a health check for the end point and mark it as unavailable for the time being.
-                markEndPointAsBad(endPoint);
-                LOG.info("Bad end point discovered. End point ID: {}", endPoint.getId());
-            } catch (Exception e) {
-                throw Throwables.propagate(e);
-            } finally {
-                if (service != null) {
-                    _serviceCache.checkIn(endPoint, service);
-                }
+                // Swallow the exception and retry the operation
             }
         } while (retry.allowRetry(++numAttempts, sw.elapsedMillis()));
 
         throw new MaxRetriesException();
+    }
+
+    /**
+     * Determine the set of usable {@link ServiceEndPoint}s.
+     * <p/>
+     * NOTE: This method is package private specifically so that {@link AsyncServicePool} can call it.
+     */
+    Iterable<ServiceEndPoint> getValidEndPoints() {
+        Iterable<ServiceEndPoint> hosts = _hostDiscovery.getHosts();
+        if (Iterables.isEmpty(hosts)) {
+            // There were no service end points available, we have no choice but to stop trying and just exit.
+            throw new NoAvailableHostsException();
+        }
+
+        Iterable<ServiceEndPoint> goodHosts = Iterables.filter(hosts, _badEndPointFilter);
+        if (Iterables.isEmpty(goodHosts)) {
+            // All available hosts are bad, so we must give up.
+            throw new OnlyBadHostsException();
+        }
+
+        return goodHosts;
+    }
+
+    /**
+     * Execute a callback on a specific end point.
+     * <p/>
+     * NOTE: This method is package private specifically so that {@link AsyncServicePool} can call it.
+     */
+    <R> R executeOnEndpoint(ServiceEndPoint endPoint, ServiceCallback<S, R> callback) throws ServiceException {
+        S service = _serviceCache.checkOut(endPoint);
+
+        try {
+            return callback.call(service);
+        } catch (ServiceException e) {
+            // This is a known and supported exception indicating that something went wrong somewhere in the service
+            // layer while trying to communicate with the end point.  These errors are often transient, so we
+            // enqueue a health check for the end point and mark it as unavailable for the time being.
+            markEndPointAsBad(endPoint);
+            LOG.info("Bad end point discovered. End point ID: {}", endPoint.getId());
+            throw e;
+        } catch (Exception e) {
+            throw Throwables.propagate(e);
+        } finally {
+            if (service != null) {
+                _serviceCache.checkIn(endPoint, service);
+            }
+        }
     }
 
     @VisibleForTesting
