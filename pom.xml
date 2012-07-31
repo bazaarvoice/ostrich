@@ -4,7 +4,7 @@
 
     <groupId>com.bazaarvoice.soa</groupId>
     <artifactId>soa</artifactId>
-    <version>0.1.10-SNAPSHOT</version>
+    <version>1.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <scm>

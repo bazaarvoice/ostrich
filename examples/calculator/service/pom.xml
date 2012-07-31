@@ -5,13 +5,13 @@
     <parent>
         <groupId>com.bazaarvoice.soa.examples.calculator</groupId>
         <artifactId>calculator</artifactId>
-        <version>0.1.10-SNAPSHOT</version>
+        <version>1.0.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
     <groupId>com.bazaarvoice.soa.examples.calculator</groupId>
     <artifactId>calculator-service</artifactId>
-    <version>0.1.10-SNAPSHOT</version>
+    <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>calculator-service</name>
@@ -62,7 +62,7 @@
         <dependency>
             <groupId>com.bazaarvoice.soa</groupId>
             <artifactId>soa-dropwizard</artifactId>
-            <version>0.1.10-SNAPSHOT</version>
+            <version>1.0.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
