@@ -2,7 +2,7 @@ package com.bazaarvoice.soa.pool;
 
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceFactory;
-import com.bazaarvoice.soa.exceptions.NoCachedConnectionAvailableException;
+import com.bazaarvoice.soa.exceptions.NoCachedInstancesAvailableException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
 import com.google.common.collect.MapMaker;
@@ -128,10 +128,10 @@ class ServiceCache<S> implements Closeable {
      *
      * @param endPoint The end point to retrieve a cached service instance for.
      * @return A cached service instance for the requested end point.
-     * @throws NoCachedConnectionAvailableException If the cache has reached total maximum capacity, or maximum capacity
+     * @throws NoCachedInstancesAvailableException If the cache has reached total maximum capacity, or maximum capacity
      *         for the requested end point, and no connections that aren't already checked out are available.
      */
-    public S checkOut(ServiceEndPoint endPoint) {
+    public S checkOut(ServiceEndPoint endPoint) throws Exception {
         checkNotNull(endPoint);
 
         try {
@@ -144,10 +144,7 @@ class ServiceCache<S> implements Closeable {
         } catch (NoSuchElementException e) {
             // This will happen if there are no available connections and there is no room for a new one,
             // or if a newly created connection is not valid.
-            throw new NoCachedConnectionAvailableException();
-        } catch (Exception e) {
-            // Should only happen if new service creation is attempted and service factory throws an exception.
-            throw Throwables.propagate(e);
+            throw new NoCachedInstancesAvailableException();
         }
     }
 
@@ -156,8 +153,9 @@ class ServiceCache<S> implements Closeable {
      *
      * @param endPoint The end point that the service instance belongs to.
      * @param service  The service instance to return to the pool.
+     * @throws Exception Never.
      */
-    public void checkIn(ServiceEndPoint endPoint, S service) {
+    public void checkIn(ServiceEndPoint endPoint, S service) throws Exception {
         checkNotNull(endPoint);
         checkNotNull(service);
 
@@ -166,15 +164,10 @@ class ServiceCache<S> implements Closeable {
         Long invalidRevision = _invalidRevisions.get(endPoint);
         Long serviceRevision = _checkOutRevisions.remove(service);
 
-        try {
-            if (_isClosed || (invalidRevision != null && serviceRevision < invalidRevision)) {
-                _pool.invalidateObject(endPoint, service);
-            } else {
-                _pool.returnObject(endPoint, service);
-            }
-        } catch (Exception e) {
-            // Should never happen.
-            throw Throwables.propagate(e);
+        if (_isClosed || (invalidRevision != null && serviceRevision < invalidRevision)) {
+            _pool.invalidateObject(endPoint, service);
+        } else {
+            _pool.returnObject(endPoint, service);
         }
     }
 

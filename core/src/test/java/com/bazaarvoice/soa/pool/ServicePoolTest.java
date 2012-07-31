@@ -103,6 +103,7 @@ public class ServicePoolTest {
         when(_serviceFactory.create(BAZ_ENDPOINT)).thenReturn(BAZ_SERVICE);
         when(_serviceFactory.getLoadBalanceAlgorithm(statsCaptor.capture()))
                 .thenReturn(_loadBalanceAlgorithm);
+        when(_serviceFactory.isRetriableException(any(Exception.class))).thenReturn(true);
 
         _healthCheckExecutor = mock(ScheduledExecutorService.class);
         when(_healthCheckExecutor.submit(any(Runnable.class))).then(new Answer<Future<?>>() {
@@ -217,7 +218,7 @@ public class ServicePoolTest {
     }
 
     @Test
-    public void testAttemptsToRetryOnServiceException() {
+    public void testAttemptsToRetryOnRetriableException() {
         RetryPolicy retry = mock(RetryPolicy.class);
         when(retry.allowRetry(anyInt(), anyLong())).thenReturn(false);
 
@@ -238,8 +239,10 @@ public class ServicePoolTest {
     }
 
     @Test
-    public void testDoesNotAttemptToRetryOnNonServiceException() {
+    public void testDoesNotAttemptToRetryOnNonRetriableException() {
+        when(_serviceFactory.isRetriableException(any(Exception.class))).thenReturn(false);
         RetryPolicy retry = mock(RetryPolicy.class);
+
         try {
             _pool.execute(retry, new ServiceCallback<Service, Void>() {
                 @Override
@@ -299,7 +302,7 @@ public class ServicePoolTest {
     }
 
     @Test
-    public void testSubmitsHealthCheckOnServiceException() {
+    public void testSubmitsHealthCheckOnRetriableException() {
         try {
             _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Void>() {
                 @Override
@@ -318,7 +321,8 @@ public class ServicePoolTest {
     }
 
     @Test
-    public void testDoesNotSubmitHealthCheckOnNonServiceException() {
+    public void testDoesNotSubmitHealthCheckOnNonRetriableException() {
+        when(_serviceFactory.isRetriableException(any(Exception.class))).thenReturn(false);
         try {
             _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Void>() {
                 @Override
@@ -433,7 +437,7 @@ public class ServicePoolTest {
     }
 
     @Test
-    public void testCallsHealthCheckAfterServiceException() throws InterruptedException {
+    public void testCallsHealthCheckAfterRetriableException() throws InterruptedException {
         final AtomicBoolean healthCheckCalled = new AtomicBoolean(false);
         when(_serviceFactory.isHealthy(any(ServiceEndPoint.class))).then(new Answer<Boolean>() {
             @Override
@@ -462,7 +466,8 @@ public class ServicePoolTest {
     }
 
     @Test
-    public void testDoesNotCallHealthCheckAfterNonServiceException() throws InterruptedException {
+    public void testDoesNotCallHealthCheckAfterNonRetriableException() throws InterruptedException {
+        when(_serviceFactory.isRetriableException(any(Exception.class))).thenReturn(false);
         try {
             _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Void>() {
                 @Override

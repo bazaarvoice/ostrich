@@ -9,9 +9,9 @@ import com.bazaarvoice.soa.ServiceFactory;
 import com.bazaarvoice.soa.ServicePoolStatistics;
 import com.bazaarvoice.soa.exceptions.MaxRetriesException;
 import com.bazaarvoice.soa.exceptions.NoAvailableHostsException;
+import com.bazaarvoice.soa.exceptions.NoCachedInstancesAvailableException;
 import com.bazaarvoice.soa.exceptions.NoSuitableHostsException;
 import com.bazaarvoice.soa.exceptions.OnlyBadHostsException;
-import com.bazaarvoice.soa.exceptions.ServiceException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
@@ -133,8 +133,11 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
 
             try {
                 return executeOnEndPoint(endPoint, callback);
-            } catch (ServiceException e) {
-                // Swallow the exception and retry the operation
+            } catch (Exception e) {
+                // Don't retry if exception is too severe.
+                if (!isRetriableException(e)) {
+                    throw Throwables.propagate(e);
+                }
             }
         } while (retry.allowRetry(++numAttempts, sw.elapsedMillis()));
 
@@ -176,25 +179,50 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
      * <p/>
      * NOTE: This method is package private specifically so that {@link AsyncServicePool} can call it.
      */
-    <R> R executeOnEndPoint(ServiceEndPoint endPoint, ServiceCallback<S, R> callback) throws ServiceException {
-        S service = _serviceCache.checkOut(endPoint);
+    <R> R executeOnEndPoint(ServiceEndPoint endPoint, ServiceCallback<S, R> callback) throws Exception {
+        S service = null;
 
         try {
+            service = _serviceCache.checkOut(endPoint);
             return callback.call(service);
-        } catch (ServiceException e) {
-            // This is a known and supported exception indicating that something went wrong somewhere in the service
-            // layer while trying to communicate with the end point.  These errors are often transient, so we
-            // enqueue a health check for the end point and mark it as unavailable for the time being.
-            markEndPointAsBad(endPoint);
-            LOG.info("Bad end point discovered. End point ID: {}", endPoint.getId());
+        } catch (NoCachedInstancesAvailableException e) {
+            LOG.info(MessageFormatter.format("Service cache exhausted. End point ID: {}", endPoint.getId())
+                             .getMessage(),
+                         e);
+            // Don't mark an end point as bad just because there are no cached end points for it.
             throw e;
         } catch (Exception e) {
-            throw Throwables.propagate(e);
+            if (_serviceFactory.isRetriableException(e)) {
+                // This is a known and supported exception indicating that something went wrong somewhere in the service
+                // layer while trying to communicate with the end point.  These errors are often transient, so we
+                // enqueue a health check for the end point and mark it as unavailable for the time being.
+                markEndPointAsBad(endPoint);
+                LOG.info(MessageFormatter.format("Bad end point discovered. End point ID: {}", endPoint.getId())
+                             .getMessage(),
+                         e);
+            }
+            throw e;
         } finally {
             if (service != null) {
-                _serviceCache.checkIn(endPoint, service);
+                try {
+                    _serviceCache.checkIn(endPoint, service);
+                } catch (Exception e) {
+                    // This should never happen, but log just in case.
+                    LOG.error(MessageFormatter.format("Error end point into cache. End point ID: {}", endPoint.getId())
+                                  .getMessage(),
+                              e);
+                }
             }
         }
+    }
+
+    /**
+     * Check if an exception is retriable.
+     * </p>
+     * NOTE: This method is package private specifically so that {@link AsyncServicePool} can call it.
+     */
+    boolean isRetriableException(Exception exception) {
+        return _serviceFactory.isRetriableException(exception);
     }
 
     @VisibleForTesting

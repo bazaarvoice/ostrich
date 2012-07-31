@@ -36,4 +36,18 @@ public interface ServiceFactory<S> {
      * @return {@code true} if the health check succeeded, {@code false} otherwise.
      */
     boolean isHealthy(ServiceEndPoint endPoint);
+
+    /**
+     * Determine whether or not an exception should lead to a retry if the {@link RetryPolicy} allows. The source of the
+     * exception can be from the {link #create} method, a call to a {@link ServiceCallback}, or occasionally due to an
+     * issue with service caching in a {@link ServicePool}. The first two are under the purview of the
+     * service provider. Exceptions originating from a {@code ServicePool} will be from package
+     * {@link com.bazaarvoice.soa.exceptions}. If the exception is relevant to a specific {@link ServiceEndPoint}, that
+     * end point will be marked as bad in the pool before retrying if the exception is deemed retriable.
+     *
+     * @param exception An exception encountered during an attempt to execute a service callback or retrieve a service
+     * instance to execute against.
+     * @return {@code true}, if the exception should lead to a retry (likely on a different end point).
+     */
+    boolean isRetriableException(Exception exception);
 }

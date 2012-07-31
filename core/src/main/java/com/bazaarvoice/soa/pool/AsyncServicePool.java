@@ -5,7 +5,6 @@ import com.bazaarvoice.soa.ServiceCallback;
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceEndPointPredicate;
 import com.bazaarvoice.soa.exceptions.MaxRetriesException;
-import com.bazaarvoice.soa.exceptions.ServiceException;
 import com.google.common.base.Stopwatch;
 import com.google.common.base.Ticker;
 import com.google.common.collect.Lists;
@@ -85,8 +84,11 @@ public class AsyncServicePool<S> implements com.bazaarvoice.soa.AsyncServicePool
                     do {
                         try {
                             return _pool.executeOnEndPoint(endPoint, callback);
-                        } catch (ServiceException e) {
-                            // Swallow the exception and retry the operation if the retry policy will permit it
+                        } catch (Exception e) {
+                            // Don't retry if exception is too severe.
+                            if (!_pool.isRetriableException(e)) {
+                                throw e;
+                            }
                         }
                     } while (retry.allowRetry(++numAttempts, sw.elapsedMillis()));
 
