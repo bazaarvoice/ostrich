@@ -142,18 +142,27 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
     }
 
     /**
-     * Determine the set of usable {@link ServiceEndPoint}s.
+     * Determine the set of all {@link ServiceEndPoint}s.
      * <p/>
      * NOTE: This method is package private specifically so that {@link AsyncServicePool} can call it.
      */
-    Iterable<ServiceEndPoint> getValidEndPoints() {
+    Iterable<ServiceEndPoint> getAllEndPoints() {
         Iterable<ServiceEndPoint> hosts = _hostDiscovery.getHosts();
         if (Iterables.isEmpty(hosts)) {
             // There were no service end points available, we have no choice but to stop trying and just exit.
             throw new NoAvailableHostsException();
         }
 
-        Iterable<ServiceEndPoint> goodHosts = Iterables.filter(hosts, _badEndPointFilter);
+        return hosts;
+    }
+
+    /**
+     * Determine the set of usable {@link ServiceEndPoint}s.
+     * <p/>
+     * NOTE: This method is package private specifically so that {@link AsyncServicePool} can call it.
+     */
+    Iterable<ServiceEndPoint> getValidEndPoints() {
+        Iterable<ServiceEndPoint> goodHosts = Iterables.filter(getAllEndPoints(), _badEndPointFilter);
         if (Iterables.isEmpty(goodHosts)) {
             // All available hosts are bad, so we must give up.
             throw new OnlyBadHostsException();

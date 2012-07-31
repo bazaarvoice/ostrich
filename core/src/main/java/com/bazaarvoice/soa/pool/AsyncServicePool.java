@@ -3,6 +3,7 @@ package com.bazaarvoice.soa.pool;
 import com.bazaarvoice.soa.RetryPolicy;
 import com.bazaarvoice.soa.ServiceCallback;
 import com.bazaarvoice.soa.ServiceEndPoint;
+import com.bazaarvoice.soa.ServiceEndPointPredicate;
 import com.bazaarvoice.soa.exceptions.MaxRetriesException;
 import com.bazaarvoice.soa.exceptions.ServiceException;
 import com.google.common.base.Stopwatch;
@@ -18,6 +19,13 @@ import java.util.concurrent.Future;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class AsyncServicePool<S> implements com.bazaarvoice.soa.AsyncServicePool<S> {
+    private static final ServiceEndPointPredicate ALL_END_POINTS = new ServiceEndPointPredicate() {
+        @Override
+        public boolean apply(ServiceEndPoint endPoint) {
+            return true;
+        }
+    };
+
     private final Ticker _ticker;
     private final ServicePool<S> _pool;
     private final boolean _shutdownPoolOnClose;
@@ -55,11 +63,20 @@ public class AsyncServicePool<S> implements com.bazaarvoice.soa.AsyncServicePool
     }
 
     @Override
-    public <R> Collection<Future<R>> executeOnAll(final RetryPolicy retry, final ServiceCallback<S, R> callback) {
+    public <R> Collection<Future<R>> executeOnAll(RetryPolicy retry, ServiceCallback<S, R> callback) {
+        return executeOn(ALL_END_POINTS, retry, callback);
+    }
+
+    @Override
+    public <R> Collection<Future<R>> executeOn(ServiceEndPointPredicate predicate, final RetryPolicy retry,
+                                               final ServiceCallback<S, R> callback) {
         Collection<Future<R>> futures = Lists.newArrayList();
 
-        Iterable<ServiceEndPoint> endPoints = _pool.getValidEndPoints();
-        for (final ServiceEndPoint endPoint : endPoints) {
+        for (final ServiceEndPoint endPoint : _pool.getAllEndPoints()) {
+            if (!predicate.apply(endPoint)) {
+                continue;
+            }
+
             Future<R> future = _executor.submit(new Callable<R>() {
                 @Override
                 public R call() throws Exception {
