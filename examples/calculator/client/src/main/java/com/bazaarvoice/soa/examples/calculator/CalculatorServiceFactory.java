@@ -4,6 +4,7 @@ import com.bazaarvoice.soa.LoadBalanceAlgorithm;
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceFactory;
 import com.bazaarvoice.soa.ServicePoolStatistics;
+import com.bazaarvoice.soa.exceptions.ServiceException;
 import com.bazaarvoice.soa.loadbalance.RandomAlgorithm;
 
 import java.util.Map;
@@ -24,6 +25,11 @@ public class CalculatorServiceFactory implements ServiceFactory<CalculatorServic
     @Override
     public CalculatorService create(ServiceEndPoint endPoint) {
         return new CalculatorClient(endPoint);
+    }
+
+    @Override
+    public boolean isRetriableException(Exception exception) {
+        return exception instanceof ServiceException;
     }
 
     @Override
