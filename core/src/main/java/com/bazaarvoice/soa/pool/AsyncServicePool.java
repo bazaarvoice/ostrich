@@ -17,7 +17,7 @@ import java.util.concurrent.Future;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class AsyncServicePool<S> implements com.bazaarvoice.soa.AsyncServicePool<S> {
+class AsyncServicePool<S> implements com.bazaarvoice.soa.AsyncServicePool<S> {
     private static final ServiceEndPointPredicate ALL_END_POINTS = new ServiceEndPointPredicate() {
         @Override
         public boolean apply(ServiceEndPoint endPoint) {
@@ -31,7 +31,7 @@ public class AsyncServicePool<S> implements com.bazaarvoice.soa.AsyncServicePool
     private final ExecutorService _executor;
     private final boolean _shutdownExecutorOnClose;
 
-    public AsyncServicePool(Ticker ticker, ServicePool<S> pool, boolean shutdownPoolOnClose,
+    AsyncServicePool(Ticker ticker, ServicePool<S> pool, boolean shutdownPoolOnClose,
                             ExecutorService executor, boolean shutdownExecutorOnClose) {
         _ticker = checkNotNull(ticker);
         _pool = checkNotNull(pool);

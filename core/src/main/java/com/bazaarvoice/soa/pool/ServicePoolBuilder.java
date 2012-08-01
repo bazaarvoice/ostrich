@@ -12,6 +12,7 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
@@ -27,6 +28,7 @@ public class ServicePoolBuilder<S> {
     private ServiceFactory<S> _serviceFactory;
     private ScheduledExecutorService _healthCheckExecutor;
     private ServiceCachingPolicy _cachingPolicy;
+    private ExecutorService _asyncExecutor;
 
     public static <S> ServicePoolBuilder<S> create(Class<S> serviceType) {
         return new ServicePoolBuilder<S>(serviceType);
@@ -117,6 +119,21 @@ public class ServicePoolBuilder<S> {
     }
 
     /**
+     * Adds an {@code ExecutorService} instance to the builder for use in executing asynchronous requests. The executor
+     * is not used unless an asynchronous pool is built with the {@link #buildAsync} method.
+     * <p/>
+     * Adding an executor is optional.  If one isn't specified then one will be created and used automatically when
+     * {@code buildAsync} is called.
+     *
+     * @param executor The {@code ExecutorService} to use
+     * @return this
+     */
+    public ServicePoolBuilder<S> withAsyncExecutor(ExecutorService executor) {
+        _asyncExecutor = checkNotNull(executor);
+        return this;
+    }
+
+    /**
      * Enables caching of service instances in the built {@link ServicePool}.
      * <p/>
      * Specifying a caching policy is optional.  If one isn't specified then a default one that doesn't cache service
@@ -131,12 +148,33 @@ public class ServicePoolBuilder<S> {
     }
 
     /**
-     * Builds the {@code ServicePool}.
+     * Builds a {@code com.bazaarvoice.soa.ServicePool}.
      *
-     * @return The {@code ServicePool} that was constructed.
+     * @return The {@code com.bazaarvoice.soa.ServicePool} that was constructed.
      */
     public com.bazaarvoice.soa.ServicePool<S> build() {
         return buildInternal();
+    }
+
+    /**
+     * Builds a {@code com.bazaarvoice.soa.AsyncServicePool}.
+     *
+     * @return The {@code com.bazaarvoice.soa.AsyncServicePool} that was constructed.
+     */
+    public com.bazaarvoice.soa.AsyncServicePool<S> buildAsync() {
+        ServicePool<S> pool = buildInternal();
+
+        boolean shutdownAsyncExecutorOnClose = (_asyncExecutor == null);
+        if (_asyncExecutor == null) {
+            String serviceName = _serviceFactory.getServiceName();
+            ThreadFactory threadFactory = new ThreadFactoryBuilder()
+                    .setNameFormat(serviceName + "-AsyncExecutorThread-%d")
+                    .setDaemon(true)
+                    .build();
+            _asyncExecutor = Executors.newCachedThreadPool(threadFactory);
+        }
+
+        return new AsyncServicePool<S>(Ticker.systemTicker(), pool, true, _asyncExecutor, shutdownAsyncExecutorOnClose);
     }
 
     /**
