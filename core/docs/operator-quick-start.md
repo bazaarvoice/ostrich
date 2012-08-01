@@ -43,7 +43,7 @@ opaque string.  Ostrich currently doesn't try to look into it or parse it, that'
 
 An example service directory tree in ZooKeeper might look like:
 
-    services
+    ostrich
     ├── calculator
     │   ├── _c_08DF108F-EEC5-4EE9-A8A6-98D6F4BCCCF2_aws-prod-calc6.aws:80
     │   ├── _c_12056A32-C926-439E-87E8-598D0EE00AFC_aws-prod-calc7.aws:80
@@ -54,8 +54,8 @@ An example service directory tree in ZooKeeper might look like:
         ├── _c_95FBE7EF-626A-45A6-8545-7E5DC84E894D_aws-prod-emodb3.aws:80
         └── _c_E38A7641-99B7-4D6A-99F5-A52262DE0185_aws-prod-emodb4.aws:80
 
-As you can see all service registrations live in the same area of ZooKeeper (currently `/services`, but that will likely
-change in the future).  Under the `/services` directory there is an entry for each named service.  For every
+As you can see all service registrations live in the same area of ZooKeeper (currently `/ostrich`, but that will likely
+change in the future).  Under the `/ostrich` directory there is an entry for each named service.  For every
 registration there is a separate node in the named service directory.  The node name starts with a UUID.  This UUID
 ensures that things are globally unique and never collide, but it does more than that.  The UUID is associated with a
 particular ZooKeeper session, so when a client loses its connection with ZooKeeper it can reconnect, reestablish the
@@ -70,7 +70,7 @@ interruption happens) the node will be automatically deleted by ZooKeeper.
 
 #### 4. Host Discovery
 Host discovery is fairly straightforward.  When a client starts up and indicates that it is interested in consuming a
-particular service the Ostrich library will register a watch in ZooKeeper on `/services/<service name>`.  That way any
+particular service the Ostrich library will register a watch in ZooKeeper on `/ostrich/<service name>`.  That way any
 membership changes that happen to that directory will cause a notification to be sent to the interested clients.
 Because service registration uses [ephemeral nodes]
 (http://zookeeper.apache.org/doc/r3.4.3/zookeeperProgrammers.html#Ephemeral+Nodes) any host that has their JVM crash

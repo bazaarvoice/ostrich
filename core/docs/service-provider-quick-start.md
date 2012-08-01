@@ -87,9 +87,11 @@ public class CalculatorClient implements CalculatorService {
 
 In addition to an implementation of the service interface, an implementation of the `ServiceFactory` interface is also
 required.  This is the way that you as a service provider tell the Ostrich library about your service and what client
-library users should use to connect to it.  It also gives Ostrich the ability to check the health of your servers and to
-use that information in making decisions about which servers should be used.  Finally the `ServiceFactory` also tells
-Ostrich information about how requests to your service should be load balanced across all of the available servers.
+library users should use to connect to it.  It gives Ostrich the ability to check the health of your servers and to
+use that information in making decisions about which servers should be used.  If an exception is encountered during
+interaction with the service, the `ServiceFactory` will be asked if it's okay to mark the offending end point as bad
+and retry - likely with a different end point.  Finally the `ServiceFactory` also tells Ostrich information about how
+requests to your service should be load balanced across all of the available servers.
 
 ```java
 public class CalculatorServiceFactory implements ServiceFactory<CalculatorService> {
@@ -103,6 +105,11 @@ public class CalculatorServiceFactory implements ServiceFactory<CalculatorServic
   @Override
   public LoadBalanceAlgorithm getLoadBalanceAlgorithm(ServicePoolStatistics stats) {
     return new RandomAlgorithm();
+  }
+
+  @Override
+  public boolean isRetriableException(Exception exception) {
+    return exception instanceof ServiceException;
   }
 
   @Override

@@ -64,6 +64,10 @@ ServicePool<CalculatorService> pool = new ServicePoolBuilder<CalculatorService>(
   .build();
 ```
 
+Alternatively, the builder has a `buildAsync()` method that will build an `AsyncServicePool` whose execution returns
+an asynchronous future rather than an immediate result.  The `AsyncServicePool` also provides `executeOn` and
+`executeOnAll` methods that allow for executing the same callback on a subset of the currently registered end points.
+
 *NOTE*: The `CalculatorServiceFactory` class as well as the `CalculatorService` interface are provided to you by the
 team that builds the service.  Each team that exposes some service using the Ostrich library should provide you with a
 jar containing their service interface, a client implementation, as well as a service factory implementation.
