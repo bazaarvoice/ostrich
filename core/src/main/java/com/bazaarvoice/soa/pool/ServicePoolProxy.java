@@ -15,13 +15,13 @@ import java.lang.reflect.Proxy;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
-class ServicePoolProxy<S> extends AbstractInvocationHandler {
+public class ServicePoolProxy<S> extends AbstractInvocationHandler {
     private final Class<S> _serviceType;
     private final RetryPolicy _retryPolicy;
     private final ServicePool<S> _servicePool;
     private final boolean _shutdownPoolOnClose;
 
-    public static <S> S create(Class<S> serviceType, RetryPolicy retryPolicy,
+    static <S> S create(Class<S> serviceType, RetryPolicy retryPolicy,
                                ServicePool<S> pool, boolean shutdownPoolOnClose) {
         ClassLoader loader = Thread.currentThread().getContextClassLoader();
         Class<?>[] interfaces = shutdownPoolOnClose
@@ -40,6 +40,13 @@ class ServicePoolProxy<S> extends AbstractInvocationHandler {
         _retryPolicy = checkNotNull(retryPolicy);
         _servicePool = checkNotNull(servicePool);
         _shutdownPoolOnClose = shutdownPoolOnClose;
+    }
+
+    /**
+     * Returns the service pool used by this proxy to execute service methods.
+     */
+    public ServicePool<S> getServicePool() {
+        return _servicePool;
     }
 
     @Override

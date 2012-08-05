@@ -1,5 +1,6 @@
 package com.bazaarvoice.soa.examples.calculator;
 
+import com.bazaarvoice.soa.ServicePoolProxies;
 import com.bazaarvoice.soa.pool.ServiceCachingPolicy;
 import com.bazaarvoice.soa.pool.ServiceCachingPolicyBuilder;
 import com.bazaarvoice.soa.pool.ServicePoolBuilder;
@@ -10,7 +11,6 @@ import com.google.common.io.Closeables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Closeable;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
@@ -78,7 +78,7 @@ public class CalculatorProxyUser {
         CalculatorProxyUser user = new CalculatorProxyUser(service);
         user.use();
 
-        Closeables.closeQuietly((Closeable) service);
+        ServicePoolProxies.close(service);
         Closeables.closeQuietly(connection);
     }
 }
