@@ -7,13 +7,14 @@ import com.bazaarvoice.soa.pool.ServiceCachingPolicy;
 import com.bazaarvoice.soa.pool.ServiceCachingPolicyBuilder;
 import com.bazaarvoice.soa.pool.ServicePoolBuilder;
 import com.bazaarvoice.soa.retry.RetryNTimes;
-import com.bazaarvoice.soa.zookeeper.ZooKeeperConfiguration;
 import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
 import com.google.common.io.Closeables;
+import com.yammer.dropwizard.config.ConfigurationFactory;
+import com.yammer.dropwizard.validation.Validator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
+import java.io.File;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
@@ -38,31 +39,41 @@ public class CalculatorUser {
                         new ServiceCallback<CalculatorService, Integer>() {
                             @Override
                             public Integer call(CalculatorService service) throws ServiceException {
-                                switch (op) {
-                                    case 0:  return service.add(a, b);
-                                    case 1:  return service.sub(a, b);
-                                    case 2:  return service.mul(a, b);
-                                    default: return service.div(a, b);
-                                }
+                                return CalculatorUser.this.call(service, op, a, b);
                             }
                         });
                 LOG.info("i:{}, result:{}", i, result);
             } catch (Exception e) {
-                LOG.info("i:{}, {}", i, e.getClass().getCanonicalName());
+                LOG.info("i:{}, {}", i, e);
             }
 
             Thread.sleep(500);
         }
     }
 
-    public static void main(String[] args) throws InterruptedException, IOException {
-        String connectString = (args.length > 0) ? args[0] : "localhost:2181";
+    private int call(CalculatorService service, int op, int a, int b) {
+        switch (op) {
+            case 0:  return service.add(a, b);
+            case 1:  return service.sub(a, b);
+            case 2:  return service.mul(a, b);
+            default: return service.div(a, b);
+        }
+    }
 
-        ZooKeeperConnection connection = new ZooKeeperConfiguration()
-                .withConnectString(connectString)
-                .withBoundedExponentialBackoffRetry(10, 1000, 3)
-                .connect();
+    public static void main(String[] args) throws Exception {
+        // Load the config.yaml file specified as the first argument.  Or just use defaults if none specified.
+        CalculatorConfiguration configuration;
+        if (args.length > 0) {
+            ConfigurationFactory<CalculatorConfiguration> configFactory = ConfigurationFactory.forClass(
+                    CalculatorConfiguration.class, new Validator());
+            configuration = configFactory.build(new File(args[0]));
+        } else {
+            configuration = new CalculatorConfiguration();
+        }
 
+        ZooKeeperConnection zooKeeper = configuration.getZooKeeperConfiguration().connect();
+
+        // Connection caching is optional, but included here for the sake of demonstration.
         ServiceCachingPolicy cachingPolicy = new ServiceCachingPolicyBuilder()
                 .withMaxNumServiceInstances(10)
                 .withMaxNumServiceInstancesPerEndPoint(1)
@@ -70,8 +81,8 @@ public class CalculatorUser {
                 .build();
 
         ServicePool<CalculatorService> pool = ServicePoolBuilder.create(CalculatorService.class)
-                .withZooKeeperHostDiscovery(connection)
-                .withServiceFactory(new CalculatorServiceFactory())
+                .withServiceFactory(new CalculatorServiceFactory(configuration.getHttpClientConfiguration()))
+                .withZooKeeperHostDiscovery(zooKeeper)
                 .withCachingPolicy(cachingPolicy)
                 .build();
 
@@ -79,6 +90,6 @@ public class CalculatorUser {
         user.use();
 
         Closeables.closeQuietly(pool);
-        Closeables.closeQuietly(connection);
+        Closeables.closeQuietly(zooKeeper);
     }
 }

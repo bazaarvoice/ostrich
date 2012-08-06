@@ -11,7 +11,6 @@
 
     <groupId>com.bazaarvoice.soa.examples.calculator</groupId>
     <artifactId>calculator-client</artifactId>
-    <version>1.0.2-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>calculator-client</name>
@@ -20,12 +19,17 @@
     <dependencies>
         <dependency>
             <groupId>com.bazaarvoice.soa</groupId>
-            <artifactId>soa-core</artifactId>
+            <artifactId>soa-dropwizard</artifactId>
         </dependency>
 
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.yammer.dropwizard</groupId>
+            <artifactId>dropwizard-client</artifactId>
         </dependency>
     </dependencies>
 </project>

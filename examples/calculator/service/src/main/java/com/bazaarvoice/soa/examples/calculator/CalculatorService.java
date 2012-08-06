@@ -11,6 +11,7 @@ import com.yammer.dropwizard.Service;
 import com.yammer.dropwizard.config.Environment;
 import com.yammer.dropwizard.lifecycle.Managed;
 
+import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 import java.net.InetAddress;
 import java.net.URI;
@@ -20,7 +21,7 @@ import java.util.Map;
  * A Dropwizard+Jersey-based client of a simple calculator service.
  */
 public class CalculatorService extends Service<CalculatorConfiguration> {
-    public static boolean IS_HEALTHY = true;
+    public static Response.Status STATUS_OVERRIDE = Response.Status.OK;
 
     public CalculatorService() {
         super("calculator");

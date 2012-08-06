@@ -31,12 +31,12 @@ Running the Example
 
 6.  Simulate server failure:
 
-        $ curl http://localhost:8080/health/false
+        $ curl http://localhost:8080/health/500
 
     Watch the calculator client begin to receive errors.  If you start a 2nd calculator server on different ports
     the client should failover to the healthy server.
 
-        $ curl http://localhost:8080/health/true
+        $ curl http://localhost:8080/health/200
 
     Watch the calculator client recover.
 

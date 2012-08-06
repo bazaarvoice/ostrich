@@ -8,6 +8,7 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 
 /**
  * A Dropwizard+Jersey-based RESTful implementation of a simple calculator service.
@@ -55,8 +56,9 @@ public class CalculatorResource {
 
     private void checkHealthy() {
         // Simulate a server failure.  Clients should attempt to failover to another server.
-        if (!CalculatorService.IS_HEALTHY) {
-            throw new WebApplicationException(500);
+        // They will retry or not based on the status code range.
+        if (CalculatorService.STATUS_OVERRIDE != Response.Status.OK) {
+            throw new WebApplicationException(CalculatorService.STATUS_OVERRIDE);
         }
     }
 }

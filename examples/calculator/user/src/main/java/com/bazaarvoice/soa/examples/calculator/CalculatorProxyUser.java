@@ -5,12 +5,14 @@ import com.bazaarvoice.soa.pool.ServiceCachingPolicy;
 import com.bazaarvoice.soa.pool.ServiceCachingPolicyBuilder;
 import com.bazaarvoice.soa.pool.ServicePoolBuilder;
 import com.bazaarvoice.soa.retry.RetryNTimes;
-import com.bazaarvoice.soa.zookeeper.ZooKeeperConfiguration;
 import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
 import com.google.common.io.Closeables;
+import com.yammer.dropwizard.config.ConfigurationFactory;
+import com.yammer.dropwizard.validation.Validator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
@@ -54,13 +56,18 @@ public class CalculatorProxyUser {
         }
     }
 
-    public static void main(String[] args) throws InterruptedException {
-        String connectString = (args.length > 0) ? args[0] : "localhost:2181";
+    public static void main(String[] args) throws Exception {
+        // Load the config.yaml file specified as the first argument.  Or just use defaults if none specified.
+        CalculatorConfiguration configuration;
+        if (args.length > 0) {
+            ConfigurationFactory<CalculatorConfiguration> configFactory = ConfigurationFactory.forClass(
+                    CalculatorConfiguration.class, new Validator());
+            configuration = configFactory.build(new File(args[0]));
+        } else {
+            configuration = new CalculatorConfiguration();
+        }
 
-        ZooKeeperConnection connection = new ZooKeeperConfiguration()
-                .withConnectString(connectString)
-                .withBoundedExponentialBackoffRetry(10, 1000, 3)
-                .connect();
+        ZooKeeperConnection zooKeeper = configuration.getZooKeeperConfiguration().connect();
 
         // Connection caching is optional, but included here for the sake of demonstration.
         ServiceCachingPolicy cachingPolicy = new ServiceCachingPolicyBuilder()
@@ -70,8 +77,8 @@ public class CalculatorProxyUser {
                 .build();
 
         CalculatorService service = ServicePoolBuilder.create(CalculatorService.class)
-                .withZooKeeperHostDiscovery(connection)
-                .withServiceFactory(new CalculatorServiceFactory())
+                .withServiceFactory(new CalculatorServiceFactory(configuration.getHttpClientConfiguration()))
+                .withZooKeeperHostDiscovery(zooKeeper)
                 .withCachingPolicy(cachingPolicy)
                 .buildProxy(new RetryNTimes(3, 100, TimeUnit.MILLISECONDS));
 
@@ -79,6 +86,6 @@ public class CalculatorProxyUser {
         user.use();
 
         ServicePoolProxies.close(service);
-        Closeables.closeQuietly(connection);
+        Closeables.closeQuietly(zooKeeper);
     }
 }

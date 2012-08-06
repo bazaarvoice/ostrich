@@ -11,7 +11,6 @@
 
     <groupId>com.bazaarvoice.soa.examples.calculator</groupId>
     <artifactId>calculator-user</artifactId>
-    <version>1.0.2-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>calculator-user</name>
@@ -62,7 +61,7 @@
         <dependency>
             <groupId>com.bazaarvoice.soa.examples.calculator</groupId>
             <artifactId>calculator-client</artifactId>
-            <version>1.0.2-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>

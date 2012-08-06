@@ -17,12 +17,27 @@
     <name>examples</name>
     <description>Examples of how to use SOA</description>
 
+    <properties>
+        <dropwizard.version>0.4.4</dropwizard.version>
+        <soa.version>1.0.2-SNAPSHOT</soa.version>
+    </properties>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
                 <groupId>com.bazaarvoice.soa</groupId>
                 <artifactId>soa-core</artifactId>
-                <version>1.0.2-SNAPSHOT</version>
+                <version>${soa.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.bazaarvoice.soa</groupId>
+                <artifactId>soa-dropwizard</artifactId>
+                <version>${soa.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.yammer.dropwizard</groupId>
+                <artifactId>dropwizard-client</artifactId>
+                <version>${dropwizard.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
