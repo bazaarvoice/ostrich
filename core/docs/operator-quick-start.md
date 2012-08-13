@@ -7,7 +7,7 @@ make sure they "stay up."  It also gives service providers some control of how i
 
 From the client perspective Ostrich gives them a way to have a dynamic set of available service providers that are
 currently available.  It also gives clients the ability to deal with failures in a graceful way by allowing them to
-specify retry policies that if permitted will autmoatically retry the failed operation on a new server.  Finally from
+specify retry policies that if permitted will automatically retry the failed operation on a new server.  Finally from
 client perspective, Ostrich will help to maintain knowledge of what remote services are in a good state vs. bad state
 by monitoring health-checks on the services.
 
