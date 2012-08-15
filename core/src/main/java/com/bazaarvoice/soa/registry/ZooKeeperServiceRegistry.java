@@ -3,8 +3,9 @@ package com.bazaarvoice.soa.registry;
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceEndPointJsonCodec;
 import com.bazaarvoice.soa.ServiceRegistry;
-import com.bazaarvoice.soa.internal.CuratorConnection;
-import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
+import com.bazaarvoice.zookeeper.internal.CuratorConnection;
+import com.bazaarvoice.zookeeper.ZooKeeperConnection;
+import com.bazaarvoice.zookeeper.recipes.ZooKeeperPersistentEphemeralNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
 import com.google.common.collect.Maps;
@@ -41,21 +42,15 @@ public class ZooKeeperServiceRegistry implements ServiceRegistry
     @VisibleForTesting
     static final DateTimeFormatter ISO8601 = ISODateTimeFormat.dateTime().withZoneUTC();
 
-    private final CuratorFramework _curator;
+    private final ZooKeeperConnection _zooKeeperConnection;
     private volatile boolean _closed = false;
 
     /** The ephemeral data that's been written to ZooKeeper.  Saved in case the connection is lost and then regained. */
     private final Map<String, ZooKeeperPersistentEphemeralNode> _nodes = Maps.newConcurrentMap();
 
     public ZooKeeperServiceRegistry(ZooKeeperConnection connection) {
-        this(((CuratorConnection) checkNotNull(connection)).getCurator());
-    }
-
-    @VisibleForTesting
-    ZooKeeperServiceRegistry(CuratorFramework curator) {
-        checkNotNull(curator);
-        checkArgument(curator.isStarted());
-        _curator = curator;
+        checkNotNull(connection);
+        _zooKeeperConnection = connection;
     }
 
     /** {@inheritDoc} */
@@ -79,7 +74,7 @@ public class ZooKeeperServiceRegistry implements ServiceRegistry
         checkState(data.length < MAX_DATA_SIZE, "Serialized form of ServiceEndPoint must be < 1MB.");
 
         String path = makeEndPointPath(endPoint);
-        _nodes.put(path, new ZooKeeperPersistentEphemeralNode(_curator, path, data, CreateMode.EPHEMERAL));
+        _nodes.put(path, new ZooKeeperPersistentEphemeralNode(_zooKeeperConnection, path, data, CreateMode.EPHEMERAL));
     }
 
     /** {@inheritDoc} */
@@ -112,7 +107,7 @@ public class ZooKeeperServiceRegistry implements ServiceRegistry
     /** @return The curator instance used by this registry. */
     @VisibleForTesting
     CuratorFramework getCurator() {
-        return _curator;
+        return ((CuratorConnection) _zooKeeperConnection).getCurator();
     }
 
     @VisibleForTesting

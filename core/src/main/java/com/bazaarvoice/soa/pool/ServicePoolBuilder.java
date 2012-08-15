@@ -5,7 +5,7 @@ import com.bazaarvoice.soa.HostDiscoverySource;
 import com.bazaarvoice.soa.RetryPolicy;
 import com.bazaarvoice.soa.ServiceFactory;
 import com.bazaarvoice.soa.discovery.ZooKeeperHostDiscovery;
-import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
+import com.bazaarvoice.zookeeper.ZooKeeperConnection;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Ticker;
 import com.google.common.collect.Lists;

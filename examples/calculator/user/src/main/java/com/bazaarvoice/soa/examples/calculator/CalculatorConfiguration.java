@@ -1,6 +1,6 @@
 package com.bazaarvoice.soa.examples.calculator;
 
-import com.bazaarvoice.soa.zookeeper.dropwizard.ZooKeeperConfiguration;
+import com.bazaarvoice.zookeeper.dropwizard.ZooKeeperConfiguration;
 import com.yammer.dropwizard.client.JerseyClientConfiguration;
 import org.codehaus.jackson.annotate.JsonProperty;
 

@@ -2,8 +2,9 @@ package com.bazaarvoice.soa.test;
 
 import com.bazaarvoice.soa.HostDiscovery;
 import com.bazaarvoice.soa.ServiceEndPoint;
-import com.bazaarvoice.soa.zookeeper.ZooKeeperConfiguration;
-import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
+import com.bazaarvoice.zookeeper.internal.CuratorConnection;
+import com.bazaarvoice.zookeeper.ZooKeeperConfiguration;
+import com.bazaarvoice.zookeeper.ZooKeeperConnection;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
 import com.google.common.io.Closeables;
@@ -22,6 +23,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertNotNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public abstract class ZooKeeperTest {
     protected TestingServer _zooKeeperServer;
@@ -81,6 +84,13 @@ public abstract class ZooKeeperTest {
         _curatorInstances.add(curator);
 
         return curator;
+    }
+
+    public ZooKeeperConnection newMockZooKeeperConnection() throws Exception {
+        CuratorFramework curator = newCurator();
+        CuratorConnection connection = mock(CuratorConnection.class);
+        when(connection.getCurator()).thenReturn(curator);
+        return connection;
     }
 
     public void killSession(CuratorFramework curator) throws Exception {

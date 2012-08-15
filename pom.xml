@@ -18,6 +18,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <zookeeper-common.version>0.0.2</zookeeper-common.version>
     </properties>
 
     <build>
@@ -105,6 +106,18 @@
             </dependency>
 
             <dependency>
+                <groupId>com.bazaarvoice.zookeeper-common</groupId>
+                <artifactId>zookeeper-common-core</artifactId>
+                <version>${zookeeper-common.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.bazaarvoice.zookeeper-common</groupId>
+                <artifactId>zookeeper-common-dropwizard</artifactId>
+                <version>${zookeeper-common.version}</version>
+            </dependency>
+
+            <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
                 <version>12.0.1</version>
@@ -152,8 +165,8 @@
 
     <modules>
         <module>core</module>
-        <module>dropwizard</module>
         <module>examples</module>
+        <module>dropwizard</module>
     </modules>
 
     <distributionManagement>

@@ -59,8 +59,8 @@
         </dependency>
 
         <dependency>
-            <groupId>com.bazaarvoice.soa</groupId>
-            <artifactId>soa-dropwizard</artifactId>
+            <groupId>com.bazaarvoice.zookeeper-common</groupId>
+            <artifactId>zookeeper-common-dropwizard</artifactId>
         </dependency>
 
         <dependency>

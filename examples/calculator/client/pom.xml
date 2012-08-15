@@ -19,7 +19,12 @@
     <dependencies>
         <dependency>
             <groupId>com.bazaarvoice.soa</groupId>
-            <artifactId>soa-dropwizard</artifactId>
+            <artifactId>soa-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.bazaarvoice.zookeeper-common</groupId>
+            <artifactId>zookeeper-common-dropwizard</artifactId>
         </dependency>
 
         <dependency>

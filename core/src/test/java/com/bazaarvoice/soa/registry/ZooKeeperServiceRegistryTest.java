@@ -3,9 +3,9 @@ package com.bazaarvoice.soa.registry;
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceEndPointBuilder;
 import com.bazaarvoice.soa.ServiceEndPointJsonCodec;
+import com.bazaarvoice.zookeeper.ZooKeeperConfiguration;
+import com.bazaarvoice.zookeeper.ZooKeeperConnection;
 import com.bazaarvoice.soa.test.ZooKeeperTest;
-import com.bazaarvoice.soa.zookeeper.ZooKeeperConfiguration;
-import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
 import com.google.common.base.Charsets;
 import com.google.common.base.Strings;
 import com.netflix.curator.framework.CuratorFramework;
@@ -17,9 +17,9 @@ import org.junit.Test;
 import java.util.concurrent.TimeUnit;
 
 import static com.bazaarvoice.soa.registry.ZooKeeperServiceRegistry.MAX_DATA_SIZE;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertNotNull;
 
 public class ZooKeeperServiceRegistryTest extends ZooKeeperTest {
     private static final ServiceEndPoint FOO = newEndPoint("Foo", "server:80", "");
@@ -29,7 +29,7 @@ public class ZooKeeperServiceRegistryTest extends ZooKeeperTest {
     @Before
     public void setup() throws Exception {
         super.setup();
-        _registry = new ZooKeeperServiceRegistry(newCurator());
+        _registry = new ZooKeeperServiceRegistry(newMockZooKeeperConnection());
     }
 
     @After

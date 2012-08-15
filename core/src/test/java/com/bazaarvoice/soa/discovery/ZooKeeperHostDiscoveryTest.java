@@ -5,7 +5,7 @@ import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceEndPointBuilder;
 import com.bazaarvoice.soa.registry.ZooKeeperServiceRegistry;
 import com.bazaarvoice.soa.test.ZooKeeperTest;
-import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
+import com.bazaarvoice.zookeeper.ZooKeeperConnection;
 import com.google.common.collect.Iterables;
 import com.google.common.io.Closeables;
 import com.netflix.curator.framework.CuratorFramework;

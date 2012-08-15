@@ -4,7 +4,7 @@ import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceEndPointBuilder;
 import com.bazaarvoice.soa.ServiceRegistry;
 import com.bazaarvoice.soa.registry.ZooKeeperServiceRegistry;
-import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
+import com.bazaarvoice.zookeeper.ZooKeeperConnection;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Closeables;
 import com.yammer.dropwizard.Service;

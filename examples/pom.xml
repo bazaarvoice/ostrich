@@ -35,6 +35,16 @@
                 <version>${soa.version}</version>
             </dependency>
             <dependency>
+                <groupId>com.bazaarvoice.zookeeper-common</groupId>
+                <artifactId>zookeeper-common-core</artifactId>
+                <version>${zookeeper-common.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.bazaarvoice.zookeeper-common</groupId>
+                <artifactId>zookeeper-common-dropwizard</artifactId>
+                <version>${zookeeper-common.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>com.yammer.dropwizard</groupId>
                 <artifactId>dropwizard-client</artifactId>
                 <version>${dropwizard.version}</version>
