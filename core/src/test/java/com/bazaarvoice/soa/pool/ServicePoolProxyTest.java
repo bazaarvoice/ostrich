@@ -1,75 +1,27 @@
 package com.bazaarvoice.soa.pool;
 
-import com.bazaarvoice.soa.HostDiscovery;
-import com.bazaarvoice.soa.LoadBalanceAlgorithm;
 import com.bazaarvoice.soa.RetryPolicy;
-import com.bazaarvoice.soa.ServiceEndPoint;
-import com.bazaarvoice.soa.ServiceFactory;
-import com.bazaarvoice.soa.ServicePoolStatistics;
-import com.google.common.base.Ticker;
-import com.google.common.collect.ImmutableList;
-import org.junit.After;
-import org.junit.Before;
+import com.bazaarvoice.soa.ServiceCallback;
 import org.junit.Test;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
+import org.mockito.ArgumentCaptor;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.same;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 public class ServicePoolProxyTest {
-    private static final ServiceEndPoint FOO_ENDPOINT = mock(ServiceEndPoint.class);
     private static final Service FOO_SERVICE = mock(Service.class);
     private static final RetryPolicy NEVER_RETRY = mock(RetryPolicy.class);
 
-    private ScheduledExecutorService _healthCheckExecutor;
-    private ServicePool<Service> _pool;
-
     @SuppressWarnings("unchecked")
-    @Before
-    public void setup() {
-        Ticker ticker = mock(Ticker.class);
-
-        HostDiscovery hostDiscovery = mock(HostDiscovery.class);
-        when(hostDiscovery.getHosts()).thenReturn(ImmutableList.of(FOO_ENDPOINT));
-
-        LoadBalanceAlgorithm loadBalanceAlgorithm = mock(LoadBalanceAlgorithm.class);
-        when(loadBalanceAlgorithm.choose(any(Iterable.class))).thenReturn(FOO_ENDPOINT);
-
-        ServiceFactory<Service> serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
-        when(serviceFactory.create(FOO_ENDPOINT)).thenReturn(FOO_SERVICE);
-        when(serviceFactory.getLoadBalanceAlgorithm(any(ServicePoolStatistics.class))).thenReturn(loadBalanceAlgorithm);
-
-        _healthCheckExecutor = mock(ScheduledExecutorService.class);
-        when(_healthCheckExecutor.scheduleAtFixedRate((Runnable) any(), anyLong(), anyLong(), (TimeUnit) any())).then(
-                new Answer<ScheduledFuture<?>>() {
-                    @Override
-                    public ScheduledFuture<?> answer(InvocationOnMock invocation) throws Throwable {
-                        return mock(ScheduledFuture.class);
-                    }
-                }
-        );
-
-        _pool = new ServicePool<Service>(ticker, hostDiscovery, serviceFactory,
-                ServiceCachingPolicyBuilder.NO_CACHING, _healthCheckExecutor, true);
-    }
-
-    @After
-    public void teardown() {
-        _pool.close();
-    }
+    private final ServicePool<Service> _pool = mock(ServicePool.class);
 
     @Test
     public void testProxyDoesNotOverrideClose() throws IOException {
@@ -78,8 +30,14 @@ public class ServicePoolProxyTest {
         Service service = ServicePoolProxy.create(Service.class, NEVER_RETRY, _pool, false);
         service.close();
 
+        // Capture and execute the callback.
+        @SuppressWarnings("unchecked") ArgumentCaptor<ServiceCallback<Service, ?>> captor =
+                (ArgumentCaptor) ArgumentCaptor.forClass(ServiceCallback.class);
+        verify(_pool).execute(same(NEVER_RETRY), captor.capture());
+        captor.getValue().call(FOO_SERVICE);
+
         verify(FOO_SERVICE).close();
-        verify(_healthCheckExecutor, never()).shutdownNow();
+        verify(_pool, never()).close();
     }
 
     @Test
@@ -101,7 +59,14 @@ public class ServicePoolProxyTest {
         Service service = ServicePoolProxy.create(Service.class, NEVER_RETRY, _pool, true);
         service.close();
 
-        verify(_healthCheckExecutor).shutdownNow();
+        verify(_pool).close();
+    }
+
+    @Test
+    public void testGetServicePool() {
+        ServicePoolProxy<Service> proxy = new ServicePoolProxy<Service>(Service.class, NEVER_RETRY, _pool, false);
+
+        assertSame(_pool, proxy.getServicePool());
     }
 
     private static interface Service {

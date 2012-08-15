@@ -19,9 +19,6 @@ import com.yammer.dropwizard.json.Json;
 import org.apache.http.client.HttpClient;
 
 import java.net.URI;
-import java.util.Map;
-
-import static com.google.common.base.Preconditions.checkNotNull;
 
 public class CalculatorServiceFactory implements ServiceFactory<CalculatorService> {
     private final Client _client;

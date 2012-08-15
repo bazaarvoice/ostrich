@@ -37,6 +37,17 @@ public interface ServicePool<S> extends Closeable {
      * @param retryPolicy The retry policy for the operation.
      * @param callback The user provided callback to invoke with a service end point.
      * @param <R> The return type for the call.
+     * @return The result provided by the callback.
      */
     <R> R execute(RetryPolicy retryPolicy, ServiceCallback<S, R> callback);
+
+    /**
+     * Attempts to find a healthy end point. Performs health checks until a healthy end point is found, all available
+     * end points are exhausted, or execution of a health check throws an exception that is deemed not retriable.
+     *
+     * @return {@code HealthCheckResults} containing the first healthy result found (if any), and all unhealthy results
+     * encountered before a healthy one. If there are no end points in the pool, the {@code HealthCheckResults} will
+     * contain no results.
+     */
+    HealthCheckResults checkForHealthyEndPoint();
 }

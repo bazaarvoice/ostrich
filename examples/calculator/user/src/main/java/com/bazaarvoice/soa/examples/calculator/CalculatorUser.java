@@ -3,6 +3,7 @@ package com.bazaarvoice.soa.examples.calculator;
 import com.bazaarvoice.soa.ServiceCallback;
 import com.bazaarvoice.soa.ServicePool;
 import com.bazaarvoice.soa.exceptions.ServiceException;
+import com.bazaarvoice.soa.healthcheck.dropwizard.ContainsHealthyEndPointCheck;
 import com.bazaarvoice.soa.pool.ServiceCachingPolicy;
 import com.bazaarvoice.soa.pool.ServiceCachingPolicyBuilder;
 import com.bazaarvoice.soa.pool.ServicePoolBuilder;
@@ -11,6 +12,7 @@ import com.bazaarvoice.soa.zookeeper.ZooKeeperConnection;
 import com.google.common.io.Closeables;
 import com.yammer.dropwizard.config.ConfigurationFactory;
 import com.yammer.dropwizard.validation.Validator;
+import com.yammer.metrics.HealthChecks;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,6 +87,11 @@ public class CalculatorUser {
                 .withZooKeeperHostDiscovery(zooKeeper)
                 .withCachingPolicy(cachingPolicy)
                 .build();
+
+        // If using Yammer Metrics or running in Dropwizard (which includes Yammer Metrics), you may want a health
+        // check that pings a service you depend on. This will register a simple check that will confirm the service
+        // pool contains at least one healthy end point.
+        HealthChecks.register(new ContainsHealthyEndPointCheck(pool, "calculator-user"));
 
         CalculatorUser user = new CalculatorUser(pool);
         user.use();
