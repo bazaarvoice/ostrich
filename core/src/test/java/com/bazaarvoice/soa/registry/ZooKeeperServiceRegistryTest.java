@@ -156,7 +156,7 @@ public class ZooKeeperServiceRegistryTest extends ZooKeeperTest {
 
         // Kill the registry's ZooKeeper session.  That should force the ephemeral node that it created to be
         // automatically cleaned up.
-        killSession(_registry.getCurator());
+        killSession(_registry.getZooKeeperConnection());
 
         // Wait for the trigger to be called up to 10 seconds.  This should be plenty of time for the node to be
         // removed, if it's not called by then, fail the test.
@@ -174,7 +174,7 @@ public class ZooKeeperServiceRegistryTest extends ZooKeeperTest {
         curator.checkExists().usingWatcher(deletionTrigger).forPath(path);
 
         // Kill the registry's session, thus cleaning up the node...
-        killSession(_registry.getCurator());
+        killSession(_registry.getZooKeeperConnection());
 
         // Make sure the node ended up getting deleted...
         assertTrue(deletionTrigger.firedWithin(10, TimeUnit.SECONDS));
@@ -198,7 +198,7 @@ public class ZooKeeperServiceRegistryTest extends ZooKeeperTest {
             curator.checkExists().usingWatcher(deletionTrigger).forPath(path);
 
             // Kill the registry's session, thus cleaning up the node...
-            killSession(_registry.getCurator());
+            killSession(_registry.getZooKeeperConnection());
 
             // Make sure the node ended up getting deleted...
             assertTrue(deletionTrigger.firedWithin(10, TimeUnit.SECONDS));

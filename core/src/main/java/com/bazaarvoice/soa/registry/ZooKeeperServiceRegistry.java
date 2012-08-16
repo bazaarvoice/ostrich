@@ -3,13 +3,11 @@ package com.bazaarvoice.soa.registry;
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceEndPointJsonCodec;
 import com.bazaarvoice.soa.ServiceRegistry;
-import com.bazaarvoice.zookeeper.internal.CuratorConnection;
 import com.bazaarvoice.zookeeper.ZooKeeperConnection;
 import com.bazaarvoice.zookeeper.recipes.ZooKeeperPersistentEphemeralNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
 import com.google.common.collect.Maps;
-import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.utils.ZKPaths;
 import org.apache.zookeeper.CreateMode;
 import org.joda.time.DateTime;
@@ -104,10 +102,10 @@ public class ZooKeeperServiceRegistry implements ServiceRegistry
         _nodes.clear();
     }
 
-    /** @return The curator instance used by this registry. */
+    /** @return The {@link ZooKeeperConnection} instance used by this registry. */
     @VisibleForTesting
-    CuratorFramework getCurator() {
-        return ((CuratorConnection) _zooKeeperConnection).getCurator();
+    ZooKeeperConnection getZooKeeperConnection() {
+        return _zooKeeperConnection;
     }
 
     @VisibleForTesting
