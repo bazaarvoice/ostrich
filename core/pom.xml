@@ -30,8 +30,14 @@
         </dependency>
 
         <dependency>
-            <groupId>com.bazaarvoice.zookeeper-common</groupId>
-            <artifactId>zookeeper-common-core</artifactId>
+            <groupId>com.bazaarvoice.zookeeper</groupId>
+            <artifactId>zookeeper-recipes</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.bazaarvoice.zookeeper</groupId>
+            <artifactId>zookeeper-test</artifactId>
+            <scope>test</scope>
         </dependency>
 
         <dependency>

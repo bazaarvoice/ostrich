@@ -70,8 +70,8 @@
         </dependency>
 
         <dependency>
-            <groupId>com.bazaarvoice.zookeeper-common</groupId>
-            <artifactId>zookeeper-common-core</artifactId>
+            <groupId>com.bazaarvoice.zookeeper</groupId>
+            <artifactId>zookeeper-core</artifactId>
         </dependency>
 
         <dependency>

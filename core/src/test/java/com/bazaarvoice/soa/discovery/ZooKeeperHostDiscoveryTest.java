@@ -4,7 +4,7 @@ import com.bazaarvoice.soa.HostDiscovery;
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceEndPointBuilder;
 import com.bazaarvoice.soa.registry.ZooKeeperServiceRegistry;
-import com.bazaarvoice.soa.test.ZooKeeperTest;
+import com.bazaarvoice.zookeeper.test.ZooKeeperTest;
 import com.bazaarvoice.zookeeper.ZooKeeperConnection;
 import com.google.common.collect.Iterables;
 import com.google.common.io.Closeables;
@@ -272,12 +272,12 @@ public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
 
         @Override
         public void onEndPointAdded(ServiceEndPoint endPoint) {
-            _addTrigger.onEndPointAdded(endPoint);
+            _addTrigger.fire();
         }
 
         @Override
         public void onEndPointRemoved(ServiceEndPoint endPoint) {
-            _removeTrigger.onEndPointRemoved(endPoint);
+            _removeTrigger.fire();
         }
 
         public boolean addedWithin(long duration, TimeUnit unit) throws InterruptedException {

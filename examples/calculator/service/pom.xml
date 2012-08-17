@@ -59,8 +59,8 @@
         </dependency>
 
         <dependency>
-            <groupId>com.bazaarvoice.zookeeper-common</groupId>
-            <artifactId>zookeeper-common-dropwizard</artifactId>
+            <groupId>com.bazaarvoice.zookeeper</groupId>
+            <artifactId>zookeeper-dropwizard</artifactId>
         </dependency>
 
         <dependency>
