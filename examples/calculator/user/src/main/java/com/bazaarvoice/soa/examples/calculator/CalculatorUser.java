@@ -2,8 +2,8 @@ package com.bazaarvoice.soa.examples.calculator;
 
 import com.bazaarvoice.soa.ServiceCallback;
 import com.bazaarvoice.soa.ServicePool;
+import com.bazaarvoice.soa.dropwizard.healthcheck.ContainsHealthyEndPointCheck;
 import com.bazaarvoice.soa.exceptions.ServiceException;
-import com.bazaarvoice.soa.healthcheck.dropwizard.ContainsHealthyEndPointCheck;
 import com.bazaarvoice.soa.pool.ServiceCachingPolicy;
 import com.bazaarvoice.soa.pool.ServiceCachingPolicyBuilder;
 import com.bazaarvoice.soa.pool.ServicePoolBuilder;

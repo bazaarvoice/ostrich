@@ -1,6 +1,6 @@
 package com.bazaarvoice.soa.examples.calculator;
 
-import com.bazaarvoice.soa.healthcheck.dropwizard.ContainsHealthyEndPointCheck;
+import com.bazaarvoice.soa.dropwizard.healthcheck.ContainsHealthyEndPointCheck;
 import com.bazaarvoice.soa.pool.ServicePoolProxies;
 import com.bazaarvoice.soa.pool.ServiceCachingPolicy;
 import com.bazaarvoice.soa.pool.ServiceCachingPolicyBuilder;

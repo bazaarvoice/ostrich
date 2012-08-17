@@ -1,4 +1,4 @@
-package com.bazaarvoice.soa.healthcheck.dropwizard;
+package com.bazaarvoice.soa.dropwizard.healthcheck;
 
 import com.bazaarvoice.soa.HealthCheckResults;
 import com.bazaarvoice.soa.HealthCheckResult;
