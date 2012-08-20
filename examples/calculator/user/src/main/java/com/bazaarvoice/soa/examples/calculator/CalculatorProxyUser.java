@@ -1,12 +1,11 @@
 package com.bazaarvoice.soa.examples.calculator;
 
 import com.bazaarvoice.soa.dropwizard.healthcheck.ContainsHealthyEndPointCheck;
-import com.bazaarvoice.soa.pool.ServicePoolProxies;
 import com.bazaarvoice.soa.pool.ServiceCachingPolicy;
 import com.bazaarvoice.soa.pool.ServiceCachingPolicyBuilder;
 import com.bazaarvoice.soa.pool.ServicePoolBuilder;
+import com.bazaarvoice.soa.pool.ServicePoolProxies;
 import com.bazaarvoice.soa.retry.RetryNTimes;
-import com.bazaarvoice.zookeeper.ZooKeeperConfiguration;
 import com.bazaarvoice.zookeeper.ZooKeeperConnection;
 import com.google.common.io.Closeables;
 import com.yammer.dropwizard.config.ConfigurationFactory;

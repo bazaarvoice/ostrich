@@ -1,8 +1,8 @@
 package com.bazaarvoice.soa;
 
 /**
- * A provider of statistics relating to the state of the {@link ServicePool}. Mainly useful for making decisions for load
- * balancing, a {@code ServicePool} will pass an instance to the {@link ServiceFactory} when requesting a
+ * A provider of statistics relating to the state of the {@link ServicePool}. Mainly useful for making decisions for
+ * load balancing, a {@code ServicePool} will pass an instance to the {@link ServiceFactory} when requesting a
  * {@link LoadBalanceAlgorithm}.
  */
 public interface ServicePoolStatistics {

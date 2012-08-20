@@ -22,9 +22,9 @@ public class ServicePoolProxiesTest {
         verify(pool).close();
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     public void testFindFirstHealthyEndPoint() {
-        @SuppressWarnings("unchecked")
         com.bazaarvoice.soa.ServicePool<Service> pool = mock(com.bazaarvoice.soa.ServicePool.class);
         HealthCheckResults results = mock(HealthCheckResults.class);
         when(pool.checkForHealthyEndPoint()).thenReturn(results);
@@ -38,9 +38,10 @@ public class ServicePoolProxiesTest {
         ServicePoolProxies.getPool(null);
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     public void testPoolGetter() {
-        @SuppressWarnings("unchecked") com.bazaarvoice.soa.ServicePool<Service> pool = mock(com.bazaarvoice.soa.ServicePool.class);
+        com.bazaarvoice.soa.ServicePool<Service> pool = mock(com.bazaarvoice.soa.ServicePool.class);
         Service service = ServicePoolProxy.create(Service.class, mock(RetryPolicy.class), pool, true);
 
         assertSame(pool, ServicePoolProxies.getPool(service));
