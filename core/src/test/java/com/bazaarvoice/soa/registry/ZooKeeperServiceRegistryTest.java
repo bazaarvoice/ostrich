@@ -3,44 +3,72 @@ package com.bazaarvoice.soa.registry;
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceEndPointBuilder;
 import com.bazaarvoice.soa.ServiceEndPointJsonCodec;
-import com.bazaarvoice.zookeeper.ZooKeeperConfiguration;
 import com.bazaarvoice.zookeeper.ZooKeeperConnection;
-import com.bazaarvoice.zookeeper.test.ZooKeeperTest;
+import com.bazaarvoice.zookeeper.recipes.ZooKeeperPersistentEphemeralNode;
 import com.google.common.base.Charsets;
 import com.google.common.base.Strings;
-import com.netflix.curator.framework.CuratorFramework;
-import org.apache.zookeeper.data.Stat;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Matchers;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
 import java.util.concurrent.TimeUnit;
 
 import static com.bazaarvoice.soa.registry.ZooKeeperServiceRegistry.MAX_DATA_SIZE;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertNotNull;
+import static com.bazaarvoice.soa.registry.ZooKeeperServiceRegistry.makeEndPointPath;
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.byteThat;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-public class ZooKeeperServiceRegistryTest extends ZooKeeperTest {
+public class ZooKeeperServiceRegistryTest {
     private static final ServiceEndPoint FOO = newEndPoint("Foo", "server:80", "");
+    private static final String FOO_PATH = makeEndPointPath(FOO);
 
+    private ZooKeeperServiceRegistry.NodeFactory _nodeFactory;
     private ZooKeeperServiceRegistry _registry;
 
     @Before
-    public void setup() throws Exception {
-        super.setup();
-        _registry = new ZooKeeperServiceRegistry(newMockZooKeeperConnection(newCurator()));
+    public void setup() {
+        _nodeFactory = mock(ZooKeeperServiceRegistry.NodeFactory.class);
+        when(_nodeFactory.create(anyString(), any(byte[].class)))
+                .thenAnswer(new Answer<ZooKeeperPersistentEphemeralNode>() {
+                    @Override
+                    public ZooKeeperPersistentEphemeralNode answer(InvocationOnMock invocation) throws Throwable {
+                        return mock(ZooKeeperPersistentEphemeralNode.class);
+                    }
+                });
+        _registry = new ZooKeeperServiceRegistry(_nodeFactory);
     }
 
     @After
     public void teardown() throws Exception {
         _registry.close();
-        super.teardown();
     }
 
     @Test(expected = NullPointerException.class)
     public void testNullConnection() throws Exception {
         new ZooKeeperServiceRegistry((ZooKeeperConnection) null);
+    }
+
+    @Test(expected = NullPointerException.class)
+    public void testNullFactory() {
+        new ZooKeeperServiceRegistry((ZooKeeperServiceRegistry.NodeFactory) null);
+    }
+
+    @Test
+    public void testConstructor() {
+        new ZooKeeperServiceRegistry(mock(ZooKeeperConnection.class));
     }
 
     @Test(expected = NullPointerException.class)
@@ -81,162 +109,73 @@ public class ZooKeeperServiceRegistryTest extends ZooKeeperTest {
 
     @Test
     public void testEmptyPayload() {
-        _registry.register(newEndPoint("Foo", "server:80", ""), false);
+        _registry.register(newEndPoint(FOO.getServiceName(), FOO.getId(), ""), false);
     }
 
     @Test
     public void testRegister() throws Exception {
-        CuratorFramework curator = newCurator();
+        ZooKeeperPersistentEphemeralNode node = mock(ZooKeeperPersistentEphemeralNode.class);
+        when(_nodeFactory.create(anyString(), any(byte[].class))).thenReturn(node);
 
         _registry.register(FOO);
-        assertRegistered(FOO, curator);
+
+        ArgumentCaptor<byte[]> dataCaptor = ArgumentCaptor.forClass(byte[].class);
+
+        verify(_nodeFactory).create(eq(FOO_PATH), dataCaptor.capture());
+        assertEquals(FOO, ServiceEndPointJsonCodec.fromJson(new String(dataCaptor.getValue())));
+        verify(node, never()).close(anyLong(), any(TimeUnit.class));
     }
 
     @Test
     public void testDuplicateRegister() throws Exception {
-        CuratorFramework curator = newCurator();
+        ZooKeeperPersistentEphemeralNode firstNode = mock(ZooKeeperPersistentEphemeralNode.class);
+        ZooKeeperPersistentEphemeralNode secondNode = mock(ZooKeeperPersistentEphemeralNode.class);
+        when(_nodeFactory.create(anyString(), any(byte[].class))).thenReturn(firstNode, secondNode);
 
         _registry.register(FOO);
         _registry.register(FOO);
-        assertRegistered(FOO, curator);
+
+        verify(_nodeFactory, times(2)).create(eq(FOO_PATH), Matchers.<byte[]>any());
+        verify(firstNode).close(anyLong(), any(TimeUnit.class));
     }
 
     @Test
     public void testUnregister() throws Exception {
-        CuratorFramework curator = newCurator();
+        ZooKeeperPersistentEphemeralNode node = mock(ZooKeeperPersistentEphemeralNode.class);
+        when(_nodeFactory.create(anyString(), any(byte[].class))).thenReturn(node);
 
         _registry.register(FOO);
-        String path = _registry.getRegisteredEndPointPath(FOO);
 
         _registry.unregister(FOO);
-        assertNodeDoesNotExist(path, curator);
+
+        verify(node).close(anyLong(), any(TimeUnit.class));
     }
 
     @Test
     public void testUnregisterWithoutFirstRegistering() throws Exception {
         _registry.unregister(FOO);
+
+        verify(_nodeFactory, never()).create(eq(FOO_PATH), Matchers.<byte[]>any());
     }
 
     @Test
     public void testDuplicateUnregister() throws Exception {
-        CuratorFramework curator = newCurator();
-
         _registry.register(FOO);
-        String path = _registry.getRegisteredEndPointPath(FOO);
 
         _registry.unregister(FOO);
         _registry.unregister(FOO);
-        assertNodeDoesNotExist(path, curator);
     }
 
     @Test
     public void testServiceNodeIsDeletedWhenRegistryIsClosed() throws Exception {
-        CuratorFramework curator = newCurator();
+        ZooKeeperPersistentEphemeralNode node = mock(ZooKeeperPersistentEphemeralNode.class);
+        when(_nodeFactory.create(anyString(), any(byte[].class))).thenReturn(node);
 
         _registry.register(FOO);
-        String path = _registry.getRegisteredEndPointPath(FOO);
-
-        WatchTrigger deletionTrigger = new WatchTrigger();
-        curator.checkExists().usingWatcher(deletionTrigger).forPath(path);
 
         _registry.close();
 
-        assertTrue(deletionTrigger.firedWithin(10, TimeUnit.SECONDS));
-    }
-
-    @Test
-    public void testServiceNodeIsDeletedWhenSessionDisconnects() throws Exception {
-        CuratorFramework curator = newCurator();
-
-        _registry.register(FOO);
-        String path = _registry.getRegisteredEndPointPath(FOO);
-
-        WatchTrigger deletionTrigger = new WatchTrigger();
-        curator.checkExists().usingWatcher(deletionTrigger).forPath(path);
-
-        // Kill the registry's ZooKeeper session.  That should force the ephemeral node that it created to be
-        // automatically cleaned up.
-        killSession(_registry.getZooKeeperConnection());
-
-        // Wait for the trigger to be called up to 10 seconds.  This should be plenty of time for the node to be
-        // removed, if it's not called by then, fail the test.
-        assertTrue(deletionTrigger.firedWithin(10, TimeUnit.SECONDS));
-    }
-
-    @Test
-    public void testServiceNodeIsRecreatedWhenSessionReconnects() throws Exception {
-        CuratorFramework curator = newCurator();
-
-        _registry.register(FOO);
-        String path = _registry.getRegisteredEndPointPath(FOO);
-
-        WatchTrigger deletionTrigger = new WatchTrigger();
-        curator.checkExists().usingWatcher(deletionTrigger).forPath(path);
-
-        // Kill the registry's session, thus cleaning up the node...
-        killSession(_registry.getZooKeeperConnection());
-
-        // Make sure the node ended up getting deleted...
-        assertTrue(deletionTrigger.firedWithin(10, TimeUnit.SECONDS));
-
-        // Now put a watch in the background looking to see if it gets created...
-        WatchTrigger creationTrigger = new WatchTrigger();
-        Stat stat = curator.checkExists().usingWatcher(creationTrigger).forPath(path);
-        assertTrue(stat != null || creationTrigger.firedWithin(10, TimeUnit.SECONDS));
-    }
-
-    @Test
-    public void testServiceNodeIsRecreatedWhenSessionReconnectsMultipleTimes() throws Exception {
-        CuratorFramework curator = newCurator();
-
-        _registry.register(FOO);
-        String path = _registry.getRegisteredEndPointPath(FOO);
-
-        // We should be able to disconnect multiple times and each time the registry should re-create the node.
-        for (int i = 0; i < 5; i++) {
-            WatchTrigger deletionTrigger = new WatchTrigger();
-            curator.checkExists().usingWatcher(deletionTrigger).forPath(path);
-
-            // Kill the registry's session, thus cleaning up the node...
-            killSession(_registry.getZooKeeperConnection());
-
-            // Make sure the node ended up getting deleted...
-            assertTrue(deletionTrigger.firedWithin(10, TimeUnit.SECONDS));
-
-            // Now put a watch in the background looking to see if it gets created...
-            WatchTrigger creationTrigger = new WatchTrigger();
-            Stat stat = curator.checkExists().usingWatcher(creationTrigger).forPath(path);
-            assertTrue(stat != null || creationTrigger.firedWithin(10, TimeUnit.SECONDS));
-        }
-    }
-
-    @Test
-    public void testNamespace() throws Exception {
-        ZooKeeperConnection connection = newZooKeeperConnection(new ZooKeeperConfiguration().withNamespace("/dc1"));
-        ZooKeeperServiceRegistry registry = new ZooKeeperServiceRegistry(connection);
-        registry.register(FOO);
-
-        // Use a non-namespaced curator to check that the path was created in the correct namespace
-        assertNotNull(newCurator().checkExists().forPath("/dc1" + registry.getRegisteredEndPointPath(FOO)));
-    }
-
-    @Test
-    public void testEmptyNamespace() throws Exception {
-        ZooKeeperConnection connection = newZooKeeperConnection(new ZooKeeperConfiguration().withNamespace(""));
-        ZooKeeperServiceRegistry registry = new ZooKeeperServiceRegistry(connection);
-        registry.register(FOO);
-
-        // Use a non-namespaced curator to check that the path was created in the correct namespace
-        assertNotNull(newCurator().checkExists().forPath(registry.getRegisteredEndPointPath(FOO)));
-    }
-
-    private void assertRegistered(ServiceEndPoint endPoint, CuratorFramework curator) throws Exception {
-        String path = _registry.getRegisteredEndPointPath(endPoint);
-        assertNotNull(curator.checkExists().forPath(path));
-    }
-
-    private void assertNodeDoesNotExist(String path, CuratorFramework curator) throws Exception {
-        assertNull(curator.checkExists().forPath(path));
+        verify(node).close(anyLong(), any(TimeUnit.class));
     }
 
     private static ServiceEndPoint newEndPoint(String serviceName, String id, String payload) {

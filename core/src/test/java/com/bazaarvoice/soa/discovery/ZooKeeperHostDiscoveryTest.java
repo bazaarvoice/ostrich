@@ -97,6 +97,7 @@ public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
     @Test
     public void testMembershipCheck() {
         _registry.register(FOO);
+        _registry.register(BAR);
         assertTrue(waitUntilSize(_discovery.getHosts(), 1));
         assertTrue(_discovery.contains(FOO));
         assertFalse(_discovery.contains(BAR));
