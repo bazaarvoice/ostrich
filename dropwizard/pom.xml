@@ -11,7 +11,6 @@
 
     <groupId>com.bazaarvoice.soa</groupId>
     <artifactId>soa-dropwizard</artifactId>
-    <version>1.1.2-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>dropwizard</name>
@@ -21,7 +20,7 @@
         <dependency>
             <groupId>com.bazaarvoice.soa</groupId>
             <artifactId>soa-core</artifactId>
-            <version>1.1.2-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>
