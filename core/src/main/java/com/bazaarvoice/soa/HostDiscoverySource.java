@@ -1,7 +1,5 @@
 package com.bazaarvoice.soa;
 
-import javax.annotation.Nullable;
-
 /**
  * Source for {@link HostDiscovery} instances.
  */
@@ -13,6 +11,5 @@ public interface HostDiscoverySource {
      * @param serviceName The name of the service.
      * @return a {@link HostDiscovery} instance for the specified service.
      */
-    @Nullable
     HostDiscovery forService(String serviceName);
 }

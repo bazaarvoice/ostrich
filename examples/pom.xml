@@ -11,7 +11,6 @@
 
     <groupId>com.bazaarvoice.soa.examples</groupId>
     <artifactId>soa-examples</artifactId>
-    <version>1.1.2-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>examples</name>
@@ -19,7 +18,6 @@
 
     <properties>
         <dropwizard.version>0.4.4</dropwizard.version>
-        <soa.version>${project.version}</soa.version>
     </properties>
 
     <dependencyManagement>
@@ -27,12 +25,12 @@
             <dependency>
                 <groupId>com.bazaarvoice.soa</groupId>
                 <artifactId>soa-core</artifactId>
-                <version>${soa.version}</version>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.bazaarvoice.soa</groupId>
                 <artifactId>soa-dropwizard</artifactId>
-                <version>${soa.version}</version>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.bazaarvoice.zookeeper</groupId>
