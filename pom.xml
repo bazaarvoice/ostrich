@@ -19,6 +19,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <bazaarvoice.zookeeper.version>0.0.6</bazaarvoice.zookeeper.version>
+        <curator.version>1.1.17</curator.version>
     </properties>
 
     <build>
@@ -43,7 +44,7 @@
             <dependency>
                 <groupId>com.netflix.curator</groupId>
                 <artifactId>curator-framework</artifactId>
-                <version>1.1.15</version>
+                <version>${curator.version}</version>
 
                 <exclusions>
                     <exclusion>
@@ -72,7 +73,7 @@
             <dependency>
                 <groupId>com.netflix.curator</groupId>
                 <artifactId>curator-recipes</artifactId>
-                <version>1.1.15</version>
+                <version>${curator.version}</version>
 
                 <exclusions>
                     <exclusion>
