@@ -1,4 +1,4 @@
-package com.bazaarvoice.soa.examples.calculator;
+package com.bazaarvoice.soa.examples.calculator.user;
 
 import com.bazaarvoice.zookeeper.dropwizard.ZooKeeperConfiguration;
 import com.yammer.dropwizard.client.JerseyClientConfiguration;

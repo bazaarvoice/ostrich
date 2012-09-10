@@ -1,4 +1,4 @@
-package com.bazaarvoice.soa.examples.calculator;
+package com.bazaarvoice.soa.examples.calculator.client;
 
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.sun.jersey.api.client.Client;

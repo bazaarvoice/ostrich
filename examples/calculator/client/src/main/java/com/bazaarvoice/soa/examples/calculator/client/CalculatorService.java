@@ -1,4 +1,4 @@
-package com.bazaarvoice.soa.examples.calculator;
+package com.bazaarvoice.soa.examples.calculator.client;
 
 public interface CalculatorService {
     int add(int a, int b);

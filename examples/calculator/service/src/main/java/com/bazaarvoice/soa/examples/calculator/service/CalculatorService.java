@@ -1,4 +1,4 @@
-package com.bazaarvoice.soa.examples.calculator;
+package com.bazaarvoice.soa.examples.calculator.service;
 
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceEndPointBuilder;

@@ -1,4 +1,4 @@
-package com.bazaarvoice.soa.examples.calculator;
+package com.bazaarvoice.soa.examples.calculator.service;
 
 import com.yammer.metrics.annotation.Timed;
 

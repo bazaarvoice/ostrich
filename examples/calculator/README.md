@@ -42,4 +42,4 @@ Running the Example
 
 7.  Start the alternate client that uses dynamic service proxies:
 
-        $ java -classpath target/calculator-user-*.jar com.bazaarvoice.soa.examples.calculator.CalculatorProxyUser
+        $ java -classpath target/calculator-user-*.jar com.bazaarvoice.soa.examples.calculator.user.CalculatorProxyUser
