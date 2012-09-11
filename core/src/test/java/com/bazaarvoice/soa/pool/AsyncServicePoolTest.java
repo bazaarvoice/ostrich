@@ -4,7 +4,6 @@ import com.bazaarvoice.soa.RetryPolicy;
 import com.bazaarvoice.soa.ServiceCallback;
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceEndPointPredicate;
-import com.bazaarvoice.soa.ServicePoolStatistics;
 import com.bazaarvoice.soa.exceptions.MaxRetriesException;
 import com.bazaarvoice.soa.exceptions.ServiceException;
 import com.google.common.base.Ticker;
@@ -13,6 +12,7 @@ import com.google.common.collect.Sets;
 import com.google.common.io.Closeables;
 import com.google.common.util.concurrent.MoreExecutors;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -48,6 +48,11 @@ public class AsyncServicePoolTest {
     private final Ticker _mockTicker = mock(Ticker.class);
     private final ExecutorService _mockExecutor = mock(ExecutorService.class);
     private final Collection<AsyncServicePool<Service>> _asyncServicePools = Lists.newArrayList();
+
+    @Before
+    public void setup() {
+        when(_mockPool.getServiceName()).thenReturn(Service.class.getSimpleName());
+    }
 
     @After
     public void teardown() {

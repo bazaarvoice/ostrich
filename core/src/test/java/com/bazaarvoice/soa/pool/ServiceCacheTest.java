@@ -49,6 +49,7 @@ public class ServiceCacheTest {
     @Before
     public void setup() {
         _factory = mock(ServiceFactory.class);
+        when(_factory.getServiceName()).thenReturn(Service.class.getSimpleName());
         when(_factory.create(any(ServiceEndPoint.class))).thenAnswer(new Answer<Service>() {
             @Override
             public Service answer(InvocationOnMock invocation) throws Throwable {
