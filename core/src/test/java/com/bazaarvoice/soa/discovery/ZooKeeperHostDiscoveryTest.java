@@ -20,12 +20,14 @@ import static org.junit.Assert.assertTrue;
 
 public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
     private static final ServiceEndPoint FOO = new ServiceEndPointBuilder()
-            .withServiceName("Foo")
+            .withEnsembleName("Test")
+            .withServiceType("Foo")
             .withId("server:8080")
             .build();
 
     private static final ServiceEndPoint BAR = new ServiceEndPointBuilder()
-            .withServiceName("Bar")
+            .withEnsembleName(null)
+            .withServiceType("Bar")
             .withId("server:8081")
             .build();
 
@@ -36,7 +38,7 @@ public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
     public void setup() throws Exception {
         super.setup();
         _registry = new ZooKeeperServiceRegistry(newZooKeeperConnection());
-        _discovery = new ZooKeeperHostDiscovery(newCurator(), FOO.getServiceName());
+        _discovery = new ZooKeeperHostDiscovery(newCurator(), FOO.getEnsembleName(), FOO.getServiceType());
     }
 
     @Override
@@ -48,17 +50,17 @@ public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
 
     @Test(expected = NullPointerException.class)
     public void testNullConfiguration() {
-        new ZooKeeperHostDiscovery((ZooKeeperConnection) null, FOO.getServiceName());
+        new ZooKeeperHostDiscovery((ZooKeeperConnection) null, FOO.getEnsembleName(), FOO.getServiceType());
     }
 
     @Test(expected = NullPointerException.class)
     public void testNullServiceName() throws Exception {
-        new ZooKeeperHostDiscovery(newCurator(), null);
+        new ZooKeeperHostDiscovery(newCurator(), null, null);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testEmptyServiceName() throws Exception {
-        new ZooKeeperHostDiscovery(newCurator(), "");
+        new ZooKeeperHostDiscovery(newCurator(), null, "");
     }
 
     @Test
@@ -90,7 +92,7 @@ public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
     public void testWaitForData() throws Exception {
         // Create the HostDiscovery after registration is done so there's at least one initial host
         _registry.register(FOO);
-        HostDiscovery discovery = new ZooKeeperHostDiscovery(newCurator(), FOO.getServiceName());
+        HostDiscovery discovery = new ZooKeeperHostDiscovery(newCurator(), FOO.getEnsembleName(), FOO.getServiceType());
         assertEquals(Iterables.size(discovery.getHosts()), 1);
     }
 
@@ -107,7 +109,7 @@ public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
     public void testAlreadyExistingEndPointsDoNotFireEvents() throws Exception {
         _registry.register(FOO);
 
-        HostDiscovery discovery = new ZooKeeperHostDiscovery(newCurator(), FOO.getServiceName());
+        HostDiscovery discovery = new ZooKeeperHostDiscovery(newCurator(), FOO.getEnsembleName(), FOO.getServiceType());
         assertEquals(Iterables.size(discovery.getHosts()), 1);
 
         CountingListener eventCounter = new CountingListener();
@@ -246,7 +248,7 @@ public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
 
         // Unregister FOO and create a new HostDiscovery instance as close together as we can, so they race.
         _registry.unregister(FOO);
-        HostDiscovery discovery = new ZooKeeperHostDiscovery(curator, FOO.getServiceName());
+        HostDiscovery discovery = new ZooKeeperHostDiscovery(curator, FOO.getEnsembleName(), FOO.getServiceType());
         assertTrue(waitUntilSize(discovery.getHosts(), 0));
     }
 

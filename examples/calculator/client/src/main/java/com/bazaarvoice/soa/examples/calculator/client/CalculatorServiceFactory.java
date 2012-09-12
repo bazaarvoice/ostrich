@@ -47,7 +47,7 @@ public class CalculatorServiceFactory implements ServiceFactory<CalculatorServic
     }
 
     @Override
-    public String getServiceName() {
+    public String getServiceType() {
         return "calculator";
     }
 

@@ -17,23 +17,23 @@ public class ServiceEndPointBuilderTest {
     @Test(expected = IllegalStateException.class)
     public void testMissingId() {
         new ServiceEndPointBuilder()
-                .withServiceName("service")
+                .withServiceType("service")
                 .build();
     }
 
     @Test
     public void testServiceName() {
         ServiceEndPoint endPoint = new ServiceEndPointBuilder()
-                .withServiceName("service")
+                .withServiceType("service")
                 .withId("id")
                 .build();
-        assertEquals("service", endPoint.getServiceName());
+        assertEquals("service", endPoint.getServiceType());
     }
 
     @Test
     public void testId() {
         ServiceEndPoint endPoint = new ServiceEndPointBuilder()
-                .withServiceName("service")
+                .withServiceType("service")
                 .withId("id")
                 .build();
         assertEquals("id", endPoint.getId());
@@ -42,7 +42,7 @@ public class ServiceEndPointBuilderTest {
     @Test
     public void testNoPayload() {
         ServiceEndPoint endPoint = new ServiceEndPointBuilder()
-                .withServiceName("service")
+                .withServiceType("service")
                 .withId("id")
                 .build();
         assertNull(endPoint.getPayload());
@@ -51,7 +51,7 @@ public class ServiceEndPointBuilderTest {
     @Test
     public void testEmptyPayload() {
         ServiceEndPoint endPoint = new ServiceEndPointBuilder()
-                .withServiceName("service")
+                .withServiceType("service")
                 .withId("id")
                 .withPayload("")
                 .build();
@@ -61,7 +61,7 @@ public class ServiceEndPointBuilderTest {
     @Test
     public void testPayload() {
         ServiceEndPoint endPoint = new ServiceEndPointBuilder()
-                .withServiceName("service")
+                .withServiceType("service")
                 .withId("id")
                 .withPayload("payload")
                 .build();
@@ -74,7 +74,7 @@ public class ServiceEndPointBuilderTest {
 
         for (String name : invalidNames) {
             try {
-                new ServiceEndPointBuilder().withServiceName(name);
+                new ServiceEndPointBuilder().withServiceType(name);
                 fail(name + " was allowed");
             } catch (AssertionError e) {
                 throw e;

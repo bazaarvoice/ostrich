@@ -27,7 +27,7 @@ Running the Example
 5.  In another window, start a calculator client:
 
         $ cd examples/calculator/user
-        $ java -jar target/calculator-user-*.jar
+        $ java -jar target/calculator-user-*.jar /tmp/config.yaml
 
 6.  Simulate server failure:
 
@@ -42,4 +42,5 @@ Running the Example
 
 7.  Start the alternate client that uses dynamic service proxies:
 
-        $ java -classpath target/calculator-user-*.jar com.bazaarvoice.soa.examples.calculator.user.CalculatorProxyUser
+        $ java -classpath target/calculator-user-*.jar \
+                com.bazaarvoice.soa.examples.calculator.user.CalculatorProxyUser /tmp/config.yaml

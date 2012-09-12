@@ -11,6 +11,9 @@ import javax.validation.constraints.NotNull;
  * YAML-friendly configuration class.
  */
 public class CalculatorConfiguration {
+    @JsonProperty("ensembleName")
+    private String _ensembleName;
+
     @Valid
     @NotNull
     @JsonProperty("zooKeeper")
@@ -20,6 +23,14 @@ public class CalculatorConfiguration {
     @NotNull
     @JsonProperty("httpClient")
     private JerseyClientConfiguration _httpClientConfiguration = new JerseyClientConfiguration();
+
+    public String getEnsembleName() {
+        return _ensembleName;
+    }
+
+    public void setEnsembleName(String ensembleName) {
+        _ensembleName = ensembleName;
+    }
 
     public ZooKeeperConfiguration getZooKeeperConfiguration() {
         return _zooKeeperConfiguration;

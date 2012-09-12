@@ -8,9 +8,9 @@ import com.google.common.base.Strings;
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class ServiceEndPointBuilder {
-    // Service names and versions have a restricted set of valid characters in them for simplicity.  These are the
-    // characters that can appear in a URL without needing escaping.  This will let us refer to services with a URL
-    // looking structure (e.g. prod://services/profile-v1)
+    // Service types etc. have a restricted set of valid characters in them for simplicity.  These are the characters
+    // that can appear in a URL without needing escaping.  This will let us refer to services with a URL looking
+    // structure (e.g. prod://services/profile-v1)
     private static final CharMatcher VALID_CHARACTERS = CharMatcher.NONE
             .or(CharMatcher.inRange('a', 'z'))
             .or(CharMatcher.inRange('A', 'Z'))
@@ -18,14 +18,25 @@ public class ServiceEndPointBuilder {
             .or(CharMatcher.anyOf("._-:"))
             .precomputed();
 
-    private Optional<String> _serviceName = Optional.absent();
+    private Optional<String> _ensembleName = Optional.absent();
+    private Optional<String> _serviceType = Optional.absent();
     private Optional<String> _id = Optional.absent();
     private Optional<String> _payload = Optional.absent();
 
-    public ServiceEndPointBuilder withServiceName(String serviceName) {
-        checkArgument(!Strings.isNullOrEmpty(serviceName) && VALID_CHARACTERS.matchesAllOf(serviceName));
+    public ServiceEndPointBuilder withEnsembleName(String ensembleName) {
+        if (Strings.isNullOrEmpty(ensembleName)) {
+            _ensembleName = Optional.absent();
+        } else {
+            checkArgument(VALID_CHARACTERS.matchesAllOf(ensembleName));
+            _ensembleName = Optional.of(ensembleName);
+        }
+        return this;
+    }
 
-        _serviceName = Optional.of(serviceName);
+    public ServiceEndPointBuilder withServiceType(String serviceType) {
+        checkArgument(!Strings.isNullOrEmpty(serviceType) && VALID_CHARACTERS.matchesAllOf(serviceType));
+
+        _serviceType = Optional.of(serviceType);
         return this;
     }
 
@@ -42,14 +53,20 @@ public class ServiceEndPointBuilder {
     }
 
     public ServiceEndPoint build() {
-        final String serviceName = _serviceName.get();
+        final String ensembleName = _ensembleName.orNull();
+        final String serviceType = _serviceType.get();
         final String id = _id.get();
         final String payload = _payload.orNull();
 
         return new ServiceEndPoint() {
             @Override
-            public String getServiceName() {
-                return serviceName;
+            public String getEnsembleName() {
+                return ensembleName;
+            }
+
+            @Override
+            public String getServiceType() {
+                return serviceType;
             }
 
             @Override
@@ -64,7 +81,7 @@ public class ServiceEndPointBuilder {
 
             @Override
             public int hashCode() {
-                return Objects.hashCode(serviceName, id);
+                return Objects.hashCode(ensembleName, serviceType, id);
             }
 
             @Override
@@ -73,7 +90,8 @@ public class ServiceEndPointBuilder {
                 if (!(obj instanceof ServiceEndPoint)) return false;
 
                 ServiceEndPoint that = (ServiceEndPoint) obj;
-                return Objects.equal(serviceName, that.getServiceName())
+                return Objects.equal(ensembleName, that.getEnsembleName())
+                        && Objects.equal(serviceType, that.getServiceType())
                         && Objects.equal(id, that.getId())
                         && Objects.equal(payload, that.getPayload());
             }
@@ -81,7 +99,8 @@ public class ServiceEndPointBuilder {
             @Override
             public String toString() {
                 return Objects.toStringHelper("ServiceEndPoint")
-                        .add("name", serviceName)
+                        .add("ensemble", ensembleName)
+                        .add("type", serviceType)
                         .add("id", id)
                         .toString();
             }

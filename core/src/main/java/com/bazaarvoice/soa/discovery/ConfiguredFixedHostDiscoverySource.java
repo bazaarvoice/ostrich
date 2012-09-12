@@ -40,7 +40,7 @@ public class ConfiguredFixedHostDiscoverySource<Payload> implements HostDiscover
     }
 
     @Override
-    public HostDiscovery forService(String serviceName) {
+    public HostDiscovery forService(String ensembleName, String serviceType) {
         if (_endPoints.isEmpty()) {
             return null;
         }
@@ -50,9 +50,10 @@ public class ConfiguredFixedHostDiscoverySource<Payload> implements HostDiscover
             String id = entry.getKey();
             Payload payload = entry.getValue();
             endPoints.add(new ServiceEndPointBuilder()
-                    .withServiceName(serviceName)
+                    .withEnsembleName(ensembleName)
+                    .withServiceType(serviceType)
                     .withId(id)
-                    .withPayload(serialize(serviceName, id, payload))
+                    .withPayload(serialize(serviceType, id, payload))
                     .build());
         }
         return new FixedHostDiscovery(endPoints);
@@ -62,7 +63,7 @@ public class ConfiguredFixedHostDiscoverySource<Payload> implements HostDiscover
      * Subclasses may override this to customize the persistent format of the payload.
      */
     @SuppressWarnings("UnusedParameters")
-    protected String serialize(String serviceName, String id, Payload payload) {
+    protected String serialize(String serviceType, String id, Payload payload) {
         return String.valueOf(payload);
     }
 

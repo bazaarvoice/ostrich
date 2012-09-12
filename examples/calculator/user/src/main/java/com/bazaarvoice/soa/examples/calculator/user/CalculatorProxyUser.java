@@ -81,6 +81,7 @@ public class CalculatorProxyUser {
                 .build();
 
         CalculatorService service = ServicePoolBuilder.create(CalculatorService.class)
+                .withEnsembleName(configuration.getEnsembleName())
                 .withServiceFactory(new CalculatorServiceFactory(configuration.getHttpClientConfiguration()))
                 .withZooKeeperHostDiscovery(zooKeeper)
                 .withCachingPolicy(cachingPolicy)

@@ -23,7 +23,6 @@ import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
-import static org.mockito.Matchers.byteThat;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -32,7 +31,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class ZooKeeperServiceRegistryTest {
-    private static final ServiceEndPoint FOO = newEndPoint("Foo", "server:80", "");
+    private static final ServiceEndPoint FOO = newEndPoint("Test", "Foo", "server:80", "");
     private static final String FOO_PATH = makeEndPointPath(FOO);
 
     private ZooKeeperServiceRegistry.NodeFactory _nodeFactory;
@@ -97,19 +96,19 @@ public class ZooKeeperServiceRegistryTest {
     public void testLargePayloadSize() {
         int padding = ServiceEndPointJsonCodec.toJson(FOO).getBytes(Charsets.UTF_8).length;
         String payload = Strings.repeat("x", MAX_DATA_SIZE - padding);
-        _registry.register(newEndPoint(FOO.getServiceName(), FOO.getId(), payload), false);
+        _registry.register(newEndPoint(FOO.getEnsembleName(), FOO.getServiceType(), FOO.getId(), payload), false);
     }
 
     @Test
     public void testMediumPayloadSize() {
         int padding = ServiceEndPointJsonCodec.toJson(FOO).getBytes(Charsets.UTF_8).length;
         String payload = Strings.repeat("x", MAX_DATA_SIZE - padding - 1);
-        _registry.register(newEndPoint(FOO.getServiceName(), FOO.getId(), payload), false);
+        _registry.register(newEndPoint(FOO.getEnsembleName(), FOO.getServiceType(), FOO.getId(), payload), false);
     }
 
     @Test
     public void testEmptyPayload() {
-        _registry.register(newEndPoint(FOO.getServiceName(), FOO.getId(), ""), false);
+        _registry.register(newEndPoint(FOO.getEnsembleName(), FOO.getServiceType(), FOO.getId(), ""), false);
     }
 
     @Test
@@ -178,9 +177,10 @@ public class ZooKeeperServiceRegistryTest {
         verify(node).close(anyLong(), any(TimeUnit.class));
     }
 
-    private static ServiceEndPoint newEndPoint(String serviceName, String id, String payload) {
+    private static ServiceEndPoint newEndPoint(String ensembleName, String serviceType, String id, String payload) {
         return new ServiceEndPointBuilder()
-                .withServiceName(serviceName)
+                .withEnsembleName(ensembleName)
+                .withServiceType(serviceType)
                 .withId(id)
                 .withPayload(payload)
                 .build();

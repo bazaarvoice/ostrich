@@ -10,7 +10,6 @@ import com.bazaarvoice.soa.pool.ServiceCachingPolicy;
 import com.bazaarvoice.soa.pool.ServiceCachingPolicyBuilder;
 import com.bazaarvoice.soa.pool.ServicePoolBuilder;
 import com.bazaarvoice.soa.retry.RetryNTimes;
-import com.bazaarvoice.zookeeper.ZooKeeperConfiguration;
 import com.bazaarvoice.zookeeper.ZooKeeperConnection;
 import com.google.common.io.Closeables;
 import com.yammer.dropwizard.config.ConfigurationFactory;
@@ -86,6 +85,7 @@ public class CalculatorUser {
                 .build();
 
         ServicePool<CalculatorService> pool = ServicePoolBuilder.create(CalculatorService.class)
+                .withEnsembleName(configuration.getEnsembleName())
                 .withServiceFactory(new CalculatorServiceFactory(configuration.getHttpClientConfiguration()))
                 .withZooKeeperHostDiscovery(zooKeeper)
                 .withCachingPolicy(cachingPolicy)

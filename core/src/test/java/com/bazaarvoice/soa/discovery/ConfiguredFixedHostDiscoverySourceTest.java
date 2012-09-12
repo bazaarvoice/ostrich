@@ -24,34 +24,35 @@ public class ConfiguredFixedHostDiscoverySourceTest {
     @Test
     public void testDefaultConstructor() {
         HostDiscoverySource source = new ConfiguredFixedHostDiscoverySource<Void>();
-        assertNull(source.forService("payload"));
+        assertNull(source.forService("ensemble", "serviceType"));
     }
 
     @Test
     public void testEmptyMap() {
         HostDiscoverySource source = new ConfiguredFixedHostDiscoverySource<Void>(Collections.<String, Void>emptyMap());
-        assertNull(source.forService("payload"));
+        assertNull(source.forService("ensemble", "serviceType"));
     }
 
     @Test
     public void testNonEmptyMap() {
         Map<String, String> endPoints = ImmutableMap.of("id", "payload");
         HostDiscoverySource source = new ConfiguredFixedHostDiscoverySource<String>(endPoints);
-        assertNotNull(source.forService("service"));
+        assertNotNull(source.forService("ensemble", "serviceType"));
     }
 
     @Test
     public void testSingleEndPoint() {
         Map<String, String> endPoints = ImmutableMap.of("id", "payload");
         HostDiscoverySource source = new ConfiguredFixedHostDiscoverySource<String>(endPoints);
-        HostDiscovery hostDiscovery = source.forService("service");
+        HostDiscovery hostDiscovery = source.forService("ensemble", "serviceType");
         assertNotNull(hostDiscovery);
 
         List<ServiceEndPoint> hosts = Lists.newArrayList(hostDiscovery.getHosts());
         assertEquals(1, hosts.size());
 
         ServiceEndPoint endPoint = hosts.get(0);
-        assertEquals("service", endPoint.getServiceName());
+        assertEquals("ensemble", endPoint.getEnsembleName());
+        assertEquals("serviceType", endPoint.getServiceType());
         assertEquals("id", endPoint.getId());
         assertEquals("payload", endPoint.getPayload());
     }
@@ -62,14 +63,14 @@ public class ConfiguredFixedHostDiscoverySourceTest {
         Map<String, Object> endPoints = ImmutableMap.of("id", customPayload);
         HostDiscoverySource source = new ConfiguredFixedHostDiscoverySource<Object>(endPoints) {
             @Override
-            protected String serialize(String serviceName, String id, Object payload) {
-                assertEquals("service", serviceName);
+            protected String serialize(String serviceType, String id, Object payload) {
+                assertEquals("serviceType", serviceType);
                 assertEquals("id", id);
                 assertEquals(customPayload, payload);
                 return "custom-payload";
             }
         };
-        HostDiscovery hostDiscovery = source.forService("service");
+        HostDiscovery hostDiscovery = source.forService("ensemble", "serviceType");
         assertNotNull(hostDiscovery);
 
         List<ServiceEndPoint> hosts = Lists.newArrayList(hostDiscovery.getHosts());

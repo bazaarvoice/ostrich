@@ -17,12 +17,14 @@ import static org.junit.Assert.assertTrue;
 
 public class FixedHostDiscoveryTest {
     private static final ServiceEndPoint FOO = new ServiceEndPointBuilder()
-            .withServiceName("Foo")
+            .withEnsembleName("Ensemble")
+            .withServiceType("Foo")
             .withId("server:8080")
             .build();
 
     private static final ServiceEndPoint BAR = new ServiceEndPointBuilder()
-            .withServiceName("Bar")
+            .withEnsembleName("Ensemble")
+            .withServiceType("Bar")
             .withId("server:8081")
             .build();
 

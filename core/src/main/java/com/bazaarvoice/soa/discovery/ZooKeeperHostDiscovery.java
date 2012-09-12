@@ -3,9 +3,9 @@ package com.bazaarvoice.soa.discovery;
 import com.bazaarvoice.soa.HostDiscovery;
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceEndPointJsonCodec;
-import com.bazaarvoice.zookeeper.internal.CuratorConnection;
 import com.bazaarvoice.soa.registry.ZooKeeperServiceRegistry;
 import com.bazaarvoice.zookeeper.ZooKeeperConnection;
+import com.bazaarvoice.zookeeper.internal.CuratorConnection;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
 import com.google.common.base.Throwables;
@@ -43,22 +43,23 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
     private final Set<EndPointListener> _listeners;
     private final PathChildrenCache _pathCache;
 
-    public ZooKeeperHostDiscovery(ZooKeeperConnection connection, String serviceName) {
-        this(((CuratorConnection) checkNotNull(connection)).getCurator(), serviceName);
+    public ZooKeeperHostDiscovery(ZooKeeperConnection connection, String ensembleName, String serviceType) {
+        this(((CuratorConnection) checkNotNull(connection)).getCurator(), ensembleName, serviceType);
     }
 
     @VisibleForTesting
-    ZooKeeperHostDiscovery(CuratorFramework curator, String serviceName) {
+    ZooKeeperHostDiscovery(CuratorFramework curator, String ensembleName, String serviceType) {
         checkNotNull(curator);
-        checkNotNull(serviceName);
+        checkNotNull(serviceType);
         checkArgument(curator.isStarted());
-        checkArgument(!"".equals(serviceName));
+        checkArgument(!serviceType.isEmpty());
 
+        String serviceName = (ensembleName != null) ? ensembleName + "-" + serviceType : serviceType;
         ThreadFactory threadFactory = new ThreadFactoryBuilder()
                 .setNameFormat(getClass().getSimpleName() + "(" + serviceName + ")-%d")
                 .setDaemon(true)
                 .build();
-        String servicePath = ZooKeeperServiceRegistry.makeServicePath(serviceName);
+        String servicePath = ZooKeeperServiceRegistry.makeServicePath(ensembleName, serviceType);
 
         _curator = curator;
         _endPoints = Sets.newSetFromMap(Maps.<ServiceEndPoint, Boolean>newConcurrentMap());

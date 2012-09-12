@@ -7,6 +7,7 @@ import com.bazaarvoice.zookeeper.ZooKeeperConnection;
 import com.bazaarvoice.zookeeper.recipes.ZooKeeperPersistentEphemeralNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
+import com.google.common.base.Strings;
 import com.google.common.collect.Maps;
 import com.netflix.curator.utils.ZKPaths;
 import org.apache.zookeeper.CreateMode;
@@ -115,12 +116,14 @@ public class ZooKeeperServiceRegistry implements ServiceRegistry
 
     /**
      * Construct the path in ZooKeeper to where a service's children live.
-     * @param serviceName The name of the service to get the ZooKeeper path for.
+     * @param ensembleName The name of the group of servers providing the service.
+     * @param serviceType The type of the service to get the ZooKeeper path for.
      * @return The ZooKeeper path.
      */
-    public static String makeServicePath(String serviceName) {
-        checkNotNull(serviceName);
-        checkArgument(!"".equals(serviceName));
+    public static String makeServicePath(String ensembleName, String serviceType) {
+        checkNotNull(serviceType);
+        checkArgument(!serviceType.isEmpty());
+        String serviceName = Strings.isNullOrEmpty(ensembleName) ? serviceType : ensembleName + '#' + serviceType;
         return ZKPaths.makePath(ROOT_SERVICES_PATH, serviceName);
     }
 
@@ -131,7 +134,7 @@ public class ZooKeeperServiceRegistry implements ServiceRegistry
      */
     @VisibleForTesting
     static String makeEndPointPath(ServiceEndPoint endPoint) {
-        String servicePath = makeServicePath(endPoint.getServiceName());
+        String servicePath = makeServicePath(endPoint.getEnsembleName(), endPoint.getServiceType());
         String id = endPoint.getId();
         return ZKPaths.makePath(servicePath, id);
     }

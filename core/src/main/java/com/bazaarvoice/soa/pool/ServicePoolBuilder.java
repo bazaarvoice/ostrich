@@ -7,6 +7,7 @@ import com.bazaarvoice.soa.ServiceFactory;
 import com.bazaarvoice.soa.discovery.ZooKeeperHostDiscovery;
 import com.bazaarvoice.zookeeper.ZooKeeperConnection;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 import com.google.common.base.Ticker;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -25,6 +26,7 @@ public class ServicePoolBuilder<S> {
 
     private final Class<S> _serviceType;
     private final List<HostDiscoverySource> _hostDiscoverySources = Lists.newArrayList();
+    private String _ensembleName;
     private ServiceFactory<S> _serviceFactory;
     private ScheduledExecutorService _healthCheckExecutor;
     private ServiceCachingPolicy _cachingPolicy;
@@ -39,9 +41,21 @@ public class ServicePoolBuilder<S> {
     }
 
     /**
+     * Sets the name of the group of servers that collectively provide the service.  The ensemble name is optional,
+     * but it can be used to distinguish multiple deployments of the same kind of service but for different purposes.
+     *
+     * @param ensembleName the name of the group of servers that collectively provide the service
+     * @return this
+     */
+    public ServicePoolBuilder<S> withEnsembleName(String ensembleName) {
+        _ensembleName = Strings.emptyToNull(ensembleName);
+        return this;
+    }
+
+    /**
      * Adds a {@link HostDiscoverySource} instance to the builder.  Multiple instances of {@code HostDiscoverySource}
      * may be specified.  The service pool will use the first source to return a non-null instance of
-     * {@link HostDiscovery} for the service name returned by {@link ServiceFactory#getServiceName()}.
+     * {@link HostDiscovery} for the ensemble name and service type returned by {@link ServiceFactory#getServiceType()}.
      *
      * @param hostDiscoverySource a host discovery source to use to find the {@link HostDiscovery} when constructing
      * the {@link ServicePool}
@@ -67,7 +81,7 @@ public class ServicePoolBuilder<S> {
         checkNotNull(hostDiscovery);
         return withHostDiscoverySource(new HostDiscoverySource() {
             @Override
-            public HostDiscovery forService(String serviceName) {
+            public HostDiscovery forService(String ensembleName, String serviceType) {
                 return hostDiscovery;
             }
         });
@@ -88,8 +102,8 @@ public class ServicePoolBuilder<S> {
         checkNotNull(connection);
         return withHostDiscoverySource(new HostDiscoverySource() {
             @Override
-            public HostDiscovery forService(String serviceName) {
-                return new ZooKeeperHostDiscovery(connection, serviceName);
+            public HostDiscovery forService(String ensembleName, String serviceType) {
+                return new ZooKeeperHostDiscovery(connection, ensembleName, serviceType);
             }
         });
     }
@@ -166,9 +180,8 @@ public class ServicePoolBuilder<S> {
 
         boolean shutdownAsyncExecutorOnClose = (_asyncExecutor == null);
         if (_asyncExecutor == null) {
-            String serviceName = _serviceFactory.getServiceName();
             ThreadFactory threadFactory = new ThreadFactoryBuilder()
-                    .setNameFormat(serviceName + "-AsyncExecutorThread-%d")
+                    .setNameFormat(getServiceName() + "-AsyncExecutorThread-%d")
                     .setDaemon(true)
                     .build();
             _asyncExecutor = Executors.newCachedThreadPool(threadFactory);
@@ -196,8 +209,7 @@ public class ServicePoolBuilder<S> {
     ServicePool<S> buildInternal() {
         checkNotNull(_serviceFactory);
 
-        String serviceName = _serviceFactory.getServiceName();
-        HostDiscovery hostDiscovery = findHostDiscovery(serviceName);
+        HostDiscovery hostDiscovery = findHostDiscovery(_serviceFactory.getServiceType(), _ensembleName);
 
         if (_cachingPolicy == null) {
             _cachingPolicy = ServiceCachingPolicyBuilder.NO_CACHING;
@@ -206,7 +218,7 @@ public class ServicePoolBuilder<S> {
         boolean shutdownHealthCheckExecutorOnClose = (_healthCheckExecutor == null);
         if (_healthCheckExecutor == null) {
             ThreadFactory threadFactory = new ThreadFactoryBuilder()
-                    .setNameFormat(serviceName + "-HealthCheckThread-%d")
+                    .setNameFormat(getServiceName() + "-HealthCheckThread-%d")
                     .setDaemon(true)
                     .build();
             _healthCheckExecutor = Executors.newScheduledThreadPool(DEFAULT_NUM_HEALTH_CHECK_THREADS, threadFactory);
@@ -216,13 +228,18 @@ public class ServicePoolBuilder<S> {
                 _cachingPolicy, _healthCheckExecutor, shutdownHealthCheckExecutorOnClose);
     }
 
-    private HostDiscovery findHostDiscovery(String serviceName) {
+    private HostDiscovery findHostDiscovery(String serviceType, String ensembleName) {
         for (HostDiscoverySource source : _hostDiscoverySources) {
-            HostDiscovery hostDiscovery = source.forService(serviceName);
+            HostDiscovery hostDiscovery = source.forService(ensembleName, serviceType);
             if (hostDiscovery != null) {
                 return hostDiscovery;
             }
         }
-        throw new IllegalStateException(format("No HostDiscovery found for service: %s", serviceName));
+        throw new IllegalStateException(format("No HostDiscovery found for service: %s %s", ensembleName, serviceType));
+    }
+
+    private String getServiceName() {
+        String serviceType = _serviceFactory.getServiceType();
+        return (_ensembleName != null) ? _ensembleName + "-" + serviceType : serviceType;
     }
 }

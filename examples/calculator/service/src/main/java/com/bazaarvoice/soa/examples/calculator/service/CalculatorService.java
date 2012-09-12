@@ -46,7 +46,8 @@ public class CalculatorService extends Service<CalculatorConfiguration> {
                 "url", serviceUri,
                 "adminUrl", adminUri);
         final ServiceEndPoint endPoint = new ServiceEndPointBuilder()
-                .withServiceName(getName())
+                .withEnsembleName(config.getEnsembleName())
+                .withServiceType(getName())
                 .withId(host + ":" + port)
                 .withPayload(getJson().writeValueAsString(payload))
                 .build();

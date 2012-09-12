@@ -39,7 +39,7 @@ public class ServicePoolBuilderTest {
         _serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
         when(_serviceFactory.getLoadBalanceAlgorithm(any(ServicePoolStatistics.class)))
                 .thenReturn(mock(LoadBalanceAlgorithm.class));
-        when(_serviceFactory.getServiceName()).thenReturn("serviceName");
+        when(_serviceFactory.getServiceType()).thenReturn("serviceType");
 
         _cachingPolicy = mock(ServiceCachingPolicy.class);
         when(_cachingPolicy.getCacheExhaustionAction()).thenReturn(ServiceCachingPolicy.ExhaustionAction.GROW);
@@ -132,7 +132,7 @@ public class ServicePoolBuilderTest {
         HostDiscovery overrideDiscovery = mock(HostDiscovery.class);
 
         HostDiscoverySource source = mock(HostDiscoverySource.class);
-        when(source.forService(anyString())).thenReturn(overrideDiscovery);
+        when(source.forService(anyString(), anyString())).thenReturn(overrideDiscovery);
 
         com.bazaarvoice.soa.pool.ServicePool<Service> pool = ServicePoolBuilder.create(Service.class)
                 .withHostDiscoverySource(source)
@@ -146,7 +146,7 @@ public class ServicePoolBuilderTest {
     @Test
     public void testHostDiscoverySourceFallThrough() {
         HostDiscoverySource source = mock(HostDiscoverySource.class);
-        when(source.forService(anyString())).thenReturn(null);
+        when(source.forService(anyString(), anyString())).thenReturn(null);
 
         com.bazaarvoice.soa.pool.ServicePool<Service> pool = ServicePoolBuilder.create(Service.class)
                 .withHostDiscoverySource(source)

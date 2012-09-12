@@ -6,13 +6,13 @@ package com.bazaarvoice.soa;
  * @param <S> The type of the service.
  */
 public interface ServiceFactory<S> {
-    // TODO: getServiceName and getLoadBalanceAlgorithm don't feel right here.
+    // TODO: getLoadBalanceAlgorithm don't feel right here.
 
     /**
-     * Get the name of the service this factory provides.
-     * @return The name of the service.
+     * Get the type of the service this factory provides.
+     * @return The type of the service.
      */
-    String getServiceName();
+    String getServiceType();
 
     /**
      * Get the {@code LoadBalanceAlgorithm} that should be used for this service. {@code ServicePoolStatistics} are
