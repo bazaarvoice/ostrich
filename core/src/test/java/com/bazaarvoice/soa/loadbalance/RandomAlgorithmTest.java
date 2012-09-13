@@ -16,12 +16,12 @@ import static org.mockito.Mockito.mock;
 public class RandomAlgorithmTest {
     @Test(expected = NullPointerException.class)
     public void testNullIterable() {
-        new RandomAlgorithm().choose(null);
+        new RandomAlgorithm().choose(null, null);
     }
 
     @Test
     public void testEmptyIterable() {
-        ServiceEndPoint endPoint = new RandomAlgorithm().choose(Collections.<ServiceEndPoint>emptyList());
+        ServiceEndPoint endPoint = new RandomAlgorithm().choose(Collections.<ServiceEndPoint>emptyList(), null);
         assertNull(endPoint);
     }
 
@@ -42,7 +42,7 @@ public class RandomAlgorithmTest {
         // For our purposes that's close enough to 100%.
         Set<ServiceEndPoint> seen = Sets.newIdentityHashSet();
         for (int i = 0; i < 1000; i++) {
-            seen.add(algorithm.choose(endPoints));
+            seen.add(algorithm.choose(endPoints, null));
         }
 
         assertEquals(endPoints.size(), seen.size());

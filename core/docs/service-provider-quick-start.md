@@ -90,8 +90,9 @@ required.  This is the way that you as a service provider tell the Ostrich libra
 library users should use to connect to it.  It gives Ostrich the ability to check the health of your servers and to
 use that information in making decisions about which servers should be used.  If an exception is encountered during
 interaction with the service, the `ServiceFactory` will be asked if it's okay to mark the offending end point as bad
-and retry - likely with a different end point.  Finally the `ServiceFactory` also tells Ostrich information about how
-requests to your service should be load balanced across all of the available servers.
+and retry - likely with a different end point.  Finally the `ServiceFactory` also has the opportunity to configure the
+`ServicePoolBuilder` if necessary, such as to provide an algorithm that gives Ostrich information about how requests to
+your service should be load balanced across all of the available servers.
 
 ```java
 public class CalculatorServiceFactory implements ServiceFactory<CalculatorService> {
@@ -103,8 +104,13 @@ public class CalculatorServiceFactory implements ServiceFactory<CalculatorServic
   }
 
   @Override
-  public LoadBalanceAlgorithm getLoadBalanceAlgorithm(ServicePoolStatistics stats) {
-    return new RandomAlgorithm();
+  public String getServiceName() {
+    return "calculator";
+  }
+
+  @Override
+  public void configure(ServicePoolBuilder<CalculatorService> servicePoolBuilder) {
+    servicePoolBuilder.withLoadBalanceAlgorithm(new RandomAlgorithm());
   }
 
   @Override

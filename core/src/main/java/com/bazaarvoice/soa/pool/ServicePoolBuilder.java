@@ -2,11 +2,14 @@ package com.bazaarvoice.soa.pool;
 
 import com.bazaarvoice.soa.HostDiscovery;
 import com.bazaarvoice.soa.HostDiscoverySource;
+import com.bazaarvoice.soa.LoadBalanceAlgorithm;
 import com.bazaarvoice.soa.RetryPolicy;
 import com.bazaarvoice.soa.ServiceFactory;
 import com.bazaarvoice.soa.discovery.ZooKeeperHostDiscovery;
+import com.bazaarvoice.soa.loadbalance.RandomAlgorithm;
 import com.bazaarvoice.zookeeper.ZooKeeperConnection;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 import com.google.common.base.Ticker;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -17,6 +20,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.String.format;
 
@@ -26,8 +30,10 @@ public class ServicePoolBuilder<S> {
     private final Class<S> _serviceType;
     private final List<HostDiscoverySource> _hostDiscoverySources = Lists.newArrayList();
     private ServiceFactory<S> _serviceFactory;
+    private String _serviceName;
     private ScheduledExecutorService _healthCheckExecutor;
     private ServiceCachingPolicy _cachingPolicy;
+    private LoadBalanceAlgorithm _loadBalanceAlgorithm = new RandomAlgorithm();
     private ExecutorService _asyncExecutor;
 
     public static <S> ServicePoolBuilder<S> create(Class<S> serviceType) {
@@ -41,7 +47,8 @@ public class ServicePoolBuilder<S> {
     /**
      * Adds a {@link HostDiscoverySource} instance to the builder.  Multiple instances of {@code HostDiscoverySource}
      * may be specified.  The service pool will use the first source to return a non-null instance of
-     * {@link HostDiscovery} for the service name returned by {@link ServiceFactory#getServiceName()}.
+     * {@link HostDiscovery} for the service name provided by the {@link ServiceFactory#getServiceName()} method of
+     * the factory configured by {@link #withServiceFactory}.
      *
      * @param hostDiscoverySource a host discovery source to use to find the {@link HostDiscovery} when constructing
      * the {@link ServicePool}
@@ -95,13 +102,17 @@ public class ServicePoolBuilder<S> {
     }
 
     /**
-     * Adds a {@code ServiceFactory} instance to the builder.
-     *
+     * Adds a {@code ServiceFactory} instance to the builder.  The {@code ServiceFactory#configure} method will be
+     * called at this time to allow the {@code ServiceFactory} to set service pool settings on the builder.
+     * <p>
      * @param serviceFactory the ServiceFactory to use
      * @return this
      */
     public ServicePoolBuilder<S> withServiceFactory(ServiceFactory<S> serviceFactory) {
         _serviceFactory = checkNotNull(serviceFactory);
+        checkArgument(!Strings.isNullOrEmpty(serviceFactory.getServiceName()), "Service name must be configured");
+        _serviceName = serviceFactory.getServiceName();
+        _serviceFactory.configure(this);
         return this;
     }
 
@@ -148,6 +159,17 @@ public class ServicePoolBuilder<S> {
     }
 
     /**
+     * Sets the {@code LoadBalanceAlgorithm} that should be used for this service.
+     * <p>
+     * @param algorithm A load balance algorithm to choose between available end points for the service.
+     * @return this
+     */
+    public ServicePoolBuilder<S> withLoadBalanceAlgorithm(LoadBalanceAlgorithm algorithm) {
+        _loadBalanceAlgorithm = checkNotNull(algorithm);
+        return this;
+    }
+
+    /**
      * Builds a {@code com.bazaarvoice.soa.ServicePool}.
      *
      * @return The {@code com.bazaarvoice.soa.ServicePool} that was constructed.
@@ -166,9 +188,8 @@ public class ServicePoolBuilder<S> {
 
         boolean shutdownAsyncExecutorOnClose = (_asyncExecutor == null);
         if (_asyncExecutor == null) {
-            String serviceName = _serviceFactory.getServiceName();
             ThreadFactory threadFactory = new ThreadFactoryBuilder()
-                    .setNameFormat(serviceName + "-AsyncExecutorThread-%d")
+                    .setNameFormat(_serviceName + "-AsyncExecutorThread-%d")
                     .setDaemon(true)
                     .build();
             _asyncExecutor = Executors.newCachedThreadPool(threadFactory);
@@ -196,8 +217,7 @@ public class ServicePoolBuilder<S> {
     ServicePool<S> buildInternal() {
         checkNotNull(_serviceFactory);
 
-        String serviceName = _serviceFactory.getServiceName();
-        HostDiscovery hostDiscovery = findHostDiscovery(serviceName);
+        HostDiscovery hostDiscovery = findHostDiscovery(_serviceName);
 
         if (_cachingPolicy == null) {
             _cachingPolicy = ServiceCachingPolicyBuilder.NO_CACHING;
@@ -206,14 +226,14 @@ public class ServicePoolBuilder<S> {
         boolean shutdownHealthCheckExecutorOnClose = (_healthCheckExecutor == null);
         if (_healthCheckExecutor == null) {
             ThreadFactory threadFactory = new ThreadFactoryBuilder()
-                    .setNameFormat(serviceName + "-HealthCheckThread-%d")
+                    .setNameFormat(_serviceName + "-HealthCheckThread-%d")
                     .setDaemon(true)
                     .build();
             _healthCheckExecutor = Executors.newScheduledThreadPool(DEFAULT_NUM_HEALTH_CHECK_THREADS, threadFactory);
         }
 
         return new ServicePool<S>(Ticker.systemTicker(), hostDiscovery, _serviceFactory,
-                _cachingPolicy, _healthCheckExecutor, shutdownHealthCheckExecutorOnClose);
+                _cachingPolicy, _loadBalanceAlgorithm, _healthCheckExecutor, shutdownHealthCheckExecutorOnClose);
     }
 
     private HostDiscovery findHostDiscovery(String serviceName) {

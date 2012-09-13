@@ -1,26 +1,28 @@
 package com.bazaarvoice.soa;
 
+import com.bazaarvoice.soa.pool.ServicePoolBuilder;
+
 /**
  * A factory for service instances. Provides instances to be used in {@link ServiceCallback}s as well as
  * general information about the service.
  * @param <S> The type of the service.
  */
 public interface ServiceFactory<S> {
-    // TODO: getServiceName and getLoadBalanceAlgorithm don't feel right here.
-
     /**
-     * Get the name of the service this factory provides.
+     * Gets the name of the service this factory provides.
      * @return The name of the service.
      */
     String getServiceName();
 
     /**
-     * Get the {@code LoadBalanceAlgorithm} that should be used for this service. {@code ServicePoolStatistics} are
-     * provided in case the load balancer needs to have some knowledge of the service pool's state.
-     * @param stats A live view of information about the service pool.
-     * @return A load balance algorithm to choose between available end points for the service.
+     * Calls the specified {@code ServicePoolBuilder} to set optional service pool related settings for this service.
+     * <p>
+     * This <em>should</em> configure default policies appropriate for this service like a default load balance
+     * algorithm.
+     *
+     * @param servicePoolBuilder the service pool builder to configure.
      */
-    LoadBalanceAlgorithm getLoadBalanceAlgorithm(ServicePoolStatistics stats);
+    void configure(ServicePoolBuilder<S> servicePoolBuilder);
 
     /**
      * Create a service instance for a given end point.

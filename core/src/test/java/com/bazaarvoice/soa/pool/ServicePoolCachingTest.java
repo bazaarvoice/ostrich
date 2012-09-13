@@ -60,6 +60,7 @@ public class ServicePoolCachingTest {
     private Ticker _ticker;
     private HostDiscovery _hostDiscovery;
     private ServiceFactory<Service> _serviceFactory;
+    private LoadBalanceAlgorithm _loadBalanceAlgorithm;
     private ScheduledExecutorService _healthCheckExecutor;
     private List<ServicePool<Service>> _pools = Lists.newArrayList();
 
@@ -77,18 +78,18 @@ public class ServicePoolCachingTest {
         when(_hostDiscovery.getHosts()).thenReturn(ImmutableList.of(FOO_ENDPOINT));
         when(_hostDiscovery.contains(FOO_ENDPOINT)).thenReturn(true);
 
-        LoadBalanceAlgorithm loadBalanceAlgorithm = mock(LoadBalanceAlgorithm.class);
-        when(loadBalanceAlgorithm.choose(any(Iterable.class))).thenReturn(FOO_ENDPOINT);
+        _loadBalanceAlgorithm = mock(LoadBalanceAlgorithm.class);
+        when(_loadBalanceAlgorithm.choose(any(Iterable.class), any(ServicePoolStatistics.class)))
+                .thenReturn(FOO_ENDPOINT);
 
         _serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
+        when(_serviceFactory.getServiceName()).thenReturn(Service.class.getSimpleName());
         when(_serviceFactory.create(any(ServiceEndPoint.class))).then(new Answer<Service>() {
             @Override
             public Service answer(InvocationOnMock invocation) throws Throwable {
                 return mock(Service.class);
             }
         });
-        when(_serviceFactory.getLoadBalanceAlgorithm(any(ServicePoolStatistics.class)))
-                .thenReturn(loadBalanceAlgorithm);
         when(_serviceFactory.isRetriableException(any(Exception.class))).thenReturn(true);
 
         _healthCheckExecutor = mock(ScheduledExecutorService.class);
@@ -307,7 +308,7 @@ public class ServicePoolCachingTest {
 
     private ServicePool<Service> newPool(ServiceCachingPolicy cachingPolicy) {
         ServicePool<Service> pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory,
-                cachingPolicy, _healthCheckExecutor, true);
+                cachingPolicy, _loadBalanceAlgorithm, _healthCheckExecutor, true);
         _pools.add(pool);
         return pool;
     }

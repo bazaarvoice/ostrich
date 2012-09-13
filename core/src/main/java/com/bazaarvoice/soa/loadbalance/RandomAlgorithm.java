@@ -2,6 +2,7 @@ package com.bazaarvoice.soa.loadbalance;
 
 import com.bazaarvoice.soa.LoadBalanceAlgorithm;
 import com.bazaarvoice.soa.ServiceEndPoint;
+import com.bazaarvoice.soa.ServicePoolStatistics;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
@@ -13,7 +14,7 @@ public class RandomAlgorithm implements LoadBalanceAlgorithm {
     private final Random _rnd = new Random();
 
     @Override
-    public ServiceEndPoint choose(Iterable<ServiceEndPoint> endPoints) {
+    public ServiceEndPoint choose(Iterable<ServiceEndPoint> endPoints, ServicePoolStatistics statistics) {
         Preconditions.checkNotNull(endPoints);
 
         Iterator<ServiceEndPoint> iter = endPoints.iterator();

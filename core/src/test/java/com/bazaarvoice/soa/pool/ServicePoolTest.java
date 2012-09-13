@@ -46,6 +46,7 @@ import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Matchers.same;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -70,7 +71,6 @@ public class ServicePoolTest {
     private ScheduledExecutorService _healthCheckExecutor;
     private ScheduledFuture<?> _healthCheckScheduledFuture;
     private ServicePool<Service> _pool;
-    private ServicePoolStatistics _servicePoolStatistics;
 
     @SuppressWarnings("unchecked")
     @Before
@@ -86,7 +86,8 @@ public class ServicePoolTest {
         when(_hostDiscovery.getHosts()).thenReturn(ImmutableList.of(FOO_ENDPOINT, BAR_ENDPOINT, BAZ_ENDPOINT));
 
         _loadBalanceAlgorithm = mock(LoadBalanceAlgorithm.class);
-        when(_loadBalanceAlgorithm.choose(any(Iterable.class))).thenAnswer(new Answer<ServiceEndPoint>() {
+        when(_loadBalanceAlgorithm.choose(any(Iterable.class), any(ServicePoolStatistics.class)))
+                .thenAnswer(new Answer<ServiceEndPoint>() {
             @Override
             public ServiceEndPoint answer(InvocationOnMock invocation) throws Throwable {
                 // Always choose the first end point.  This is probably fine since most tests will have just a single
@@ -96,13 +97,11 @@ public class ServicePoolTest {
             }
         });
 
-        ArgumentCaptor<ServicePoolStatistics> statsCaptor = ArgumentCaptor.forClass(ServicePoolStatistics.class);
-
         _serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
+        when(_serviceFactory.getServiceName()).thenReturn(Service.class.getSimpleName());
         when(_serviceFactory.create(FOO_ENDPOINT)).thenReturn(FOO_SERVICE);
         when(_serviceFactory.create(BAR_ENDPOINT)).thenReturn(BAR_SERVICE);
         when(_serviceFactory.create(BAZ_ENDPOINT)).thenReturn(BAZ_SERVICE);
-        when(_serviceFactory.getLoadBalanceAlgorithm(statsCaptor.capture())).thenReturn(_loadBalanceAlgorithm);
         when(_serviceFactory.isRetriableException(any(Exception.class))).thenReturn(true);
 
         _healthCheckExecutor = mock(ScheduledExecutorService.class);
@@ -130,9 +129,7 @@ public class ServicePoolTest {
         );
 
         _pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory, UNLIMITED_CACHING,
-                _healthCheckExecutor, true);
-
-        _servicePoolStatistics = statsCaptor.getValue();
+                _loadBalanceAlgorithm, _healthCheckExecutor, true);
     }
 
     @After
@@ -191,7 +188,8 @@ public class ServicePoolTest {
     public void testThrowsNoSuitableHostsExceptionWhenLoadBalancerReturnsNull() {
         // Reset the load balance algorithm's setup and make it always return null.
         reset(_loadBalanceAlgorithm);
-        when(_loadBalanceAlgorithm.choose(Matchers.<Iterable<ServiceEndPoint>>any())).thenReturn(null);
+        when(_loadBalanceAlgorithm.choose(Matchers.<Iterable<ServiceEndPoint>>any(), any(ServicePoolStatistics.class)))
+                .thenReturn(null);
 
         boolean called = _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Boolean>() {
             @Override
@@ -354,17 +352,33 @@ public class ServicePoolTest {
     }
 
     @Test
+    public void testStatsPassedToLoadBalancer() {
+        _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Void>() {
+            @Override
+            public Void call(Service service) throws ServiceException {
+                return null;
+            }
+        });
+
+        verify(_loadBalanceAlgorithm).choose(Matchers.<Iterable<ServiceEndPoint>>any(),
+                same(_pool.getServicePoolStatistics()));
+    }
+
+    @Test
     public void testStatsNumActiveInstancesIncrementsDuringExecute() {
         // Make sure we only get FOO_ENDPOINT.
         reset(_loadBalanceAlgorithm);
-        when(_loadBalanceAlgorithm.choose(Matchers.<Iterable<ServiceEndPoint>>any())).thenReturn(FOO_ENDPOINT);
+        when(_loadBalanceAlgorithm.choose(Matchers.<Iterable<ServiceEndPoint>>any(), any(ServicePoolStatistics.class)))
+                .thenReturn(FOO_ENDPOINT);
 
-        int numActiveInitially = _servicePoolStatistics.getNumActiveInstances(FOO_ENDPOINT);
+        final ServicePoolStatistics servicePoolStatistics = _pool.getServicePoolStatistics();
+
+        int numActiveInitially = servicePoolStatistics.getNumActiveInstances(FOO_ENDPOINT);
 
         int numActiveDuringExecute = _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Integer>() {
             @Override
             public Integer call(Service service) throws ServiceException {
-                return _servicePoolStatistics.getNumActiveInstances(FOO_ENDPOINT);
+                return servicePoolStatistics.getNumActiveInstances(FOO_ENDPOINT);
             }
         });
 
@@ -375,16 +389,19 @@ public class ServicePoolTest {
     public void testStatsNumActiveInstancesDecrementsAfterExecute() {
         // Make sure we only get FOO_ENDPOINT.
         reset(_loadBalanceAlgorithm);
-        when(_loadBalanceAlgorithm.choose(Matchers.<Iterable<ServiceEndPoint>>any())).thenReturn(FOO_ENDPOINT);
+        when(_loadBalanceAlgorithm.choose(Matchers.<Iterable<ServiceEndPoint>>any(), any(ServicePoolStatistics.class)))
+                .thenReturn(FOO_ENDPOINT);
+
+        final ServicePoolStatistics servicePoolStatistics = _pool.getServicePoolStatistics();
 
         int numActiveDuringExecute = _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Integer>() {
             @Override
             public Integer call(Service service) throws ServiceException {
-                return _servicePoolStatistics.getNumActiveInstances(FOO_ENDPOINT);
+                return servicePoolStatistics.getNumActiveInstances(FOO_ENDPOINT);
             }
         });
 
-        int numActiveAfterExecute = _servicePoolStatistics.getNumActiveInstances(FOO_ENDPOINT);
+        int numActiveAfterExecute = servicePoolStatistics.getNumActiveInstances(FOO_ENDPOINT);
 
         assertEquals(numActiveDuringExecute - 1, numActiveAfterExecute);
     }
@@ -393,16 +410,19 @@ public class ServicePoolTest {
     public void testStatsNumIdleCachedInstancesIncrementsAfterExecute() {
         // Make sure we only get FOO_ENDPOINT.
         reset(_loadBalanceAlgorithm);
-        when(_loadBalanceAlgorithm.choose(Matchers.<Iterable<ServiceEndPoint>>any())).thenReturn(FOO_ENDPOINT);
+        when(_loadBalanceAlgorithm.choose(Matchers.<Iterable<ServiceEndPoint>>any(), any(ServicePoolStatistics.class)))
+                .thenReturn(FOO_ENDPOINT);
+
+        final ServicePoolStatistics servicePoolStatistics = _pool.getServicePoolStatistics();
 
         int numIdleDuringExecute = _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Integer>() {
             @Override
             public Integer call(Service service) throws ServiceException {
-                return _servicePoolStatistics.getNumIdleCachedInstances(FOO_ENDPOINT);
+                return servicePoolStatistics.getNumIdleCachedInstances(FOO_ENDPOINT);
             }
         });
 
-        int numIdleAfterExecute = _servicePoolStatistics.getNumIdleCachedInstances(FOO_ENDPOINT);
+        int numIdleAfterExecute = servicePoolStatistics.getNumIdleCachedInstances(FOO_ENDPOINT);
 
         assertEquals(numIdleDuringExecute + 1, numIdleAfterExecute);
     }
@@ -412,17 +432,20 @@ public class ServicePoolTest {
     public void testStatsNumIdleCachedInstancesDecrementsDuringExecute() {
         // Make sure we only get FOO_ENDPOINT.
         reset(_loadBalanceAlgorithm);
-        when(_loadBalanceAlgorithm.choose(Matchers.<Iterable<ServiceEndPoint>>any())).thenReturn(FOO_ENDPOINT);
+        when(_loadBalanceAlgorithm.choose(Matchers.<Iterable<ServiceEndPoint>>any(), any(ServicePoolStatistics.class)))
+                .thenReturn(FOO_ENDPOINT);
 
         // Prime the cache.
         _pool.execute(NEVER_RETRY, mock(ServiceCallback.class));
 
-        int numIdleInitially = _servicePoolStatistics.getNumIdleCachedInstances(FOO_ENDPOINT);
+        final ServicePoolStatistics servicePoolStatistics = _pool.getServicePoolStatistics();
+
+        int numIdleInitially = servicePoolStatistics.getNumIdleCachedInstances(FOO_ENDPOINT);
 
         int numIdleDuringExecute = _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Integer>() {
             @Override
             public Integer call(Service service) throws ServiceException {
-                return _servicePoolStatistics.getNumIdleCachedInstances(FOO_ENDPOINT);
+                return servicePoolStatistics.getNumIdleCachedInstances(FOO_ENDPOINT);
             }
         });
 
@@ -478,7 +501,8 @@ public class ServicePoolTest {
     @Test
     public void testCheckForHealthyEndPointNotBeholdenToLoadBalancer() {
         reset(_loadBalanceAlgorithm);
-        when(_loadBalanceAlgorithm.choose(Matchers.<Iterable<ServiceEndPoint>>any())).thenReturn(null);
+        when(_loadBalanceAlgorithm.choose(Matchers.<Iterable<ServiceEndPoint>>any(), any(ServicePoolStatistics.class)))
+                .thenReturn(null);
 
         assertFalse(Iterables.isEmpty(_pool.checkForHealthyEndPoint().getAllResults()));
     }
@@ -716,7 +740,7 @@ public class ServicePoolTest {
     @Test
     public void testDoesNotShutdownHealthCheckExecutorOnClose() {
         ServicePool<Service> pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory,
-                ServiceCachingPolicyBuilder.NO_CACHING, _healthCheckExecutor, false);
+                ServiceCachingPolicyBuilder.NO_CACHING, _loadBalanceAlgorithm, _healthCheckExecutor, false);
         pool.close();
 
         verify(_healthCheckExecutor, never()).shutdown();
@@ -726,7 +750,7 @@ public class ServicePoolTest {
     @Test
     public void testDoesShutdownHealthCheckExecutorOnClose() {
         ServicePool<Service> pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory,
-                ServiceCachingPolicyBuilder.NO_CACHING, _healthCheckExecutor, true);
+                ServiceCachingPolicyBuilder.NO_CACHING, _loadBalanceAlgorithm, _healthCheckExecutor, true);
         pool.close();
 
         verify(_healthCheckExecutor, never()).shutdown();
@@ -759,7 +783,8 @@ public class ServicePoolTest {
         when(_hostDiscovery.getHosts()).thenReturn(ImmutableList.of(FOO_ENDPOINT));
 
         ServicePool<Service> pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory,
-                ServiceCachingPolicyBuilder.NO_CACHING, Executors.newScheduledThreadPool(1), true);
+                ServiceCachingPolicyBuilder.NO_CACHING, _loadBalanceAlgorithm, Executors.newScheduledThreadPool(1),
+                true);
 
         // Make it so that FOO needs to be health checked...
         try {

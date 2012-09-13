@@ -1,10 +1,8 @@
 package com.bazaarvoice.soa.examples.calculator.client;
 
-import com.bazaarvoice.soa.LoadBalanceAlgorithm;
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceFactory;
-import com.bazaarvoice.soa.ServicePoolStatistics;
-import com.bazaarvoice.soa.loadbalance.RandomAlgorithm;
+import com.bazaarvoice.soa.pool.ServicePoolBuilder;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientHandlerException;
 import com.sun.jersey.api.client.UniformInterfaceException;
@@ -52,8 +50,8 @@ public class CalculatorServiceFactory implements ServiceFactory<CalculatorServic
     }
 
     @Override
-    public LoadBalanceAlgorithm getLoadBalanceAlgorithm(ServicePoolStatistics stats) {
-        return new RandomAlgorithm();
+    public void configure(ServicePoolBuilder<CalculatorService> servicePoolBuilder) {
+        // We're fine with the default configuration, including the random load balancer, so we do nothing.
     }
 
     @Override
