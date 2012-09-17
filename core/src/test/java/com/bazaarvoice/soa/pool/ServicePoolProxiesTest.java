@@ -1,6 +1,7 @@
 package com.bazaarvoice.soa.pool;
 
-import com.bazaarvoice.soa.*;
+import com.bazaarvoice.soa.HealthCheckResults;
+import com.bazaarvoice.soa.RetryPolicy;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -15,7 +16,8 @@ public class ServicePoolProxiesTest {
     public void testClose() throws IOException {
         @SuppressWarnings("unchecked")
         com.bazaarvoice.soa.ServicePool<Service> pool = mock(com.bazaarvoice.soa.ServicePool.class);
-        Service service = ServicePoolProxy.create(Service.class, mock(RetryPolicy.class), pool, true);
+        PartitionContextSupplier supplier = mock(PartitionContextSupplier.class);
+        Service service = ServicePoolProxy.create(Service.class, mock(RetryPolicy.class), pool, supplier, true);
 
         ServicePoolProxies.close(service);
 
@@ -26,9 +28,10 @@ public class ServicePoolProxiesTest {
     @Test
     public void testFindFirstHealthyEndPoint() {
         com.bazaarvoice.soa.ServicePool<Service> pool = mock(com.bazaarvoice.soa.ServicePool.class);
+        PartitionContextSupplier supplier = mock(PartitionContextSupplier.class);
         HealthCheckResults results = mock(HealthCheckResults.class);
         when(pool.checkForHealthyEndPoint()).thenReturn(results);
-        Service service = ServicePoolProxy.create(Service.class, mock(RetryPolicy.class), pool, true);
+        Service service = ServicePoolProxy.create(Service.class, mock(RetryPolicy.class), pool, supplier, true);
 
         assertSame(results, ServicePoolProxies.checkForHealthyEndPoint(service));
     }
@@ -42,7 +45,8 @@ public class ServicePoolProxiesTest {
     @Test
     public void testPoolGetter() {
         com.bazaarvoice.soa.ServicePool<Service> pool = mock(com.bazaarvoice.soa.ServicePool.class);
-        Service service = ServicePoolProxy.create(Service.class, mock(RetryPolicy.class), pool, true);
+        PartitionContextSupplier supplier = mock(PartitionContextSupplier.class);
+        Service service = ServicePoolProxy.create(Service.class, mock(RetryPolicy.class), pool, supplier, true);
 
         assertSame(pool, ServicePoolProxies.getPool(service));
     }

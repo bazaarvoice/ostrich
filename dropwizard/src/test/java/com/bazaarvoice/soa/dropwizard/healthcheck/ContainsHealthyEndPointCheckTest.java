@@ -1,7 +1,7 @@
 package com.bazaarvoice.soa.dropwizard.healthcheck;
 
-import com.bazaarvoice.soa.HealthCheckResults;
 import com.bazaarvoice.soa.HealthCheckResult;
+import com.bazaarvoice.soa.HealthCheckResults;
 import com.bazaarvoice.soa.ServicePool;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;

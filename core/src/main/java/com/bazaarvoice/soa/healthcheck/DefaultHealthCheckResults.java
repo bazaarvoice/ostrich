@@ -1,7 +1,7 @@
 package com.bazaarvoice.soa.healthcheck;
 
-import com.bazaarvoice.soa.HealthCheckResults;
 import com.bazaarvoice.soa.HealthCheckResult;
+import com.bazaarvoice.soa.HealthCheckResults;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;

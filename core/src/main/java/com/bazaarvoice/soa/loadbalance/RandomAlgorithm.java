@@ -23,6 +23,9 @@ public class RandomAlgorithm implements LoadBalanceAlgorithm {
         }
 
         List<ServiceEndPoint> list = Lists.newArrayList(iter);
+        if (list.size() == 1) {
+            return list.get(0);
+        }
         return list.get(_rnd.nextInt(list.size()));
     }
 }

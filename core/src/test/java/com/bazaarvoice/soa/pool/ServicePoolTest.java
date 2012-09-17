@@ -3,6 +3,7 @@ package com.bazaarvoice.soa.pool;
 import com.bazaarvoice.soa.HealthCheckResults;
 import com.bazaarvoice.soa.HostDiscovery;
 import com.bazaarvoice.soa.LoadBalanceAlgorithm;
+import com.bazaarvoice.soa.PartitionContext;
 import com.bazaarvoice.soa.RetryPolicy;
 import com.bazaarvoice.soa.ServiceCallback;
 import com.bazaarvoice.soa.ServiceEndPoint;
@@ -13,6 +14,7 @@ import com.bazaarvoice.soa.exceptions.NoAvailableHostsException;
 import com.bazaarvoice.soa.exceptions.NoSuitableHostsException;
 import com.bazaarvoice.soa.exceptions.OnlyBadHostsException;
 import com.bazaarvoice.soa.exceptions.ServiceException;
+import com.bazaarvoice.soa.partition.PartitionFilter;
 import com.google.common.base.Ticker;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
@@ -66,6 +68,7 @@ public class ServicePoolTest {
 
     private Ticker _ticker;
     private HostDiscovery _hostDiscovery;
+    private PartitionFilter _partitionFilter;
     private LoadBalanceAlgorithm _loadBalanceAlgorithm;
     private ServiceFactory<Service> _serviceFactory;
     private ScheduledExecutorService _healthCheckExecutor;
@@ -84,6 +87,15 @@ public class ServicePoolTest {
 
         _hostDiscovery = mock(HostDiscovery.class);
         when(_hostDiscovery.getHosts()).thenReturn(ImmutableList.of(FOO_ENDPOINT, BAR_ENDPOINT, BAZ_ENDPOINT));
+
+        _partitionFilter = mock(PartitionFilter.class);
+        when(_partitionFilter.filter(any(Iterable.class), any(PartitionContext.class)))
+                .thenAnswer(new Answer<Object>() {
+                    @Override
+                    public Iterable<ServiceEndPoint> answer(InvocationOnMock invocation) throws Throwable {
+                        return (Iterable<ServiceEndPoint>) invocation.getArguments()[0];
+                    }
+                });
 
         _loadBalanceAlgorithm = mock(LoadBalanceAlgorithm.class);
         when(_loadBalanceAlgorithm.choose(any(Iterable.class), any(ServicePoolStatistics.class)))
@@ -129,7 +141,7 @@ public class ServicePoolTest {
         );
 
         _pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory, UNLIMITED_CACHING,
-                _loadBalanceAlgorithm, _healthCheckExecutor, true);
+                _partitionFilter, _loadBalanceAlgorithm, _healthCheckExecutor, true);
     }
 
     @After
@@ -182,6 +194,64 @@ public class ServicePoolTest {
 
         // This should trigger a service exception because there are no more available end points.
         _pool.execute(NEVER_RETRY, null);
+    }
+
+    @Test(expected = NoSuitableHostsException.class)
+    public void testNullPartitionFilter() {
+        reset(_partitionFilter);
+        when(_partitionFilter.filter(Matchers.<Iterable<ServiceEndPoint>>any(), any(PartitionContext.class)))
+                .thenReturn(null);
+
+        boolean called = _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Boolean>() {
+            @Override
+            public Boolean call(Service service) throws ServiceException {
+                return true;
+            }
+        });
+        assertFalse(called);
+    }
+
+    @Test(expected = NoSuitableHostsException.class)
+    public void testEmptyPartition() {
+        reset(_partitionFilter);
+        when(_partitionFilter.filter(Matchers.<Iterable<ServiceEndPoint>>any(), any(PartitionContext.class)))
+                .thenReturn(ImmutableList.<ServiceEndPoint>of());
+
+        boolean called = _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Boolean>() {
+            @Override
+            public Boolean call(Service service) throws ServiceException {
+                return true;
+            }
+        });
+        assertFalse(called);
+    }
+
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testPartitionFilter() {
+        reset(_partitionFilter);
+        when(_partitionFilter.filter(Matchers.<Iterable<ServiceEndPoint>>any(), any(PartitionContext.class)))
+                .thenReturn(ImmutableList.of(BAR_ENDPOINT));
+        PartitionContext context = mock(PartitionContext.class);
+
+        _pool.execute(context, NEVER_RETRY, new ServiceCallback<Service, Boolean>() {
+            @Override
+            public Boolean call(Service service) throws ServiceException {
+                return true;
+            }
+        });
+
+        // Verify the PartitionFilter was called with the correct arguments
+        ArgumentCaptor<Iterable> filterEndPoints = ArgumentCaptor.forClass(Iterable.class);
+        verify(_partitionFilter).filter(filterEndPoints.capture(), eq(context));
+        assertEquals(ImmutableList.of(FOO_ENDPOINT, BAR_ENDPOINT, BAZ_ENDPOINT),
+                ImmutableList.copyOf(filterEndPoints.getValue()));
+
+        // Verify that the result of the PartitionFilter was passed on as input to the LoadBalanceAlgorithm
+        ArgumentCaptor<Iterable> balanceEndPoints = ArgumentCaptor.forClass(Iterable.class);
+        verify(_loadBalanceAlgorithm).choose(balanceEndPoints.capture(), any(ServicePoolStatistics.class));
+        assertEquals(ImmutableList.of(BAR_ENDPOINT), ImmutableList.copyOf(balanceEndPoints.getValue()));
     }
 
     @Test(expected = NoSuitableHostsException.class)
@@ -740,7 +810,8 @@ public class ServicePoolTest {
     @Test
     public void testDoesNotShutdownHealthCheckExecutorOnClose() {
         ServicePool<Service> pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory,
-                ServiceCachingPolicyBuilder.NO_CACHING, _loadBalanceAlgorithm, _healthCheckExecutor, false);
+                ServiceCachingPolicyBuilder.NO_CACHING, _partitionFilter, _loadBalanceAlgorithm, _healthCheckExecutor,
+                false);
         pool.close();
 
         verify(_healthCheckExecutor, never()).shutdown();
@@ -750,7 +821,8 @@ public class ServicePoolTest {
     @Test
     public void testDoesShutdownHealthCheckExecutorOnClose() {
         ServicePool<Service> pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory,
-                ServiceCachingPolicyBuilder.NO_CACHING, _loadBalanceAlgorithm, _healthCheckExecutor, true);
+                ServiceCachingPolicyBuilder.NO_CACHING, _partitionFilter, _loadBalanceAlgorithm, _healthCheckExecutor,
+                true);
         pool.close();
 
         verify(_healthCheckExecutor, never()).shutdown();
@@ -783,8 +855,8 @@ public class ServicePoolTest {
         when(_hostDiscovery.getHosts()).thenReturn(ImmutableList.of(FOO_ENDPOINT));
 
         ServicePool<Service> pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory,
-                ServiceCachingPolicyBuilder.NO_CACHING, _loadBalanceAlgorithm, Executors.newScheduledThreadPool(1),
-                true);
+                ServiceCachingPolicyBuilder.NO_CACHING, _partitionFilter, _loadBalanceAlgorithm,
+                Executors.newScheduledThreadPool(1), true);
 
         // Make it so that FOO needs to be health checked...
         try {

@@ -7,6 +7,9 @@ import com.bazaarvoice.soa.RetryPolicy;
 import com.bazaarvoice.soa.ServiceFactory;
 import com.bazaarvoice.soa.discovery.ZooKeeperHostDiscovery;
 import com.bazaarvoice.soa.loadbalance.RandomAlgorithm;
+import com.bazaarvoice.soa.partition.IdentityPartitionFilter;
+import com.bazaarvoice.soa.partition.PartitionFilter;
+import com.bazaarvoice.soa.partition.PartitionKey;
 import com.bazaarvoice.zookeeper.ZooKeeperConnection;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
@@ -33,6 +36,8 @@ public class ServicePoolBuilder<S> {
     private String _serviceName;
     private ScheduledExecutorService _healthCheckExecutor;
     private ServiceCachingPolicy _cachingPolicy;
+    private PartitionFilter _partitionFilter = new IdentityPartitionFilter();
+    private PartitionContextSupplier _partitionContextSupplier = new EmptyPartitionContextSupplier();
     private LoadBalanceAlgorithm _loadBalanceAlgorithm = new RandomAlgorithm();
     private ExecutorService _asyncExecutor;
 
@@ -159,8 +164,55 @@ public class ServicePoolBuilder<S> {
     }
 
     /**
-     * Sets the {@code LoadBalanceAlgorithm} that should be used for this service.
+     * Uses the specified partition filter on every service pool operation to narrow down the set of end points that
+     * may be used to service a particular request.
+     *
+     * @param partitionFilter The {@link PartitionFilter} to use
+     * @return  this
+     */
+    public ServicePoolBuilder<S> withPartitionFilter(PartitionFilter partitionFilter) {
+        _partitionFilter = checkNotNull(partitionFilter);
+        return this;
+    }
+
+    /**
+     * Makes the built proxy generate partition context based on the {@link PartitionKey} annotation
+     * on method arguments in class {@code S}.
      * <p>
+     * If {@code S} is not annotated, or annotated differently than desired, consider using
+     * {@link #withPartitionContextAnnotationsFrom(Class)} instead.
+     * <p>
+     * NOTE: This is only useful if building a proxy with {@link #buildProxy(com.bazaarvoice.soa.RetryPolicy)}.  If
+     * partition context is necessary with a normal service pool, then can be provided directly by calling
+     * {@link com.bazaarvoice.soa.ServicePool#execute(com.bazaarvoice.soa.PartitionContext,
+     * com.bazaarvoice.soa.RetryPolicy, com.bazaarvoice.soa.ServiceCallback)}.
+     *
+     * @return this
+     */
+    public ServicePoolBuilder<S> withPartitionContextAnnotations() {
+        return withPartitionContextAnnotationsFrom(_serviceType);
+    }
+
+    /**
+     * Uses {@link PartitionKey} annotations from the specified class to generate partition context in the built proxy.
+     * <p>
+     * NOTE: This is only useful if building a proxy with {@link #buildProxy(com.bazaarvoice.soa.RetryPolicy)}.  If
+     * partition context is necessary with a normal service pool, then can be provided directly by calling
+     * {@link com.bazaarvoice.soa.ServicePool#execute(com.bazaarvoice.soa.PartitionContext,
+     * com.bazaarvoice.soa.RetryPolicy, com.bazaarvoice.soa.ServiceCallback)}.
+     *
+     * @param annotatedServiceClass A service class with {@link PartitionKey} annotations.
+     * @return this
+     */
+    public ServicePoolBuilder<S> withPartitionContextAnnotationsFrom(Class<? extends S> annotatedServiceClass) {
+        checkNotNull(annotatedServiceClass);
+        _partitionContextSupplier = new AnnotationPartitionContextSupplier(_serviceType, annotatedServiceClass);
+        return this;
+    }
+
+    /**
+     * Sets the {@code LoadBalanceAlgorithm} that should be used for this service.
+     *
      * @param algorithm A load balance algorithm to choose between available end points for the service.
      * @return this
      */
@@ -210,7 +262,7 @@ public class ServicePoolBuilder<S> {
      *         {@link java.io.Closeable} interface.
      */
     public S buildProxy(RetryPolicy retryPolicy) {
-        return ServicePoolProxy.create(_serviceType, retryPolicy, build(), true);
+        return ServicePoolProxy.create(_serviceType, retryPolicy, build(), _partitionContextSupplier, true);
     }
 
     @VisibleForTesting
@@ -232,8 +284,8 @@ public class ServicePoolBuilder<S> {
             _healthCheckExecutor = Executors.newScheduledThreadPool(DEFAULT_NUM_HEALTH_CHECK_THREADS, threadFactory);
         }
 
-        return new ServicePool<S>(Ticker.systemTicker(), hostDiscovery, _serviceFactory,
-                _cachingPolicy, _loadBalanceAlgorithm, _healthCheckExecutor, shutdownHealthCheckExecutorOnClose);
+        return new ServicePool<S>(Ticker.systemTicker(), hostDiscovery, _serviceFactory, _cachingPolicy,
+                _partitionFilter, _loadBalanceAlgorithm, _healthCheckExecutor, shutdownHealthCheckExecutorOnClose);
     }
 
     private HostDiscovery findHostDiscovery(String serviceName) {

@@ -1,5 +1,6 @@
 package com.bazaarvoice.soa.pool;
 
+import com.bazaarvoice.soa.PartitionContext;
 import com.bazaarvoice.soa.RetryPolicy;
 import com.bazaarvoice.soa.ServiceCallback;
 import com.bazaarvoice.soa.ServiceEndPoint;
@@ -57,6 +58,17 @@ class AsyncServicePool<S> implements com.bazaarvoice.soa.AsyncServicePool<S> {
             @Override
             public R call() throws Exception {
                 return _pool.execute(retryPolicy, callback);
+            }
+        });
+    }
+
+    @Override
+    public <R> Future<R> execute(final PartitionContext partitionContext, final RetryPolicy retryPolicy,
+                                 final ServiceCallback<S, R> callback) {
+        return _executor.submit(new Callable<R>() {
+            @Override
+            public R call() throws Exception {
+                return _pool.execute(partitionContext, retryPolicy, callback);
             }
         });
     }

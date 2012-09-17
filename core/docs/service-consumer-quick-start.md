@@ -91,6 +91,23 @@ int result = pool.execute(new RetryNTimes(3, 100, TimeUnit.MILLISECONDS),
                           });
 ```
 
+Some services may be partitioned across servers. In this case, there is a version of the execute method that accepts a
+`PartitionContext` object to help properly route the request.
+
 *NOTE*: It's important that your callbacks are intelligent and recognize that failures can happen at any time.  If they
 maintain state internally you need to handle the case where an operation needs to be retried after part of it has
 already been executed.  Of course the simplest thing to do would be to make your callbacks completely stateless.
+
+### 5. Dynamic proxies of services
+
+In some cases it may be more convenient to have an object that actually implements the service interface instead of a
+`ServicePool`. In this case, you can build a dynamic proxy that will implement the requested interface, but pass all
+calls through to service end points in the pool. In this case retry policy will have to be specified at build time.
+
+```java
+CalculatorService service = ServicePoolBuilder.create(CalculatorService.class)
+                .withZooKeeperHostDiscovery(zooKeeper)
+                .withServiceFactory(new CalculatorServiceFactory())
+                .withCachingPolicy(cachingPolicy)
+                .buildProxy(new RetryNTimes(3, 100, TimeUnit.MILLISECONDS));
+```

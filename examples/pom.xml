@@ -52,5 +52,6 @@
 
     <modules>
         <module>calculator</module>
+        <module>dictionary</module>
     </modules>
 </project>

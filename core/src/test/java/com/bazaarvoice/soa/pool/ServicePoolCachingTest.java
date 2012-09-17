@@ -2,6 +2,7 @@ package com.bazaarvoice.soa.pool;
 
 import com.bazaarvoice.soa.HostDiscovery;
 import com.bazaarvoice.soa.LoadBalanceAlgorithm;
+import com.bazaarvoice.soa.PartitionContext;
 import com.bazaarvoice.soa.RetryPolicy;
 import com.bazaarvoice.soa.ServiceCallback;
 import com.bazaarvoice.soa.ServiceEndPoint;
@@ -9,6 +10,7 @@ import com.bazaarvoice.soa.ServiceFactory;
 import com.bazaarvoice.soa.ServicePoolStatistics;
 import com.bazaarvoice.soa.exceptions.MaxRetriesException;
 import com.bazaarvoice.soa.exceptions.ServiceException;
+import com.bazaarvoice.soa.partition.PartitionFilter;
 import com.google.common.base.Throwables;
 import com.google.common.base.Ticker;
 import com.google.common.collect.ImmutableList;
@@ -62,6 +64,7 @@ public class ServicePoolCachingTest {
     private ServiceFactory<Service> _serviceFactory;
     private LoadBalanceAlgorithm _loadBalanceAlgorithm;
     private ScheduledExecutorService _healthCheckExecutor;
+    private PartitionFilter _partitionFilter;
     private List<ServicePool<Service>> _pools = Lists.newArrayList();
 
     @SuppressWarnings("unchecked")
@@ -113,6 +116,15 @@ public class ServicePoolCachingTest {
                     }
                 }
         );
+
+        _partitionFilter = mock(PartitionFilter.class);
+        when(_partitionFilter.filter(any(Iterable.class), any(PartitionContext.class)))
+                .thenAnswer(new Answer<Iterable<ServiceEndPoint>>() {
+                    @Override
+                    public Iterable<ServiceEndPoint> answer(InvocationOnMock invocation) throws Throwable {
+                        return (Iterable<ServiceEndPoint>) invocation.getArguments()[0];
+                    }
+                });
     }
 
     @After
@@ -308,7 +320,7 @@ public class ServicePoolCachingTest {
 
     private ServicePool<Service> newPool(ServiceCachingPolicy cachingPolicy) {
         ServicePool<Service> pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory,
-                cachingPolicy, _loadBalanceAlgorithm, _healthCheckExecutor, true);
+                cachingPolicy, _partitionFilter, _loadBalanceAlgorithm, _healthCheckExecutor, true);
         _pools.add(pool);
         return pool;
     }

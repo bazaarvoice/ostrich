@@ -10,7 +10,6 @@ import com.bazaarvoice.soa.pool.ServiceCachingPolicy;
 import com.bazaarvoice.soa.pool.ServiceCachingPolicyBuilder;
 import com.bazaarvoice.soa.pool.ServicePoolBuilder;
 import com.bazaarvoice.soa.retry.RetryNTimes;
-import com.bazaarvoice.zookeeper.ZooKeeperConfiguration;
 import com.bazaarvoice.zookeeper.ZooKeeperConnection;
 import com.google.common.io.Closeables;
 import com.yammer.dropwizard.config.ConfigurationFactory;
@@ -49,7 +48,7 @@ public class CalculatorUser {
                         });
                 LOG.info("i:{}, result:{}", i, result);
             } catch (Exception e) {
-                LOG.info("i:{}, {}", i, e);
+                LOG.warn("i:{}, {}", i, e);
             }
 
             Thread.sleep(500);

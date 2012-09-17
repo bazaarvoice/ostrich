@@ -42,6 +42,18 @@ public interface ServicePool<S> extends Closeable {
     <R> R execute(RetryPolicy retryPolicy, ServiceCallback<S, R> callback);
 
     /**
+     * Execute a request synchronously against one of the remote services in this <code>ServicePool</code> using
+     * the specified partition information to narrow down the suitable service end points.
+     *
+     * @param partitionContext The partition context.
+     * @param retryPolicy The retry policy for the operation.
+     * @param callback The user provided callback to invoke with a service end point.
+     * @param <R> The return type for the call.
+     * @return The result provided by the callback.
+     */
+    <R> R execute(PartitionContext partitionContext, RetryPolicy retryPolicy, ServiceCallback<S, R> callback);
+
+    /**
      * Attempts to find a healthy end point. Performs health checks until a healthy end point is found, all available
      * end points are exhausted, or execution of a health check throws an exception that is deemed not retriable.
      *
