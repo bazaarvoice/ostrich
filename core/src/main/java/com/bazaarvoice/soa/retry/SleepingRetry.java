@@ -1,18 +1,20 @@
 package com.bazaarvoice.soa.retry;
 
 import com.bazaarvoice.soa.RetryPolicy;
-import com.google.common.base.Preconditions;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 public abstract class SleepingRetry implements RetryPolicy {
     private final int _maxNumAttempts;
 
     protected SleepingRetry(int maxNumAttempts) {
-        Preconditions.checkArgument(maxNumAttempts >= 0);
+        checkArgument(maxNumAttempts >= 0);
         _maxNumAttempts = maxNumAttempts;
     }
 
     @Override
     public boolean allowRetry(int numAttempts, long elapsedTimeMs) {
+        checkArgument(numAttempts >= 1);
         if (numAttempts >= _maxNumAttempts) {
             return false;
         }

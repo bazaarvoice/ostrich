@@ -82,7 +82,7 @@ use.  The callback has a return type as well that you are completely free to cho
 then `Void` is a good choice.
 
 ```java
-int result = pool.execute(new RetryNTimes(3, 100, TimeUnit.MILLISECONDS),
+int result = pool.execute(new ExponentialBackoffRetry(5, 50, 1000, TimeUnit.MILLISECONDS),
                           new ServiceCallback<CalculatorService, Integer>() {
                             @Override
                             public Integer call(CalculatorService service) throws ServiceException {
@@ -109,5 +109,5 @@ CalculatorService service = ServicePoolBuilder.create(CalculatorService.class)
                 .withZooKeeperHostDiscovery(zooKeeper)
                 .withServiceFactory(new CalculatorServiceFactory())
                 .withCachingPolicy(cachingPolicy)
-                .buildProxy(new RetryNTimes(3, 100, TimeUnit.MILLISECONDS));
+                .buildProxy(new ExponentialBackoffRetry(5, 50, 1000, TimeUnit.MILLISECONDS));
 ```

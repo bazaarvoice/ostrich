@@ -9,7 +9,7 @@ import com.bazaarvoice.soa.exceptions.ServiceException;
 import com.bazaarvoice.soa.pool.ServiceCachingPolicy;
 import com.bazaarvoice.soa.pool.ServiceCachingPolicyBuilder;
 import com.bazaarvoice.soa.pool.ServicePoolBuilder;
-import com.bazaarvoice.soa.retry.RetryNTimes;
+import com.bazaarvoice.soa.retry.ExponentialBackoffRetry;
 import com.bazaarvoice.zookeeper.ZooKeeperConnection;
 import com.google.common.io.Closeables;
 import com.yammer.dropwizard.config.ConfigurationFactory;
@@ -39,7 +39,7 @@ public class CalculatorUser {
                 final int a = _random.nextInt(10);
                 final int b = 1 + _random.nextInt(9);
                 final int op = _random.nextInt(4);
-                int result = _calculatorPool.execute(new RetryNTimes(3, 100, TimeUnit.MILLISECONDS),
+                int result = _calculatorPool.execute(new ExponentialBackoffRetry(5, 50, 1000, TimeUnit.MILLISECONDS),
                         new ServiceCallback<CalculatorService, Integer>() {
                             @Override
                             public Integer call(CalculatorService service) throws ServiceException {

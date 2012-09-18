@@ -7,7 +7,7 @@ import com.bazaarvoice.soa.pool.ServiceCachingPolicy;
 import com.bazaarvoice.soa.pool.ServiceCachingPolicyBuilder;
 import com.bazaarvoice.soa.pool.ServicePoolBuilder;
 import com.bazaarvoice.soa.pool.ServicePoolProxies;
-import com.bazaarvoice.soa.retry.RetryNTimes;
+import com.bazaarvoice.soa.retry.ExponentialBackoffRetry;
 import com.bazaarvoice.zookeeper.ZooKeeperConnection;
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Charsets;
@@ -95,7 +95,7 @@ public class DictionaryUser {
                 .withServiceFactory(new DictionaryServiceFactory(configuration.getHttpClientConfiguration()))
                 .withZooKeeperHostDiscovery(zooKeeper)
                 .withCachingPolicy(cachingPolicy)
-                .buildProxy(new RetryNTimes(3, 100, TimeUnit.MILLISECONDS));
+                .buildProxy(new ExponentialBackoffRetry(5, 50, 1000, TimeUnit.MILLISECONDS));
 
         // If using Yammer Metrics or running in Dropwizard (which includes Yammer Metrics), you may want a health
         // check that pings a service you depend on. This will register a simple check that will confirm the service
