@@ -3,6 +3,7 @@ package com.bazaarvoice.soa.discovery;
 import com.bazaarvoice.soa.HostDiscovery;
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceEndPointJsonCodec;
+import com.bazaarvoice.soa.metrics.Metrics;
 import com.bazaarvoice.soa.registry.ZooKeeperServiceRegistry;
 import com.bazaarvoice.zookeeper.ZooKeeperConnection;
 import com.bazaarvoice.zookeeper.internal.CuratorConnection;
@@ -20,6 +21,9 @@ import com.netflix.curator.framework.recipes.cache.ChildData;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCache;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCacheEvent;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCacheListener;
+import com.yammer.metrics.core.Counter;
+import com.yammer.metrics.core.Gauge;
+import com.yammer.metrics.core.Meter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,6 +31,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Set;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -42,6 +47,12 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
     private final Set<ServiceEndPoint> _endPoints;
     private final Set<EndPointListener> _listeners;
     private final PathChildrenCache _pathCache;
+    private final Metrics _metrics;
+    private final Counter _numListeners;
+    private final Meter _numZooKeeperResets;
+    private final Meter _numZooKeeperAdds;
+    private final Meter _numZooKeeperRemoves;
+    private final Meter _numZooKeeperChanges;
 
     public ZooKeeperHostDiscovery(ZooKeeperConnection connection, String serviceName) {
         this(((CuratorConnection) checkNotNull(connection)).getCurator(), serviceName);
@@ -81,6 +92,20 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
             Closeables.closeQuietly(this);
             throw Throwables.propagate(t);
         }
+
+        _metrics = Metrics.forInstance(this, serviceName);
+        _metrics.newGauge(serviceName, "num-end-points", new Gauge<Integer>() {
+            @Override
+            public Integer value() {
+                return _endPoints.size();
+            }
+        });
+
+        _numListeners = _metrics.newCounter(serviceName, "num-listeners");
+        _numZooKeeperResets = _metrics.newMeter(serviceName, "num-zookeeper-resets", "resets", TimeUnit.MINUTES);
+        _numZooKeeperAdds = _metrics.newMeter(serviceName, "num-zookeeper-adds", "adds", TimeUnit.MINUTES);
+        _numZooKeeperRemoves = _metrics.newMeter(serviceName, "num-zookeeper-removes", "removes", TimeUnit.MINUTES);
+        _numZooKeeperChanges = _metrics.newMeter(serviceName, "num-zookeeper-changes", "changes", TimeUnit.MINUTES);
     }
 
     @Override
@@ -96,11 +121,13 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
     @Override
     public void addListener(EndPointListener listener) {
         _listeners.add(listener);
+        _numListeners.inc();
     }
 
     @Override
     public void removeListener(EndPointListener listener) {
         _listeners.remove(listener);
+        _numListeners.dec();
     }
 
     @Override
@@ -108,6 +135,7 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
         _listeners.clear();
         _pathCache.close();
         _endPoints.clear();
+        _metrics.close();
     }
 
     @VisibleForTesting
@@ -163,6 +191,7 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
         @Override
         public void childEvent(CuratorFramework client, PathChildrenCacheEvent event) throws Exception {
             if (event.getType() == PathChildrenCacheEvent.Type.RESET) {
+                _numZooKeeperResets.mark();
                 clearEndPoints();
                 return;
             }
@@ -170,14 +199,17 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
             ServiceEndPoint endPoint = toEndPoint(event.getData());
             switch (event.getType()) {
                 case CHILD_ADDED:
+                    _numZooKeeperAdds.mark();
                     addEndPoint(endPoint);
                     break;
 
                 case CHILD_REMOVED:
+                    _numZooKeeperRemoves.mark();
                     removeEndPoint(endPoint);
                     break;
 
                 case CHILD_UPDATED:
+                    _numZooKeeperChanges.mark();
                     LOG.info("ServiceEndPoint data changed unexpectedly. End point ID: {}; ZooKeeperPath {}",
                             endPoint.getId(), event.getData().getPath());
                     break;

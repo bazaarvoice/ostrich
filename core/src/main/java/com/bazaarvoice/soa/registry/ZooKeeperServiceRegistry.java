@@ -3,12 +3,17 @@ package com.bazaarvoice.soa.registry;
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceEndPointJsonCodec;
 import com.bazaarvoice.soa.ServiceRegistry;
+import com.bazaarvoice.soa.metrics.Metrics;
 import com.bazaarvoice.zookeeper.ZooKeeperConnection;
 import com.bazaarvoice.zookeeper.recipes.ZooKeeperPersistentEphemeralNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.common.collect.Maps;
 import com.netflix.curator.utils.ZKPaths;
+import com.yammer.metrics.core.Counter;
 import org.apache.zookeeper.CreateMode;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -46,6 +51,15 @@ public class ZooKeeperServiceRegistry implements ServiceRegistry
     /** The ephemeral data that's been written to ZooKeeper.  Saved in case the connection is lost and then regained. */
     private final Map<String, ZooKeeperPersistentEphemeralNode> _nodes = Maps.newConcurrentMap();
 
+    private final Metrics _metrics = Metrics.forClass(ZooKeeperServiceRegistry.class);
+    private final LoadingCache<String, Counter> _numRegisteredEndpoints = CacheBuilder.newBuilder()
+            .build(new CacheLoader<String, Counter>() {
+                @Override
+                public Counter load(String scope) throws Exception {
+                    return _metrics.newCounter(scope, "num-registered-end-points");
+                }
+            });
+
     public ZooKeeperServiceRegistry(ZooKeeperConnection connection) {
         this(new NodeFactory(connection));
     }
@@ -80,6 +94,9 @@ public class ZooKeeperServiceRegistry implements ServiceRegistry
         if (oldNode != null) {
             closeNode(oldNode);
         }
+
+        String serviceName = endPoint.getServiceName();
+        _numRegisteredEndpoints.getUnchecked(serviceName).inc();
     }
 
     /** {@inheritDoc} */
@@ -92,6 +109,9 @@ public class ZooKeeperServiceRegistry implements ServiceRegistry
         ZooKeeperPersistentEphemeralNode node = _nodes.remove(path);
         if (node != null) {
             closeNode(node);
+
+            String serviceName = endPoint.getServiceName();
+            _numRegisteredEndpoints.getUnchecked(serviceName).dec();
         }
     }
 
@@ -107,6 +127,7 @@ public class ZooKeeperServiceRegistry implements ServiceRegistry
             closeNode(node);
         }
         _nodes.clear();
+        _metrics.close();
     }
 
     private void closeNode(ZooKeeperPersistentEphemeralNode node) {

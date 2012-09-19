@@ -3,10 +3,14 @@ package com.bazaarvoice.soa.pool;
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceFactory;
 import com.bazaarvoice.soa.exceptions.NoCachedInstancesAvailableException;
+import com.bazaarvoice.soa.metrics.Metrics;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.MapMaker;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.yammer.metrics.core.Timer;
+import com.yammer.metrics.core.TimerContext;
+import com.yammer.metrics.util.RatioGauge;
 import org.apache.commons.pool.BaseKeyedPoolableObjectFactory;
 import org.apache.commons.pool.impl.GenericKeyedObjectPool;
 import org.slf4j.Logger;
@@ -45,6 +49,12 @@ class ServiceCache<S> implements Closeable {
     private final Map<S, Long> _checkOutRevisions = Maps.newConcurrentMap();
     private final Future<?> _evictionFuture;
     private volatile boolean _isClosed = false;
+    private final Metrics _metrics;
+    private final Timer _loadTimer;
+    private final AtomicLong _requestCount = new AtomicLong();
+    private final AtomicLong _missCount = new AtomicLong();
+    private final AtomicLong _loadSuccessCount = new AtomicLong();
+    private final AtomicLong _loadFailureCount = new AtomicLong();
 
     /**
      * Builds a basic service cache.
@@ -68,6 +78,32 @@ class ServiceCache<S> implements Closeable {
         checkNotNull(policy);
         checkNotNull(serviceFactory);
         checkNotNull(executor);
+
+        String serviceName = serviceFactory.getServiceName();
+        _metrics = Metrics.forInstance(this, serviceName);
+        _loadTimer = _metrics.newTimer(serviceName, "load-time", TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
+
+        _metrics.newGauge(serviceName, "cache-hit-ratio", new RatioGauge() {
+            @Override protected double getNumerator() { return _requestCount.get() - _missCount.get(); }
+            @Override protected double getDenominator() { return _requestCount.get(); }
+        });
+        _metrics.newGauge(serviceName, "cache-miss-ratio", new RatioGauge() {
+            @Override protected double getNumerator() { return _missCount.get(); }
+            @Override protected double getDenominator() { return _requestCount.get(); }
+        });
+
+        _metrics.newGauge(serviceName, "load-success-ratio", new RatioGauge() {
+            @Override protected double getNumerator() { return _loadSuccessCount.get(); }
+            @Override protected double getDenominator() {
+                return _loadSuccessCount.get() + _loadFailureCount.get();
+            }
+        });
+        _metrics.newGauge(serviceName, "load-failure-ratio", new RatioGauge() {
+            @Override protected double getNumerator() { return _loadFailureCount.get(); }
+            @Override protected double getDenominator() {
+                return _loadSuccessCount.get() + _loadFailureCount.get();
+            }
+        });
 
         GenericKeyedObjectPool.Config poolConfig = new GenericKeyedObjectPool.Config();
 
@@ -132,6 +168,7 @@ class ServiceCache<S> implements Closeable {
      */
     public S checkOut(ServiceEndPoint endPoint) throws Exception {
         checkNotNull(endPoint);
+        _requestCount.incrementAndGet();
 
         try {
             S service = _pool.borrowObject(endPoint);
@@ -141,6 +178,8 @@ class ServiceCache<S> implements Closeable {
 
             return service;
         } catch (NoSuchElementException e) {
+            _missCount.incrementAndGet();
+
             // This will happen if there are no available connections and there is no room for a new one,
             // or if a newly created connection is not valid.
             throw new NoCachedInstancesAvailableException();
@@ -189,6 +228,7 @@ class ServiceCache<S> implements Closeable {
         }
 
         _pool.clear();
+        _metrics.close();
     }
 
     public void evict(ServiceEndPoint endPoint) {
@@ -199,7 +239,7 @@ class ServiceCache<S> implements Closeable {
         _pool.clear(endPoint);
     }
 
-    private static class PoolServiceFactory<S> extends BaseKeyedPoolableObjectFactory<ServiceEndPoint, S> {
+    private class PoolServiceFactory<S> extends BaseKeyedPoolableObjectFactory<ServiceEndPoint, S> {
         private final ServiceFactory<S> _serviceFactory;
 
         public PoolServiceFactory(ServiceFactory<S> serviceFactory) {
@@ -207,8 +247,20 @@ class ServiceCache<S> implements Closeable {
         }
 
         @Override
-        public S makeObject(ServiceEndPoint endPoint) throws Exception {
-            return _serviceFactory.create(endPoint);
+        public S makeObject(final ServiceEndPoint endPoint) throws Exception {
+            _missCount.incrementAndGet();
+
+            TimerContext timer = _loadTimer.time();
+            try {
+                S service = _serviceFactory.create(endPoint);
+                _loadSuccessCount.incrementAndGet();
+                return service;
+            } catch (Exception e) {
+                _loadFailureCount.incrementAndGet();
+                throw e;
+            } finally {
+                timer.stop();
+            }
         }
     }
 }
