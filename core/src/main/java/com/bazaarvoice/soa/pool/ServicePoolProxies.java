@@ -5,6 +5,7 @@ import com.google.common.io.Closeables;
 
 import java.lang.reflect.Proxy;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
@@ -13,6 +14,15 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public abstract class ServicePoolProxies {
     private ServicePoolProxies() {} // Prevent instantiation
+
+    /**
+     * Returns true if the specified object is a dynamic service proxy created by {@link ServicePoolBuilder#buildProxy}.
+     * @param dynamicProxy An object that might be service dynamic proxy.
+     * @return true if the specified object is a dynamic service proxy.
+     */
+    public static boolean isProxy(Object dynamicProxy) {
+        return dynamicProxy instanceof Proxy && Proxy.getInvocationHandler(dynamicProxy) instanceof ServicePoolProxy;
+    }
 
     /**
      * Closes the service pool associated with the specified dynamic service proxy.
@@ -46,6 +56,7 @@ public abstract class ServicePoolProxies {
      */
     public static <S> com.bazaarvoice.soa.ServicePool<S> getPool(S dynamicProxy) {
         checkNotNull(dynamicProxy);
+        checkArgument(isProxy(dynamicProxy));
         @SuppressWarnings("unchecked") ServicePoolProxy<S> poolProxy = (ServicePoolProxy<S>)
                 Proxy.getInvocationHandler(dynamicProxy);
         return poolProxy.getServicePool();
