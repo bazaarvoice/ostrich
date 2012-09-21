@@ -6,21 +6,16 @@ import com.bazaarvoice.soa.ServiceEndPointJsonCodec;
 import com.bazaarvoice.soa.metrics.Metrics;
 import com.bazaarvoice.soa.registry.ZooKeeperServiceRegistry;
 import com.bazaarvoice.zookeeper.ZooKeeperConnection;
-import com.bazaarvoice.zookeeper.internal.CuratorConnection;
+import com.bazaarvoice.zookeeper.recipes.discovery.NodeDataParser;
+import com.bazaarvoice.zookeeper.recipes.discovery.NodeListener;
+import com.bazaarvoice.zookeeper.recipes.discovery.ZooKeeperNodeDiscovery;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
-import com.google.common.base.Throwables;
-import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ConcurrentHashMultiset;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Multiset;
 import com.google.common.collect.Sets;
-import com.google.common.io.Closeables;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.netflix.curator.framework.CuratorFramework;
-import com.netflix.curator.framework.recipes.cache.ChildData;
-import com.netflix.curator.framework.recipes.cache.PathChildrenCache;
-import com.netflix.curator.framework.recipes.cache.PathChildrenCacheEvent;
-import com.netflix.curator.framework.recipes.cache.PathChildrenCacheListener;
 import com.yammer.metrics.core.Counter;
 import com.yammer.metrics.core.Gauge;
 import com.yammer.metrics.core.Meter;
@@ -28,25 +23,24 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.Set;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * The <code>ZooKeeperHostDiscovery</code> class watches a service path in ZooKeeper and will monitor which hosts are
+ * The <code>ZooKeeperHostDiscovery</code> class encapsulates ZooKeeperNodeDiscovery which
+ * watches a service path in ZooKeeper and will monitor which hosts are
  * available.  As hosts come and go the results of calling the <code>#getHosts</code> method changes.
  */
 public class ZooKeeperHostDiscovery implements HostDiscovery {
     private static final Logger LOG = LoggerFactory.getLogger(ZooKeeperHostDiscovery.class);
 
-    private final CuratorFramework _curator;
-    private final Set<ServiceEndPoint> _endPoints;
+    private final ZooKeeperNodeDiscovery<ServiceEndPoint> _nodeDiscovery;
+    private final Multiset<ServiceEndPoint> _endPoints;
     private final Set<EndPointListener> _listeners;
-    private final PathChildrenCache _pathCache;
+
     private final Metrics _metrics;
     private final Counter _numListeners;
     private final Meter _numZooKeeperResets;
@@ -55,49 +49,33 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
     private final Meter _numZooKeeperChanges;
 
     public ZooKeeperHostDiscovery(ZooKeeperConnection connection, String serviceName) {
-        this(((CuratorConnection) checkNotNull(connection)).getCurator(), serviceName);
-    }
-
-    @VisibleForTesting
-    ZooKeeperHostDiscovery(CuratorFramework curator, String serviceName) {
-        checkNotNull(curator);
+        checkNotNull(connection);
         checkNotNull(serviceName);
-        checkArgument(curator.isStarted());
         checkArgument(!"".equals(serviceName));
 
-        ThreadFactory threadFactory = new ThreadFactoryBuilder()
-                .setNameFormat(getClass().getSimpleName() + "(" + serviceName + ")-%d")
-                .setDaemon(true)
-                .build();
         String servicePath = ZooKeeperServiceRegistry.makeServicePath(serviceName);
 
-        _curator = curator;
-        _endPoints = Sets.newSetFromMap(Maps.<ServiceEndPoint, Boolean>newConcurrentMap());
         _listeners = Sets.newSetFromMap(Maps.<EndPointListener, Boolean>newConcurrentMap());
+        _endPoints = ConcurrentHashMultiset.create();
 
-        _pathCache = new PathChildrenCache(_curator, servicePath, true, threadFactory);
-        try {
-            _pathCache.getListenable().addListener(new ServiceListener());
-
-            // This must be synchronized so async remove events aren't processed between start() and adding end points.
-            // Use synchronous start(true) instead of asynchronous start(false) so we can tell when it's done and the
-            // HostDiscovery set is usable.
-            synchronized (this) {
-                _pathCache.start(true);
-                for (ChildData childData : _pathCache.getCurrentData()) {
-                    addEndPoint(toEndPoint(childData));
+        _nodeDiscovery = new ZooKeeperNodeDiscovery<ServiceEndPoint>(
+                connection,
+                servicePath,
+                new NodeDataParser<ServiceEndPoint>() {
+                    public ServiceEndPoint parse(String path, byte[] nodeData) {
+                        String json = new String(nodeData, Charsets.UTF_8);
+                        return ServiceEndPointJsonCodec.fromJson(json);
+                    }
                 }
-            }
-        } catch (Throwable t) {
-            Closeables.closeQuietly(this);
-            throw Throwables.propagate(t);
-        }
+        );
+
+        _nodeDiscovery.addListener(new ServiceListener());
 
         _metrics = Metrics.forInstance(this, serviceName);
         _metrics.newGauge(serviceName, "num-end-points", new Gauge<Integer>() {
             @Override
             public Integer value() {
-                return _endPoints.size();
+                return Iterables.size(getHosts());
             }
         });
 
@@ -106,11 +84,14 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
         _numZooKeeperAdds = _metrics.newMeter(serviceName, "num-zookeeper-adds", "adds", TimeUnit.MINUTES);
         _numZooKeeperRemoves = _metrics.newMeter(serviceName, "num-zookeeper-removes", "removes", TimeUnit.MINUTES);
         _numZooKeeperChanges = _metrics.newMeter(serviceName, "num-zookeeper-changes", "changes", TimeUnit.MINUTES);
+
+        // wait to start node discovery until all fields are initialized.
+        _nodeDiscovery.start();
     }
 
     @Override
     public Iterable<ServiceEndPoint> getHosts() {
-        return Iterables.unmodifiableIterable(_endPoints);
+        return Iterables.unmodifiableIterable(_endPoints.elementSet());
     }
 
     @Override
@@ -131,41 +112,28 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
     }
 
     @Override
-    public synchronized void close() throws IOException {
-        _listeners.clear();
-        _pathCache.close();
+    public void close() throws IOException {
+        _nodeDiscovery.close();
         _endPoints.clear();
         _metrics.close();
     }
 
     @VisibleForTesting
-    CuratorFramework getCurator() {
-        return _curator;
-   }
+    ZooKeeperNodeDiscovery<ServiceEndPoint> getNodeDiscovery() {
+        return _nodeDiscovery;
+    }
 
-    private synchronized void addEndPoint(ServiceEndPoint endPoint) {
-        // synchronize the modification of _endPoints and firing of events so listeners always receive events in the
-        // order they occur.
-        if (_endPoints.add(endPoint)) {
-            fireAddEvent(endPoint);
+    private void addServiceEndPoint(ServiceEndPoint serviceEndPoint) {
+        // add returns the number of instances that were in the Multiset before the add.
+        if (_endPoints.add(serviceEndPoint, 1) == 0) {
+            fireAddEvent(serviceEndPoint);
         }
     }
 
-    private synchronized void removeEndPoint(ServiceEndPoint endPoint) {
-        // synchronize the modification of _endPoints and firing of events so listeners always receive events in the
-        // order they occur.
-        if (_endPoints.remove(endPoint)) {
-            fireRemoveEvent(endPoint);
-        }
-    }
-
-    private synchronized void clearEndPoints() {
-        // synchronize the modification of _endPoints and firing of events so listeners always receive events in the
-        // order they occur.
-        Collection<ServiceEndPoint> endPoints = ImmutableList.copyOf(_endPoints);
-        _endPoints.clear();
-        for (ServiceEndPoint endPoint : endPoints) {
-            fireRemoveEvent(endPoint);
+    private void removeServiceEndPoint(ServiceEndPoint serviceEndPoint) {
+        // remove returns the number of instances that were in the Multiset before the remove.
+        if (_endPoints.remove(serviceEndPoint, 1) == 1) {
+            fireRemoveEvent(serviceEndPoint);
         }
     }
 
@@ -181,39 +149,32 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
         }
     }
 
-    private ServiceEndPoint toEndPoint(ChildData data) {
-        String json = new String(data.getData(), Charsets.UTF_8);
-        return ServiceEndPointJsonCodec.fromJson(json);
-    }
-
-    /** A curator <code>PathChildrenCacheListener</code> */
-    private final class ServiceListener implements PathChildrenCacheListener {
+    /**
+     * A zookeeper-common {@code NodeListener}
+     */
+    private final class ServiceListener implements NodeListener<ServiceEndPoint> {
         @Override
-        public void childEvent(CuratorFramework client, PathChildrenCacheEvent event) throws Exception {
-            if (event.getType() == PathChildrenCacheEvent.Type.RESET) {
-                _numZooKeeperResets.mark();
-                clearEndPoints();
-                return;
-            }
+        public void onNodeAdded(String path, ServiceEndPoint node) {
+            _numZooKeeperAdds.mark();
+            addServiceEndPoint(node);
+        }
 
-            ServiceEndPoint endPoint = toEndPoint(event.getData());
-            switch (event.getType()) {
-                case CHILD_ADDED:
-                    _numZooKeeperAdds.mark();
-                    addEndPoint(endPoint);
-                    break;
+        @Override
+        public void onNodeRemoved(String path, ServiceEndPoint node) {
+            _numZooKeeperRemoves.mark();
+            removeServiceEndPoint(node);
+        }
 
-                case CHILD_REMOVED:
-                    _numZooKeeperRemoves.mark();
-                    removeEndPoint(endPoint);
-                    break;
+        @Override
+        public void onNodeUpdated(String path, ServiceEndPoint node) {
+            _numZooKeeperChanges.mark();
+            LOG.info("ServiceEndPoint data changed unexpectedly. End point ID: {}; ZooKeeperPath {}",
+                    node.getId(), path);
+        }
 
-                case CHILD_UPDATED:
-                    _numZooKeeperChanges.mark();
-                    LOG.info("ServiceEndPoint data changed unexpectedly. End point ID: {}; ZooKeeperPath {}",
-                            endPoint.getId(), event.getData().getPath());
-                    break;
-            }
+        @Override
+        public void onZooKeeperReset() {
+            _numZooKeeperResets.mark();
         }
     }
 }
