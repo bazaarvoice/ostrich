@@ -3,334 +3,260 @@ package com.bazaarvoice.soa.discovery;
 import com.bazaarvoice.soa.HostDiscovery;
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceEndPointBuilder;
+import com.bazaarvoice.soa.ServiceEndPointJsonCodec;
 import com.bazaarvoice.soa.registry.ZooKeeperServiceRegistry;
 import com.bazaarvoice.zookeeper.ZooKeeperConnection;
+import com.bazaarvoice.zookeeper.recipes.discovery.NodeDataParser;
 import com.bazaarvoice.zookeeper.recipes.discovery.NodeListener;
-import com.bazaarvoice.zookeeper.test.ZooKeeperTest;
+import com.bazaarvoice.zookeeper.recipes.discovery.ZooKeeperNodeDiscovery;
+import com.google.common.base.Charsets;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.io.Closeables;
-import com.netflix.curator.framework.CuratorFramework;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Matchers;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Matchers.same;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
+public class ZooKeeperHostDiscoveryTest {
     private static final ServiceEndPoint FOO = new ServiceEndPointBuilder()
             .withServiceName("Foo")
             .withId("server:8080")
             .build();
 
-    private static final ServiceEndPoint BAR = new ServiceEndPointBuilder()
-            .withServiceName("Bar")
-            .withId("server:8081")
-            .build();
-
-    private ZooKeeperServiceRegistry _registry;
     private ZooKeeperHostDiscovery _discovery;
-    private CuratorFramework _curator;
-    private ZooKeeperConnection _connection;
+    private NodeListener<ServiceEndPoint> _listener;
+    private NodeDataParser<ServiceEndPoint> _parser;
 
-    @Override
+    @SuppressWarnings("unchecked")
+    @Before
     public void setup() throws Exception {
-        super.setup();
-        _curator = newCurator();
-        _connection = newMockZooKeeperConnection(_curator);
-        _registry = new ZooKeeperServiceRegistry(newZooKeeperConnection());
-        _discovery = new ZooKeeperHostDiscovery(_connection, FOO.getServiceName());
+        ZooKeeperHostDiscovery.NodeDiscoveryFactory factory = mock(ZooKeeperHostDiscovery.NodeDiscoveryFactory.class);
+        ZooKeeperNodeDiscovery<ServiceEndPoint> nodeDiscovery = mock(ZooKeeperNodeDiscovery.class);
+        ZooKeeperConnection connection = mock(ZooKeeperConnection.class);
+        when(factory.create(Matchers.<ZooKeeperConnection>any(ZooKeeperConnection.class), anyString(),
+                Matchers.<NodeDataParser<ServiceEndPoint>>any())).thenReturn(nodeDiscovery);
+
+        _discovery = new ZooKeeperHostDiscovery(factory, connection, FOO.getServiceName());
+
+        // Capture the parser.
+        ArgumentCaptor<NodeDataParser<ServiceEndPoint>> parserCaptor =
+                (ArgumentCaptor) ArgumentCaptor.forClass(NodeDataParser.class);
+        verify(factory).create(same(connection), eq(ZooKeeperServiceRegistry.makeServicePath("Foo")),
+                parserCaptor.capture());
+        _parser = parserCaptor.getValue();
+
+        // Capture the listener.
+        ArgumentCaptor<NodeListener<ServiceEndPoint>> listenerCaptor =
+                (ArgumentCaptor) ArgumentCaptor.forClass(NodeListener.class);
+        verify(nodeDiscovery).addListener(listenerCaptor.capture());
+        _listener = listenerCaptor.getValue();
     }
 
-    @Override
+    @After
     public void teardown() throws Exception {
         Closeables.closeQuietly(_discovery);
-        Closeables.closeQuietly(_registry);
-        super.teardown();
     }
 
     @Test (expected = NullPointerException.class)
-    public void testNullConfiguration() {
-        new ZooKeeperHostDiscovery((ZooKeeperConnection) null, FOO.getServiceName());
+    public void testNullConnection() {
+        new ZooKeeperHostDiscovery(null, FOO.getServiceName());
     }
 
     @Test (expected = NullPointerException.class)
     public void testNullServiceName() throws Exception {
-        new ZooKeeperHostDiscovery(_connection, null);
+        new ZooKeeperHostDiscovery(mock(ZooKeeperConnection.class), null);
     }
 
     @Test (expected = IllegalArgumentException.class)
     public void testEmptyServiceName() throws Exception {
-        new ZooKeeperHostDiscovery(_connection, "");
+        new ZooKeeperHostDiscovery(mock(ZooKeeperConnection.class), "");
+    }
+
+    @Test
+    public void testParser() {
+        assertEquals(FOO, _parser.parse("path", ServiceEndPointJsonCodec.toJson(FOO).getBytes(Charsets.UTF_8)));
+    }
+
+    @Test
+    public void testStartsEmpty() {
+        assertTrue(Iterables.isEmpty(_discovery.getHosts()));
     }
 
     @Test
     public void testRegisterService() {
-        _registry.register(FOO);
-        assertTrue(waitUntilSize(_discovery.getHosts(), 1));
+        addNode("path", FOO);
+
+        assertEquals(ImmutableList.of(FOO), ImmutableList.copyOf(_discovery.getHosts()));
     }
 
     @Test
     public void testUnregisterService() {
-        _registry.register(FOO);
-        assertTrue(waitUntilSize(_discovery.getHosts(), 1));
+        addNode("path", FOO);
+        removeNode("path", FOO);
 
-        _registry.unregister(FOO);
-        assertTrue(waitUntilSize(_discovery.getHosts(), 0));
+        assertTrue(Iterables.isEmpty(_discovery.getHosts()));
     }
 
     @Test
     public void testClose() throws IOException {
         // After closing, HostDiscovery returns no hosts so clients won't work if they accidentally keep using it.
-        _registry.register(FOO);
-        assertTrue(waitUntilSize(_discovery.getHosts(), 1));
+        addNode("path", FOO);
         _discovery.close();
+
         assertTrue(Iterables.isEmpty(_discovery.getHosts()));
         _discovery = null;
     }
 
+    @SuppressWarnings("unchecked")
     @Test
-    public void testWaitForData() throws Exception {
-        // Create the HostDiscovery after registration is done so there's at least one initial host
-        _registry.register(FOO);
-        HostDiscovery discovery = new ZooKeeperHostDiscovery(_connection, FOO.getServiceName());
-        assertEquals(Iterables.size(discovery.getHosts()), 1);
+    public void testExistingData() throws Exception {
+        ZooKeeperHostDiscovery.NodeDiscoveryFactory factory = mock(ZooKeeperHostDiscovery.NodeDiscoveryFactory.class);
+        ZooKeeperNodeDiscovery<ServiceEndPoint> nodeDiscovery = mock(ZooKeeperNodeDiscovery.class);
+        when(factory.create(Matchers.<ZooKeeperConnection>any(), anyString(),
+                Matchers.<NodeDataParser<ServiceEndPoint>>any())).thenReturn(nodeDiscovery);
+
+        // Capture the listener.
+        final ArgumentCaptor<NodeListener<ServiceEndPoint>> listenerCaptor =
+                (ArgumentCaptor) ArgumentCaptor.forClass(NodeListener.class);
+        doNothing().when(nodeDiscovery).addListener(listenerCaptor.capture());
+
+        // Add FOO when nodeDiscovery.start() is called. This is NodeDiscovery's behavior when it has data when started.
+        doAnswer(new Answer() {
+            @Override
+            public Object answer(InvocationOnMock invocation) throws Throwable {
+                listenerCaptor.getValue().onNodeAdded("path", FOO);
+                return null;
+            }
+        }).when(nodeDiscovery).start();
+
+        HostDiscovery discovery = new ZooKeeperHostDiscovery(factory, mock(ZooKeeperConnection.class),
+                FOO.getServiceName());
+
+        assertEquals(ImmutableList.of(FOO), ImmutableList.copyOf(discovery.getHosts()));
+
+        discovery.close();
     }
 
     @Test
-    public void testMembershipCheck() {
-        _registry.register(FOO);
-        _registry.register(BAR);
-        assertTrue(waitUntilSize(_discovery.getHosts(), 1));
-        assertTrue(_discovery.contains(FOO));
-        assertFalse(_discovery.contains(BAR));
+    public void testDuplicateEntry() {
+        CountingListener endPointListener = new CountingListener();
+        _discovery.addListener(endPointListener);
+
+        addNode("path-one", FOO);
+        addNode("path-two", FOO);
+
+        assertEquals(1, endPointListener.getNumAdds());
+        assertEquals(ImmutableList.of(FOO), ImmutableList.copyOf(_discovery.getHosts()));
     }
 
     @Test
-    public void testDuplicateEntryRemoval() throws Exception {
-        _registry.register(FOO);
-        assertTrue(waitUntilSize(_discovery.getHosts(), 1));
+    public void testDuplicateEntrySingleRemoval() {
+        CountingListener endPointListener = new CountingListener();
+        _discovery.addListener(endPointListener);
 
-        final Trigger addTrigger = new Trigger();
-        final Trigger removeTrigger = new Trigger();
-        _discovery.getNodeDiscovery().addListener(new NodeListener<ServiceEndPoint>() {
-            @Override
-            public void onNodeAdded(String s, ServiceEndPoint serviceEndPoint) {
-                addTrigger.fire();
-            }
+        addNode("path-one", FOO);
+        addNode("path-two", FOO);
 
-            @Override
-            public void onNodeRemoved(String s, ServiceEndPoint serviceEndPoint) {
-                removeTrigger.fire();
-            }
+        removeNode("path-one", FOO);
 
-            @Override
-            public void onNodeUpdated(String s, ServiceEndPoint serviceEndPoint) {
-            }
+        assertEquals(0, endPointListener.getNumRemoves());
+        assertEquals(ImmutableList.of(FOO), ImmutableList.copyOf(_discovery.getHosts()));
+    }
 
-            @Override
-            public void onZooKeeperReset() {
-            }
-        });
+    @Test
+    public void testDuplicateEntryRemoval() {
+        CountingListener endPointListener = new CountingListener();
+        _discovery.addListener(endPointListener);
 
-        // Duplicate node needs to be registered in a different Registry.
-        ZooKeeperServiceRegistry duplicateRegistry = new ZooKeeperServiceRegistry(newZooKeeperConnection());
-        duplicateRegistry.register(FOO);
-        addTrigger.firedWithin(10, TimeUnit.SECONDS);
+        addNode("path-one", FOO);
+        addNode("path-two", FOO);
 
-        duplicateRegistry.unregister(FOO);
-        removeTrigger.firedWithin(10, TimeUnit.SECONDS);
+        removeNode("path-one", FOO);
+        removeNode("path-two", FOO);
 
-        assertTrue(Iterables.contains(_discovery.getHosts(), FOO));
+        assertEquals(1, endPointListener.getNumRemoves());
+        assertTrue(Iterables.isEmpty(_discovery.getHosts()));
     }
 
     @Test
     public void testAlreadyExistingEndPointsDoNotFireEvents() throws Exception {
-        _registry.register(FOO);
+        addNode("path", FOO);
 
-        HostDiscovery discovery = new ZooKeeperHostDiscovery(_connection, FOO.getServiceName());
-        assertEquals(Iterables.size(discovery.getHosts()), 1);
+        CountingListener endPointListener = new CountingListener();
+        _discovery.addListener(endPointListener);
 
-        CountingListener eventCounter = new CountingListener();
-        discovery.addListener(eventCounter);
-
-        // Don't know when the register() will take effect.  Execute and wait for an
-        // unregister--that should be long enough to wait.
-        _registry.unregister(FOO);
-        assertTrue(waitUntilSize(discovery.getHosts(), 0));
-
-        assertEquals(0, eventCounter.getNumAdds());  // endPoints initially visible never fire add events
-    }
-
-    @Test
-    public void testServiceRemovedWhenSessionKilled() throws Exception {
-        _registry.register(FOO);
-        assertTrue(waitUntilSize(_discovery.getHosts(), 1));
-
-        killSession(_curator);
-
-        // The entry gets cleaned up because we've lost contact with ZooKeeper
-        assertTrue(waitUntilSize(_discovery.getHosts(), 0));
-    }
-
-    @Test
-    public void testServiceReRegisteredWhenSessionKilled() throws Exception {
-        _registry.register(FOO);
-        assertTrue(waitUntilSize(_discovery.getHosts(), 1));
-
-        killSession(_curator);
-
-        // The entry gets cleaned up because we've lost contact with ZooKeeper
-        assertTrue(waitUntilSize(_discovery.getHosts(), 0));
-
-        // Then it automatically gets created when the connection is re-established with ZooKeeper
-        assertTrue(waitUntilSize(_discovery.getHosts(), 1));
+        assertEquals(0, endPointListener.getNumEvents());
     }
 
     @Test
     public void testRegisterServiceCallsListener() throws Exception {
-        EndPointTrigger trigger = new EndPointTrigger();
-        _discovery.addListener(trigger);
+        CountingListener endPointListener = new CountingListener();
+        _discovery.addListener(endPointListener);
 
-        _registry.register(FOO);
-        assertTrue(trigger.addedWithin(10, TimeUnit.SECONDS));
+        addNode("path", FOO);
+        assertEquals(1, endPointListener.getNumAdds());
     }
 
     @Test
     public void testUnregisterServiceCallsListener() throws Exception {
-        EndPointTrigger trigger = new EndPointTrigger();
-        _discovery.addListener(trigger);
+        CountingListener endPointListener = new CountingListener();
+        _discovery.addListener(endPointListener);
 
-        _registry.register(FOO);
-        assertTrue(trigger.addedWithin(10, TimeUnit.SECONDS));
-
-        _registry.unregister(FOO);
-        assertTrue(trigger.removedWithin(10, TimeUnit.SECONDS));
+        addNode("path", FOO);
+        removeNode("path", FOO);
+        assertEquals(1, endPointListener.getNumRemoves());
     }
 
     @Test
     public void testRemovedListenerDoesNotSeeEvents() throws Exception {
-        EndPointTrigger trigger = new EndPointTrigger();
-        _discovery.addListener(trigger);
-
         CountingListener eventCounter = new CountingListener();
         _discovery.addListener(eventCounter);
         _discovery.removeListener(eventCounter);
 
-        _registry.register(FOO);
-        assertTrue(trigger.addedWithin(10, TimeUnit.SECONDS));
-
-        _registry.unregister(FOO);
-        assertTrue(trigger.removedWithin(10, TimeUnit.SECONDS));
-
+        addNode("path", FOO);
+        removeNode("path", FOO);
         assertEquals(0, eventCounter.getNumEvents());
     }
 
     @Test
-    public void testListenerCalledWhenSessionKilled() throws Exception {
-        EndPointTrigger trigger = new EndPointTrigger();
-        _discovery.addListener(trigger);
-
-        _registry.register(FOO);
-        assertTrue(trigger.addedWithin(10, TimeUnit.SECONDS));
-
-        killSession(_curator);
-
-        // The entry gets cleaned up because we've lost contact with ZooKeeper
-        assertTrue(trigger.removedWithin(10, TimeUnit.SECONDS));
-    }
-
-    @Test
-    public void testListenerCalledWhenServiceIsReregisteredAfterSessionKilled() throws Exception {
-        EndPointTrigger initialTrigger = new EndPointTrigger();
-        _discovery.addListener(initialTrigger);
-
-        _registry.register(FOO);
-        assertTrue(initialTrigger.addedWithin(10, TimeUnit.SECONDS));
-
-        EndPointTrigger trigger = new EndPointTrigger();
-        _discovery.addListener(trigger);
-
-        killSession(_curator);
-
-        // The entry gets cleaned up because we've lost contact with ZooKeeper
-        assertTrue(trigger.removedWithin(10, TimeUnit.SECONDS));
-
-        // Then it automatically gets created when the connection is re-established with ZooKeeper
-        assertTrue(trigger.addedWithin(10, TimeUnit.SECONDS));
-    }
-
-    @Test
     public void testMultipleListeners() throws Exception {
-        EndPointTrigger trigger1 = new EndPointTrigger();
-        EndPointTrigger trigger2 = new EndPointTrigger();
-        _discovery.addListener(trigger1);
-        _discovery.addListener(trigger2);
+        CountingListener endPointListener1 = new CountingListener();
+        CountingListener endPointListener2 = new CountingListener();
+        _discovery.addListener(endPointListener1);
+        _discovery.addListener(endPointListener2);
 
-        _registry.register(FOO);
-        assertTrue(trigger1.addedWithin(10, TimeUnit.SECONDS));
-        assertTrue(trigger2.addedWithin(10, TimeUnit.SECONDS));
+        addNode("path", FOO);
+        assertEquals(1, endPointListener1.getNumAdds());
+        assertEquals(1, endPointListener2.getNumAdds());
 
-        _registry.unregister(FOO);
-        assertTrue(trigger1.removedWithin(10, TimeUnit.SECONDS));
-        assertTrue(trigger2.removedWithin(10, TimeUnit.SECONDS));
+        removeNode("path", FOO);
+        assertEquals(1, endPointListener1.getNumRemoves());
+        assertEquals(1, endPointListener2.getNumRemoves());
     }
-
-    @Test
-    public void testInitializeRacesRemove() throws Exception {
-        // Create a new ZK connection now so it's ready-to-go when we need it.
-        CuratorFramework curator = newCurator();
-
-        // Register FOO and wait until it's visible.
-        _registry.register(FOO);
-        assertTrue(waitUntilSize(_discovery.getHosts(), 1));
-
-        // Unregister FOO and create a new HostDiscovery instance as close together as we can, so they race.
-        _registry.unregister(FOO);
-        HostDiscovery discovery = new ZooKeeperHostDiscovery(newMockZooKeeperConnection(curator), FOO.getServiceName());
-        assertTrue(waitUntilSize(discovery.getHosts(), 0));
+    
+    private void addNode(String path, ServiceEndPoint endPoint) {
+        _listener.onNodeAdded(path, endPoint);
     }
-
-    private static <T> boolean waitUntilSize(Iterable<T> iterable, int size, long timeout, TimeUnit unit) {
-        long start = System.nanoTime();
-        while (System.nanoTime() - start <= unit.toNanos(timeout)) {
-            if (Iterables.size(iterable) == size) {
-                return true;
-            }
-
-            Thread.yield();
-        }
-
-        return false;
-    }
-
-    private static <T> boolean waitUntilSize(Iterable<T> iterable, int size) {
-        return waitUntilSize(iterable, size, 10, TimeUnit.SECONDS);
-    }
-
-    private static final class EndPointTrigger implements HostDiscovery.EndPointListener {
-        private final Trigger _addTrigger = new Trigger();
-        private final Trigger _removeTrigger = new Trigger();
-
-        @Override
-        public void onEndPointAdded(ServiceEndPoint endPoint) {
-            _addTrigger.fire();
-        }
-
-        @Override
-        public void onEndPointRemoved(ServiceEndPoint endPoint) {
-            _removeTrigger.fire();
-        }
-
-        public boolean addedWithin(long duration, TimeUnit unit) throws InterruptedException {
-            return _addTrigger.firedWithin(duration, unit);
-        }
-
-        public boolean removedWithin(long duration, TimeUnit unit) throws InterruptedException {
-            return _removeTrigger.firedWithin(duration, unit);
-        }
+    
+    private void removeNode(String path, ServiceEndPoint endPoint) {
+        _listener.onNodeRemoved(path, endPoint);
     }
 
     private static final class CountingListener implements HostDiscovery.EndPointListener {
@@ -349,6 +275,10 @@ public class ZooKeeperHostDiscoveryTest extends ZooKeeperTest {
 
         public int getNumAdds() {
             return _numAdds;
+        }
+
+        public int getNumRemoves() {
+            return _numRemoves;
         }
 
         public int getNumEvents() {

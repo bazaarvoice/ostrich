@@ -49,6 +49,11 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
     private final Meter _numZooKeeperChanges;
 
     public ZooKeeperHostDiscovery(ZooKeeperConnection connection, String serviceName) {
+        this(new NodeDiscoveryFactory(), connection, serviceName);
+    }
+
+    @VisibleForTesting
+    ZooKeeperHostDiscovery(NodeDiscoveryFactory factory, ZooKeeperConnection connection, String serviceName) {
         checkNotNull(connection);
         checkNotNull(serviceName);
         checkArgument(!"".equals(serviceName));
@@ -58,7 +63,7 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
         _listeners = Sets.newSetFromMap(Maps.<EndPointListener, Boolean>newConcurrentMap());
         _endPoints = ConcurrentHashMultiset.create();
 
-        _nodeDiscovery = new ZooKeeperNodeDiscovery<ServiceEndPoint>(
+        _nodeDiscovery = factory.create(
                 connection,
                 servicePath,
                 new NodeDataParser<ServiceEndPoint>() {
@@ -118,11 +123,6 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
         _metrics.close();
     }
 
-    @VisibleForTesting
-    ZooKeeperNodeDiscovery<ServiceEndPoint> getNodeDiscovery() {
-        return _nodeDiscovery;
-    }
-
     private void addServiceEndPoint(ServiceEndPoint serviceEndPoint) {
         // add returns the number of instances that were in the Multiset before the add.
         if (_endPoints.add(serviceEndPoint, 1) == 0) {
@@ -175,6 +175,14 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
         @Override
         public void onZooKeeperReset() {
             _numZooKeeperResets.mark();
+        }
+    }
+
+    @VisibleForTesting
+    static class NodeDiscoveryFactory {
+        ZooKeeperNodeDiscovery<ServiceEndPoint> create(ZooKeeperConnection connection, String path,
+                                                       NodeDataParser<ServiceEndPoint> parser) {
+            return new ZooKeeperNodeDiscovery<ServiceEndPoint>(connection, path, parser);
         }
     }
 }
