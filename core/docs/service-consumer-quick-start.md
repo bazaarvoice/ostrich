@@ -16,8 +16,8 @@ String connectString = Joiner.on(",").join("lab-c0-labzk1.lab.bazaarvoice.com:21
                                            "lab-c0-labzk2.lab.bazaarvoice.com:2181",
                                            "lab-c0-labzk3.lab.bazaarvoice.com:2181");
 ZooKeeperConnection zookeeper = new ZooKeeperConfiguration()
-  .setConnectString(connectString)
-  .setRetryNTimes(new RetryNTimes(3, 100))
+  .withConnectString(connectString)
+  .withBoundedExponentialBackoffRetry(100, 3000, 3)
   .connect();
 ```
 
@@ -57,7 +57,7 @@ Here's an example of creating a service pool for the hypothetical `CalculatorSer
 quick start guide](https://github.com/bazaarvoice/ostrich/blob/master/core/docs/service-provider-quick-start.md).
 
 ```java
-ServicePool<CalculatorService> pool = new ServicePoolBuilder<CalculatorService>()
+ServicePool<CalculatorService> pool = ServicePoolBuilder.create(CalculatorService.class)
   .withZooKeeperHostDiscovery(zookeeper)
   .withServiceFactory(new CalculatorServiceFactory())
   .withCache(cachingPolicy)
