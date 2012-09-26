@@ -8,13 +8,26 @@ remote service as much as you desire.
 
 In order to discover instances of services that are running and available a host discovery API is used.  The standard
 host discovery API is backed by ZooKeeper so a connection to the ZooKeeper ensemble is required.  Ostrich comes with a
-`ZooKeeperConfiguration` class that can be used to encapsulate the connection details.
+`ZooKeeperConfiguration` class that can be used to encapsulate the connection details.  ZooKeeperConfiguration uses
+[Chameleon](https://github.com/bazaarvoice/chameleon/blob/master/README.md) to provide a default connection string
+based upon which AWS Region (e.g., us_east_1, us_west_2, eu_west_1) and Environment (e.g., dev, qa, prod)
 
 ```java
-// Connect to the LAB ZooKeeper...
-String connectString = Joiner.on(",").join("lab-c0-labzk1.lab.bazaarvoice.com:2181",
-                                           "lab-c0-labzk2.lab.bazaarvoice.com:2181",
-                                           "lab-c0-labzk3.lab.bazaarvoice.com:2181");
+// Connect to the default ZooKeeper ensemble as inferred by Chameleon
+ZooKeeperConnection zookeeper = new ZooKeeperConfiguration()
+  .withBoundedExponentialBackoffRetry(100, 3000, 3)
+  .connect();
+```
+
+A connection String may be explicitly specified to override the default Chameleon value through the environment
+variable `CHAMELEON_ZOOKEEPER_ENSEMBLE`, the system Property `chameleon.zookeeper.ensemble`, or code through
+`ZooKeeperConnection.setConnectString()`.
+
+```java
+// Explicitly specifying ZooKeeper location through setConnectString(String) method
+String connectString = Joiner.on(",").join("zookeeper1:2181",
+                                           "zookeeper2:2181",
+                                           "zookeeper3:2181");
 ZooKeeperConnection zookeeper = new ZooKeeperConfiguration()
   .withConnectString(connectString)
   .withBoundedExponentialBackoffRetry(100, 3000, 3)

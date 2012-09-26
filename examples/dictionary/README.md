@@ -17,23 +17,35 @@ Running the Example
 
         $ vagrant up
 
-3.  Create a minimal YAML configuration file:
-
-        $ echo "{}" > /tmp/config.yaml
-
-4.  In one window, start a dictionary server to handle words in the range `a-k`:
+3.  In one window, start a dictionary server to handle words in the range `a-k`:
 
         $ cd examples/dictionary/service
         $ java -Ddw.wordRange=a-k -Ddw.http.port=8080 -Ddw.http.adminPort=8081 \
-            -jar target/dictionary-service-*.jar server /tmp/config.yaml
+            -jar target/dictionary-service-*.jar server
 
-5.  In another window, start a second dictionary server to handle words in the range `l-z`:
+4.  In another window, start a second dictionary server to handle words in the range `l-z`:
 
         $ cd examples/dictionary/service
         $ java -Ddw.wordRange=l-z -Ddw.http.port=8180 -Ddw.http.adminPort=8181 \
-            -jar target/dictionary-service-*.jar server /tmp/config.yaml
+            -jar target/dictionary-service-*.jar server
+
+5.  Create a minimal YAML configuration file for the dictionary client:
+
+        $ echo "{}" > /tmp/config.yaml
 
 6.  In another window, run a dictionary client to spell check a file:
 
         $ cd examples/dictionary/user
         $ java -jar target/dictionary-user-*.jar /tmp/config.yaml /usr/share/dict/README
+
+Configuration
+-------------
+Ostrich uses [Chameleon](https://github.com/bazaarvoice/chameleon) for setting the default ZooKeeper connect string.
+Please refer to the Configuration section of the [Calculator Documentation]
+(../calculator/README.md) for instructions on how to set the
+ZooKeeper connect string.
+
+Please refer to the server and user `DictionaryConfiguration` definitions to see the available configuration options.
+The definition of the server configuration object can be found in
+`com.bazaarvoice.soa.examples.dictionary.service.DictionaryConfiguration`. The definition of the user configuration object
+can be found in`com.bazaarvoice.soa.examples.dictionary.user.DictionaryConfiguration`.
