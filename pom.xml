@@ -18,7 +18,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <bazaarvoice.zookeeper.version>0.0.9</bazaarvoice.zookeeper.version>
+        <bazaarvoice.zookeeper.version>0.0.10</bazaarvoice.zookeeper.version>
     </properties>
 
     <build>
