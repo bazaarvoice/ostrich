@@ -143,6 +143,30 @@ public class ServiceCacheTest {
     }
 
     @Test
+    public void testEvictedEndPointDestroyedAutomaticEviction() throws Exception {
+        // Make the cache only hold one instance total.
+        when(_cachingPolicy.getMaxNumServiceInstances()).thenReturn(1);
+
+        ServiceCache<Service> cache = newCache();
+        Service service = cache.checkOut(END_POINT);
+        cache.checkIn(END_POINT, service);
+        // Check out a different end point to force the currently cached instance out.
+        cache.checkOut(mock(ServiceEndPoint.class));
+
+        verify(_factory).destroy(END_POINT, service);
+    }
+
+    @Test
+    public void testEvictedEndPointDestroyedManualEviction() throws Exception {
+        ServiceCache<Service> cache = newCache();
+        Service service = cache.checkOut(END_POINT);
+        cache.checkIn(END_POINT, service);
+        cache.evict(END_POINT);
+
+        verify(_factory).destroy(END_POINT, service);
+    }
+
+    @Test
     public void testEvictedEndPointHasServiceInstancesRemovedFromCache() throws Exception {
         ServiceCache<Service> cache = newCache();
 
@@ -341,6 +365,16 @@ public class ServiceCacheTest {
         cache.checkOut(END_POINT);
 
         assertEquals(2, cache.getNumActiveInstances(END_POINT));
+    }
+
+    @Test
+    public void testCloseDestroysCachedInstances() throws Exception {
+        ServiceCache<Service> cache = newCache();
+        Service service = cache.checkOut(END_POINT);
+        cache.checkIn(END_POINT, service);
+        cache.close();
+
+        verify(_factory).destroy(END_POINT, service);
     }
 
     @SuppressWarnings("unchecked")

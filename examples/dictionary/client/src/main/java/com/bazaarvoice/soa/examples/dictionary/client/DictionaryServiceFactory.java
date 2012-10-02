@@ -62,6 +62,11 @@ public class DictionaryServiceFactory implements ServiceFactory<DictionaryServic
     }
 
     @Override
+    public void destroy(ServiceEndPoint endPoint, DictionaryService service) {
+        // We don't need to do any cleanup.
+    }
+
+    @Override
     public boolean isRetriableException(Exception exception) {
         // Try another server if network error (ClientHandlerException) or 5xx response code (UniformInterfaceException)
         return exception instanceof ClientHandlerException ||

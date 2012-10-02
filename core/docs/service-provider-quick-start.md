@@ -104,6 +104,11 @@ public class CalculatorServiceFactory implements ServiceFactory<CalculatorServic
   }
 
   @Override
+  public void destroy(ServiceEndPoint endPoint, CalculatorService service) {
+    // We don't need to perform any cleanup.
+  }
+
+  @Override
   public String getServiceName() {
     return "calculator";
   }

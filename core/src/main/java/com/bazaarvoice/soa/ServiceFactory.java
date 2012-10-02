@@ -32,6 +32,14 @@ public interface ServiceFactory<S> {
     S create(ServiceEndPoint endPoint);
 
     /**
+     * Destroy a service instance for a given end point. Called when the service pool no longer has references to a
+     * service instance, allowing the factory to perform any clean up that may be necessary.
+     * @param endPoint The end point of the instance to be cleaned up.
+     * @param service The service instance to be cleaned up.
+     */
+    void destroy(ServiceEndPoint endPoint, S service);
+
+    /**
      * Perform a health check on an end point. Typically done if a call to a service instance associated with the end
      * point fails, and the health of the end point needs to be ensured before making it available for use again.
      * @param endPoint The end point the check the health of.

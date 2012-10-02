@@ -262,5 +262,10 @@ class ServiceCache<S> implements Closeable {
                 timer.stop();
             }
         }
+
+        @Override
+        public void destroyObject(ServiceEndPoint endPoint, S service) throws Exception {
+            _serviceFactory.destroy(endPoint, service);
+        }
     }
 }
