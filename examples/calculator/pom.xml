@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.bazaarvoice.soa.examples</groupId>
         <artifactId>soa-examples</artifactId>
-        <version>1.2.2-SNAPSHOT</version>
+        <version>1.3.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 

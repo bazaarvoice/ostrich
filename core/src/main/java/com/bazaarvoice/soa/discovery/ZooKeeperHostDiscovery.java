@@ -43,7 +43,6 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
 
     private final Metrics _metrics;
     private final Counter _numListeners;
-    private final Meter _numZooKeeperResets;
     private final Meter _numZooKeeperAdds;
     private final Meter _numZooKeeperRemoves;
     private final Meter _numZooKeeperChanges;
@@ -85,7 +84,6 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
         });
 
         _numListeners = _metrics.newCounter(serviceName, "num-listeners");
-        _numZooKeeperResets = _metrics.newMeter(serviceName, "num-zookeeper-resets", "resets", TimeUnit.MINUTES);
         _numZooKeeperAdds = _metrics.newMeter(serviceName, "num-zookeeper-adds", "adds", TimeUnit.MINUTES);
         _numZooKeeperRemoves = _metrics.newMeter(serviceName, "num-zookeeper-removes", "removes", TimeUnit.MINUTES);
         _numZooKeeperChanges = _metrics.newMeter(serviceName, "num-zookeeper-changes", "changes", TimeUnit.MINUTES);
@@ -170,11 +168,6 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
             _numZooKeeperChanges.mark();
             LOG.info("ServiceEndPoint data changed unexpectedly. End point ID: {}; ZooKeeperPath {}",
                     node.getId(), path);
-        }
-
-        @Override
-        public void onZooKeeperReset() {
-            _numZooKeeperResets.mark();
         }
     }
 
