@@ -19,6 +19,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -397,6 +398,28 @@ public class AsyncServicePoolTest {
         pool.close();
 
         verify(_mockPool, never()).close();
+    }
+
+    @Test
+    public void testGetNumValidEndPoints() {
+        int expected = new Random().nextInt();
+        AsyncServicePool<Service> pool = newAsyncPool();
+
+        when(_mockPool.getNumValidEndPoints()).thenReturn(expected);
+
+        assertEquals(expected, pool.getNumValidEndPoints());
+        verify(_mockPool).getNumValidEndPoints();
+    }
+
+    @Test
+    public void testGetNumBadEndPoints() {
+        int expected = new Random().nextInt();
+        AsyncServicePool<Service> pool = newAsyncPool();
+
+        when(_mockPool.getNumBadEndPoints()).thenReturn(expected);
+
+        assertEquals(expected, pool.getNumBadEndPoints());
+        verify(_mockPool).getNumBadEndPoints();
     }
 
     private AsyncServicePool<Service> newAsyncPool() {

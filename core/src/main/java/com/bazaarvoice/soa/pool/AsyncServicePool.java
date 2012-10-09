@@ -144,4 +144,14 @@ class AsyncServicePool<S> implements com.bazaarvoice.soa.AsyncServicePool<S> {
         _executeBatchSize.update(futures.size());
         return futures;
     }
+
+    @Override
+    public int getNumValidEndPoints() {
+        return _pool.getNumValidEndPoints();
+    }
+
+    @Override
+    public int getNumBadEndPoints() {
+        return _pool.getNumBadEndPoints();
+    }
 }
