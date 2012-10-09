@@ -35,6 +35,22 @@ public abstract class ServicePoolProxies {
     }
 
     /**
+     * Gets the number of valid end points that the provided service pool knows about.
+     * @see ServicePool#getNumValidEndPoints()
+     */
+    public static <S> int getNumValidEndPoints(S dynamicProxy) {
+        return getPool(dynamicProxy).getNumValidEndPoints();
+    }
+
+    /**
+     * Gets the number of bad end points that the provided service pool knows about.
+     * @see ServicePool#getNumBadEndPoints()
+     */
+    public static <S> int getNumBadEndPoints(S dynamicProxy) {
+        return getPool(dynamicProxy).getNumBadEndPoints();
+    }
+
+    /**
      * Finds a healthy end point in the pool and provides the result of the health check that showed it to be healthy.
      * @see com.bazaarvoice.soa.ServicePool#checkForHealthyEndPoint
      * @param dynamicProxy A service pool dynamic proxy created by {@link ServicePoolBuilder#buildProxy}.

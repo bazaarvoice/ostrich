@@ -143,13 +143,13 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
         _metrics.newGauge(serviceName, "num-valid-end-points", new Gauge<Integer>() {
             @Override
             public Integer value() {
-                return Iterables.size(_hostDiscovery.getHosts()) - _badEndPoints.size();
+                return getNumValidEndPoints();
             }
         });
         _metrics.newGauge(serviceName, "num-bad-end-points", new Gauge<Integer>() {
             @Override
             public Integer value() {
-                return _badEndPoints.size();
+                return getNumBadEndPoints();
             }
         });
     }
@@ -192,6 +192,16 @@ class ServicePool<S> implements com.bazaarvoice.soa.ServicePool<S> {
         } while (retry.allowRetry(++numAttempts, sw.elapsedMillis()));
 
         throw new MaxRetriesException();
+    }
+
+    @Override
+    public int getNumValidEndPoints() {
+        return Iterables.size(_hostDiscovery.getHosts()) - _badEndPoints.size();
+    }
+
+    @Override
+    public int getNumBadEndPoints() {
+        return _badEndPoints.size();
     }
 
     /**

@@ -880,6 +880,39 @@ public class ServicePoolTest {
         assertTrue(interruptedLatch.await(10, TimeUnit.SECONDS));
     }
 
+    @Test
+    public void testValidEndPointCount() {
+        assertEquals(3, _pool.getNumValidEndPoints());
+        assertEquals(0, _pool.getNumBadEndPoints());
+    }
+
+    @Test
+    public void testBadEndPointCount() {
+        // Only allow BAZ to have a valid health check -- we know based on the load balance strategy that this
+        // will be the last failed end point
+        when(_serviceFactory.isHealthy(eq(BAZ_ENDPOINT))).thenReturn(true);
+
+        // Exhaust all of the end points...
+        int numEndPointsAvailable = Iterables.size(_hostDiscovery.getHosts());
+        for (int i = 0; i < numEndPointsAvailable; i++) {
+            try {
+                _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Void>() {
+                    @Override
+                    public Void call(Service service) throws ServiceException {
+                        throw new ServiceException();
+                    }
+                });
+                fail();  // should have propagated service exception
+            } catch (MaxRetriesException e) {
+                // Expected
+            }
+        }
+
+        // Only BAZ should be healthy
+        assertEquals(1, _pool.getNumValidEndPoints());
+        assertEquals(2, _pool.getNumBadEndPoints());
+    }
+
     // A dummy interface for testing...
     private static interface Service {
     }

@@ -9,6 +9,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -85,6 +86,28 @@ public class ServicePoolProxiesTest {
                 mock(PartitionContextSupplier.class), true);
 
         assertSame(pool, ServicePoolProxies.getPool(service));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testGetValidEndPointCount() {
+        ServicePool<Service> pool = mock(ServicePool.class);
+        when(pool.getNumValidEndPoints()).thenReturn(3);
+        Service service = ServicePoolProxy.create(Service.class, mock(RetryPolicy.class), pool,
+                mock(PartitionContextSupplier.class), true);
+
+        assertEquals(3, ServicePoolProxies.getNumValidEndPoints(service));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testGetBadEndPointCount() {
+        ServicePool<Service> pool = mock(ServicePool.class);
+        when(pool.getNumBadEndPoints()).thenReturn(3);
+        Service service = ServicePoolProxy.create(Service.class, mock(RetryPolicy.class), pool,
+                mock(PartitionContextSupplier.class), true);
+
+        assertEquals(3, ServicePoolProxies.getNumBadEndPoints(service));
     }
 
     // A dummy interface for testing...

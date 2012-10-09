@@ -62,4 +62,23 @@ public interface ServicePool<S> extends Closeable {
      * contain no results.
      */
     HealthCheckResults checkForHealthyEndPoint();
+
+    /**
+     * Return the number of valid end points that this service pool knows about.  This will include end points that have
+     * never thrown exceptions during execution (even those that have never been interacted with) and end points that
+     * were previously known as bad but have since had a successful health check.  If this method returns non-zero, then
+     * a call to execute should not fail with an {@link com.bazaarvoice.soa.exceptions.OnlyBadHostsException} or
+     * {@link com.bazaarvoice.soa.exceptions.NoAvailableHostsException} exception.
+     */
+    int getNumValidEndPoints();
+
+    /**
+     * Return the number of end points that this service pool considers to be in a bad state.  A bad end point is one
+     * that a previous operation was attempted on and the attempt failed.  An end point could be considered bad prior to
+     * its health check being called.
+     * <p/>
+     * This combined with {@link #getNumValidEndPoints()} gives visibility into the total number of end points that the
+     * {@code ServicePool} knows about.
+     */
+    int getNumBadEndPoints();
 }
