@@ -135,6 +135,14 @@ public class ZooKeeperServiceRegistry implements ServiceRegistry
     }
 
     /**
+     * Return the root path in ZooKeeper where service nodes live.
+     * @return The ZooKeeper path.
+     */
+    public static String rootServicePath() {
+        return ZKPaths.makePath("/", ROOT_SERVICES_PATH);
+    }
+
+    /**
      * Construct the path in ZooKeeper to where a service's children live.
      * @param serviceName The name of the service to get the ZooKeeper path for.
      * @return The ZooKeeper path.
