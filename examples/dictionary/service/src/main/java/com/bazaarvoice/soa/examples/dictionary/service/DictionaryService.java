@@ -5,9 +5,11 @@ import com.bazaarvoice.soa.ServiceEndPointBuilder;
 import com.bazaarvoice.soa.ServiceRegistry;
 import com.bazaarvoice.soa.registry.ZooKeeperServiceRegistry;
 import com.bazaarvoice.zookeeper.ZooKeeperConnection;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Closeables;
 import com.yammer.dropwizard.Service;
+import com.yammer.dropwizard.config.Bootstrap;
 import com.yammer.dropwizard.config.Environment;
 import com.yammer.dropwizard.lifecycle.Managed;
 
@@ -23,12 +25,13 @@ import java.util.Map;
 public class DictionaryService extends Service<DictionaryConfiguration> {
     public static Response.Status STATUS_OVERRIDE = Response.Status.OK;
 
-    public DictionaryService() {
-        super("dictionary");
+    @Override
+    public void initialize(Bootstrap<DictionaryConfiguration> bootstrap) {
+        bootstrap.setName("dictionary");
     }
 
     @Override
-    protected void initialize(DictionaryConfiguration config, Environment env) throws Exception {
+    public void run(DictionaryConfiguration config, Environment env) throws Exception {
         // Load the subset of the dictionary handled by this server.
         WordList wordList = new WordList(config.getWordFile(), config.getWordRange());
 
@@ -51,9 +54,9 @@ public class DictionaryService extends Service<DictionaryConfiguration> {
                 "adminUrl", adminUri,
                 "partition", config.getWordRange());
         final ServiceEndPoint endPoint = new ServiceEndPointBuilder()
-                .withServiceName(getName())
+                .withServiceName(env.getName())
                 .withId(host + ":" + port)
-                .withPayload(getJson().writeValueAsString(payload))
+                .withPayload(getJson(env).writeValueAsString(payload))
                 .build();
 
         // Once everything has initialized successfully, register services with ZooKeeper where clients can find them.
@@ -71,6 +74,10 @@ public class DictionaryService extends Service<DictionaryConfiguration> {
                 Closeables.closeQuietly(connection);
             }
         });
+    }
+
+    private ObjectMapper getJson(Environment env) {
+        return env.getObjectMapperFactory().build();
     }
 
     public static void main(String[] args) throws Exception {

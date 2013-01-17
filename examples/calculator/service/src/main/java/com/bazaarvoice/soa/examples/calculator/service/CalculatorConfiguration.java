@@ -1,8 +1,8 @@
 package com.bazaarvoice.soa.examples.calculator.service;
 
 import com.bazaarvoice.zookeeper.dropwizard.ZooKeeperConfiguration;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.yammer.dropwizard.config.Configuration;
-import org.codehaus.jackson.annotate.JsonProperty;
 
 public class CalculatorConfiguration extends Configuration {
 

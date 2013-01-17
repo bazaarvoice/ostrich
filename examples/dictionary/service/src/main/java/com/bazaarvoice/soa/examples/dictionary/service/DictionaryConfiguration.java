@@ -2,8 +2,8 @@ package com.bazaarvoice.soa.examples.dictionary.service;
 
 import com.bazaarvoice.soa.examples.dictionary.client.WordRange;
 import com.bazaarvoice.zookeeper.dropwizard.ZooKeeperConfiguration;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.yammer.dropwizard.config.Configuration;
-import org.codehaus.jackson.annotate.JsonProperty;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;

@@ -3,6 +3,7 @@ package com.bazaarvoice.soa.examples.calculator.client;
 import com.bazaarvoice.soa.ServiceEndPoint;
 import com.bazaarvoice.soa.ServiceFactory;
 import com.bazaarvoice.soa.pool.ServicePoolBuilder;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientHandlerException;
 import com.sun.jersey.api.client.UniformInterfaceException;
@@ -13,7 +14,7 @@ import com.sun.jersey.client.apache4.config.DefaultApacheHttpClient4Config;
 import com.yammer.dropwizard.client.HttpClientConfiguration;
 import com.yammer.dropwizard.client.HttpClientFactory;
 import com.yammer.dropwizard.jersey.JacksonMessageBodyProvider;
-import com.yammer.dropwizard.json.Json;
+import com.yammer.dropwizard.validation.Validator;
 import org.apache.http.client.HttpClient;
 
 import java.net.URI;
@@ -40,7 +41,7 @@ public class CalculatorServiceFactory implements ServiceFactory<CalculatorServic
         HttpClient httpClient = new HttpClientFactory(configuration).build();
         ApacheHttpClient4Handler handler = new ApacheHttpClient4Handler(httpClient, null, true);
         ApacheHttpClient4Config config = new DefaultApacheHttpClient4Config();
-        config.getSingletons().add(new JacksonMessageBodyProvider(new Json()));
+        config.getSingletons().add(new JacksonMessageBodyProvider(new ObjectMapper(), new Validator()));
         return new ApacheHttpClient4(handler, config);
     }
 

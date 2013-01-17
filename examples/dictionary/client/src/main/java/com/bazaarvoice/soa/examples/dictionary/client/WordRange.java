@@ -1,9 +1,9 @@
 package com.bazaarvoice.soa.examples.dictionary.client;
 
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.google.common.base.Predicate;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Maps;
-import org.codehaus.jackson.annotate.JsonValue;
 
 import java.util.Map;
 import java.util.NavigableMap;

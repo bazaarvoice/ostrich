@@ -1,6 +1,6 @@
 package com.bazaarvoice.soa;
 
-import org.codehaus.jackson.annotate.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;

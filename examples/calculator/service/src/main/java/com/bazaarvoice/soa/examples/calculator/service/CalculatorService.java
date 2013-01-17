@@ -5,9 +5,11 @@ import com.bazaarvoice.soa.ServiceEndPointBuilder;
 import com.bazaarvoice.soa.ServiceRegistry;
 import com.bazaarvoice.soa.registry.ZooKeeperServiceRegistry;
 import com.bazaarvoice.zookeeper.ZooKeeperConnection;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Closeables;
 import com.yammer.dropwizard.Service;
+import com.yammer.dropwizard.config.Bootstrap;
 import com.yammer.dropwizard.config.Environment;
 import com.yammer.dropwizard.lifecycle.Managed;
 
@@ -23,12 +25,13 @@ import java.util.Map;
 public class CalculatorService extends Service<CalculatorConfiguration> {
     public static Response.Status STATUS_OVERRIDE = Response.Status.OK;
 
-    public CalculatorService() {
-        super("calculator");
+    @Override
+    public void initialize(Bootstrap<CalculatorConfiguration> bootstrap) {
+        bootstrap.setName("calculator");
     }
 
     @Override
-    protected void initialize(CalculatorConfiguration config, Environment env) throws Exception {
+    public void run(CalculatorConfiguration config, Environment env) throws Exception {
         env.addResource(CalculatorResource.class);
         env.addResource(ToggleHealthResource.class);
         env.addHealthCheck(new CalculatorHealthCheck());
@@ -46,9 +49,9 @@ public class CalculatorService extends Service<CalculatorConfiguration> {
                 "url", serviceUri,
                 "adminUrl", adminUri);
         final ServiceEndPoint endPoint = new ServiceEndPointBuilder()
-                .withServiceName(getName())
+                .withServiceName(env.getName())
                 .withId(host + ":" + port)
-                .withPayload(getJson().writeValueAsString(payload))
+                .withPayload(getJson(env).writeValueAsString(payload))
                 .build();
 
         // Once everything has initialized successfully, register services with ZooKeeper where clients can find them.
@@ -66,6 +69,11 @@ public class CalculatorService extends Service<CalculatorConfiguration> {
                 Closeables.closeQuietly(connection);
             }
         });
+        System.out.println("end of initialize");
+    }
+
+    private ObjectMapper getJson(Environment env) {
+        return env.getObjectMapperFactory().build();
     }
 
     public static void main(String[] args) throws Exception {

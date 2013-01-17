@@ -1,8 +1,8 @@
 package com.bazaarvoice.soa.examples.calculator.user;
 
 import com.bazaarvoice.zookeeper.dropwizard.ZooKeeperConfiguration;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.yammer.dropwizard.client.JerseyClientConfiguration;
-import org.codehaus.jackson.annotate.JsonProperty;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
