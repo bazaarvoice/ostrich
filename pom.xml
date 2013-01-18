@@ -54,12 +54,6 @@
             </dependency>
 
             <dependency>
-                <groupId>com.bazaarvoice.zookeeper</groupId>
-                <artifactId>zookeeper-dropwizard</artifactId>
-                <version>${bazaarvoice.zookeeper.version}</version>
-            </dependency>
-
-            <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
                 <version>13.0.1</version>
@@ -113,8 +107,9 @@
 
     <modules>
         <module>core</module>
-        <module>examples</module>
         <module>dropwizard</module>
+        <module>discovery-server</module>
+        <module>examples</module>
     </modules>
 
     <distributionManagement>
