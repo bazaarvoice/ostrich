@@ -10,7 +10,12 @@ import com.bazaarvoice.soa.partition.IdentityPartitionFilter;
 import com.bazaarvoice.soa.partition.PartitionFilter;
 import com.bazaarvoice.zookeeper.ZooKeeperConfiguration;
 import com.bazaarvoice.zookeeper.ZooKeeperConnection;
+import com.bazaarvoice.zookeeper.internal.CuratorConnection;
 import com.google.common.io.Closeables;
+import com.netflix.curator.framework.CuratorFramework;
+import com.netflix.curator.framework.imps.CuratorFrameworkState;
+import com.netflix.curator.framework.listen.Listenable;
+import com.netflix.curator.framework.state.ConnectionStateListener;
 import com.netflix.curator.test.TestingServer;
 import org.junit.Before;
 import org.junit.Test;
@@ -25,6 +30,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
@@ -156,6 +162,44 @@ public class ServicePoolBuilderTest {
             Closeables.closeQuietly(connection);
             Closeables.closeQuietly(zooKeeperServer);
         }
+    }
+
+    @Test
+    public void testHostDiscoveryFromSourceCloses() throws Exception {
+        HostDiscoverySource closingHostDiscoverySource = mock(HostDiscoverySource.class);
+        HostDiscovery closedHostDiscovery = mock(HostDiscovery.class);
+        HostDiscoverySource nonClosingHostDiscoverySource = mock(HostDiscoverySource.class);
+        HostDiscovery unclosedHostDiscovery = mock(HostDiscovery.class);
+
+        when(closingHostDiscoverySource.forService(anyString())).thenReturn(closedHostDiscovery);
+        when(nonClosingHostDiscoverySource.forService(anyString())).thenReturn(unclosedHostDiscovery);
+
+        ServicePool<Service> servicePool = (ServicePool<Service>) ServicePoolBuilder.create(Service.class)
+                .withServiceFactory(_serviceFactory)
+                .withCachingPolicy(_cachingPolicy)
+                .withHostDiscoverySource(closingHostDiscoverySource)
+                .withHostDiscoverySource(nonClosingHostDiscoverySource)
+                .withPartitionFilter(_partitionFilter)
+                .build();
+
+        servicePool.close();
+        verify(closedHostDiscovery).close();
+        verify(unclosedHostDiscovery, never()).close();
+    }
+
+    @Test
+    public void testHostDiscoveryDoesNotClose() throws Exception {
+        HostDiscovery unclosedHostDiscovery = mock(HostDiscovery.class);
+
+        ServicePool<Service> servicePool = (ServicePool<Service>) ServicePoolBuilder.create(Service.class)
+                .withServiceFactory(_serviceFactory)
+                .withCachingPolicy(_cachingPolicy)
+                .withHostDiscovery(unclosedHostDiscovery)
+                .withPartitionFilter(_partitionFilter)
+                .build();
+
+        servicePool.close();
+        verify(unclosedHostDiscovery, never()).close();
     }
 
     @Test

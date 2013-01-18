@@ -28,6 +28,7 @@ import org.mockito.Matchers;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -140,13 +141,15 @@ public class ServicePoolTest {
                 }
         );
 
-        _pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory, UNLIMITED_CACHING,
+        _pool = new ServicePool<Service>(_ticker, _hostDiscovery, false, _serviceFactory, UNLIMITED_CACHING,
                 _partitionFilter, _loadBalanceAlgorithm, _healthCheckExecutor, true);
     }
 
     @After
-    public void teardown() {
+    public void teardown() throws IOException {
         _pool.close();
+
+        _hostDiscovery.close();
     }
 
     @Test
@@ -809,7 +812,7 @@ public class ServicePoolTest {
 
     @Test
     public void testDoesNotShutdownHealthCheckExecutorOnClose() {
-        ServicePool<Service> pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory,
+        ServicePool<Service> pool = new ServicePool<Service>(_ticker, _hostDiscovery, false, _serviceFactory,
                 ServiceCachingPolicyBuilder.NO_CACHING, _partitionFilter, _loadBalanceAlgorithm, _healthCheckExecutor,
                 false);
         pool.close();
@@ -820,7 +823,7 @@ public class ServicePoolTest {
 
     @Test
     public void testDoesShutdownHealthCheckExecutorOnClose() {
-        ServicePool<Service> pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory,
+        ServicePool<Service> pool = new ServicePool<Service>(_ticker, _hostDiscovery, false, _serviceFactory,
                 ServiceCachingPolicyBuilder.NO_CACHING, _partitionFilter, _loadBalanceAlgorithm, _healthCheckExecutor,
                 true);
         pool.close();
@@ -854,7 +857,7 @@ public class ServicePoolTest {
         // Redefine the end points that HostDiscovery knows about to be only FOO
         when(_hostDiscovery.getHosts()).thenReturn(ImmutableList.of(FOO_ENDPOINT));
 
-        ServicePool<Service> pool = new ServicePool<Service>(_ticker, _hostDiscovery, _serviceFactory,
+        ServicePool<Service> pool = new ServicePool<Service>(_ticker, _hostDiscovery, false, _serviceFactory,
                 ServiceCachingPolicyBuilder.NO_CACHING, _partitionFilter, _loadBalanceAlgorithm,
                 Executors.newScheduledThreadPool(1), true);
 

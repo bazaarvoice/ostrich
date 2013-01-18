@@ -250,7 +250,7 @@ public class ZooKeeperHostDiscoveryTest {
         assertEquals(1, endPointListener1.getNumRemoves());
         assertEquals(1, endPointListener2.getNumRemoves());
     }
-    
+
     private void addNode(String path, ServiceEndPoint endPoint) {
         _listener.onNodeAdded(path, endPoint);
     }
