@@ -15,13 +15,13 @@ import com.google.common.collect.Maps;
 import com.netflix.curator.utils.ZKPaths;
 import com.yammer.metrics.core.Counter;
 import org.apache.zookeeper.CreateMode;
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
-import org.joda.time.format.DateTimeFormatter;
-import org.joda.time.format.ISODateTimeFormat;
 
 import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -42,8 +42,8 @@ public class ZooKeeperServiceRegistry implements ServiceRegistry
     static final int MAX_DATA_SIZE = 1024 * 1024;
 
     // All dates are represented in ISO-8601 format and in the UTC time zone.
-    @VisibleForTesting
-    static final DateTimeFormatter ISO8601 = ISODateTimeFormat.dateTime().withZoneUTC();
+    private static final TimeZone UTC = TimeZone.getTimeZone("UTC");
+    private static final String ISO8601_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'";
 
     private final NodeFactory _nodeFactory;
     private volatile boolean _closed = false;
@@ -82,8 +82,11 @@ public class ZooKeeperServiceRegistry implements ServiceRegistry
 
         Map<String, Object> registrationData = Maps.newHashMap();
         if (includeRegistrationTime) {
-            DateTime now = DateTime.now().toDateTime(DateTimeZone.UTC);
-            registrationData.put("registration-time", ISO8601.print(now));
+            DateFormat iso8601 = new SimpleDateFormat(ISO8601_FORMAT);
+            iso8601.setTimeZone(UTC);
+
+            Date now = new Date();
+            registrationData.put("registration-time", iso8601.format(now));
         }
 
         byte[] data = ServiceEndPointJsonCodec.toJson(endPoint, registrationData).getBytes(Charsets.UTF_8);
