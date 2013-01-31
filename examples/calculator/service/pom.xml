@@ -61,13 +61,13 @@
 
         <dependency>
             <groupId>com.bazaarvoice.ostrich</groupId>
-            <artifactId>core</artifactId>
+            <artifactId>ostrich-core</artifactId>
             <version>${project.version}</version>
         </dependency>
 
         <dependency>
             <groupId>com.bazaarvoice.ostrich.zookeeper</groupId>
-            <artifactId>registry</artifactId>
+            <artifactId>ostrich-zookeeper-registry</artifactId>
             <version>${project.version}</version>
         </dependency>
 

@@ -10,7 +10,7 @@
     </parent>
 
     <groupId>com.bazaarvoice.ostrich.zookeeper</groupId>
-    <artifactId>discovery</artifactId>
+    <artifactId>ostrich-zookeeper-discovery</artifactId>
     <packaging>jar</packaging>
 
     <name>discovery</name>
@@ -25,7 +25,7 @@
 
         <dependency>
             <groupId>com.bazaarvoice.ostrich</groupId>
-            <artifactId>core</artifactId>
+            <artifactId>ostrich-core</artifactId>
             <version>${project.version}</version>
         </dependency>
 

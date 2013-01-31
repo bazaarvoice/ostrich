@@ -10,7 +10,7 @@
     </parent>
 
     <groupId>com.bazaarvoice.ostrich</groupId>
-    <artifactId>core</artifactId>
+    <artifactId>ostrich-core</artifactId>
     <packaging>jar</packaging>
 
     <name>core</name>

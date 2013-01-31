@@ -19,13 +19,13 @@
     <dependencies>
         <dependency>
             <groupId>com.bazaarvoice.ostrich</groupId>
-            <artifactId>core</artifactId>
+            <artifactId>ostrich-core</artifactId>
             <version>${project.version}</version>
         </dependency>
 
         <dependency>
             <groupId>com.bazaarvoice.ostrich</groupId>
-            <artifactId>dropwizard</artifactId>
+            <artifactId>ostrich-dropwizard</artifactId>
             <version>${project.version}</version>
         </dependency>
 

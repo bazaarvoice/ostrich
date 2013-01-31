@@ -10,7 +10,7 @@
     </parent>
 
     <groupId>com.bazaarvoice.ostrich</groupId>
-    <artifactId>dropwizard</artifactId>
+    <artifactId>ostrich-dropwizard</artifactId>
     <packaging>jar</packaging>
 
     <name>dropwizard</name>
@@ -19,7 +19,7 @@
     <dependencies>
         <dependency>
             <groupId>com.bazaarvoice.ostrich</groupId>
-            <artifactId>core</artifactId>
+            <artifactId>ostrich-core</artifactId>
             <version>${project.version}</version>
         </dependency>
 
