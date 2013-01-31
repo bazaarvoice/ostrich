@@ -2,6 +2,7 @@ package com.bazaarvoice.ostrich.discovery;
 
 import com.bazaarvoice.ostrich.ServiceEndPoint;
 import com.bazaarvoice.ostrich.ServiceEndPointBuilder;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.io.Closeables;
 import org.junit.After;
@@ -12,8 +13,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
 
 public class FixedHostDiscoveryTest {
     private static final ServiceEndPoint FOO = new ServiceEndPointBuilder()
@@ -64,12 +64,6 @@ public class FixedHostDiscoveryTest {
     }
 
     @Test
-    public void testMembershipCheck() {
-        assertTrue(_discovery.contains(FOO));
-        assertFalse(_discovery.contains(BAR));
-    }
-
-    @Test
     public void testAddListener() {
         // Verify it doesn't blow up
         _discovery.addListener(null);
@@ -88,9 +82,9 @@ public class FixedHostDiscoveryTest {
 
         // Change the backing list, verify it doesn't affect FixedHostDiscovery
         endPoints.remove(FOO);
-        endPoints.add(BAR);
+        assertEquals(1, Iterables.size(discovery.getHosts()));
 
-        assertTrue(discovery.contains(FOO));
-        assertFalse(discovery.contains(BAR));
+        endPoints.add(BAR);
+        assertEquals(1, Iterables.size(discovery.getHosts()));
     }
 }

@@ -1,6 +1,7 @@
 package com.bazaarvoice.ostrich.examples.dictionary.user;
 
-import com.bazaarvoice.ostrich.discovery.zookeeper.HostDiscovery;
+import com.bazaarvoice.ostrich.discovery.zookeeper.ZooKeeperHostDiscovery;
+import com.bazaarvoice.ostrich.discovery.zookeeper.ZooKeeperHostDiscovery;
 import com.bazaarvoice.ostrich.dropwizard.healthcheck.ContainsHealthyEndPointCheck;
 import com.bazaarvoice.ostrich.examples.dictionary.client.DictionaryService;
 import com.bazaarvoice.ostrich.examples.dictionary.client.DictionaryServiceFactory;
@@ -102,7 +103,7 @@ public class DictionaryUser {
         // when the builder calls its configure() method.
         DictionaryService service = ServicePoolBuilder.create(DictionaryService.class)
                 .withServiceFactory(new DictionaryServiceFactory(configuration.getHttpClientConfiguration()))
-                .withHostDiscovery(new HostDiscovery(curator, "dictionary"))
+                .withHostDiscovery(new ZooKeeperHostDiscovery(curator, "dictionary"))
                 .withCachingPolicy(cachingPolicy)
                 .buildProxy(new ExponentialBackoffRetry(5, 50, 1000, TimeUnit.MILLISECONDS));
 

@@ -3,7 +3,8 @@ package com.bazaarvoice.ostrich.examples.calculator.service;
 import com.bazaarvoice.curator.dropwizard.ManagedCuratorFramework;
 import com.bazaarvoice.ostrich.ServiceEndPoint;
 import com.bazaarvoice.ostrich.ServiceEndPointBuilder;
-import com.bazaarvoice.ostrich.registry.zookeeper.ServiceRegistry;
+import com.bazaarvoice.ostrich.registry.zookeeper.ZooKeeperServiceRegistry;
+import com.bazaarvoice.ostrich.registry.zookeeper.ZooKeeperServiceRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
@@ -57,7 +58,7 @@ public class CalculatorService extends Service<CalculatorConfiguration> {
 
         final CuratorFramework curator = newCurator(config.getZooKeeperConfiguration(), env);
         env.manage(new Managed() {
-            ServiceRegistry registry = new ServiceRegistry(curator);
+            ZooKeeperServiceRegistry registry = new ZooKeeperServiceRegistry(curator);
 
             @Override
             public void start() throws Exception {

@@ -28,11 +28,6 @@ public class FixedHostDiscovery implements HostDiscovery {
     }
 
     @Override
-    public boolean contains(ServiceEndPoint endPoint) {
-        return _endPoints.contains(endPoint);
-    }
-
-    @Override
     public void addListener(EndPointListener listener) {
         // Nothing to do, end point collection never changes.
     }

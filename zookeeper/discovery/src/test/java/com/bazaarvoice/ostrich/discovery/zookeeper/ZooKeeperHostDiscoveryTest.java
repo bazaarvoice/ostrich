@@ -29,26 +29,26 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class HostDiscoveryTest {
+public class ZooKeeperHostDiscoveryTest {
     private static final ServiceEndPoint FOO = new ServiceEndPointBuilder()
             .withServiceName("Foo")
             .withId("server:8080")
             .build();
 
-    private HostDiscovery _discovery;
+    private ZooKeeperHostDiscovery _discovery;
     private NodeDiscovery.NodeListener<ServiceEndPoint> _listener;
     private NodeDiscovery.NodeDataParser<ServiceEndPoint> _parser;
 
     @SuppressWarnings("unchecked")
     @Before
     public void setup() throws Exception {
-        HostDiscovery.NodeDiscoveryFactory factory = mock(HostDiscovery.NodeDiscoveryFactory.class);
+        ZooKeeperHostDiscovery.NodeDiscoveryFactory factory = mock(ZooKeeperHostDiscovery.NodeDiscoveryFactory.class);
         NodeDiscovery<ServiceEndPoint> nodeDiscovery = mock(NodeDiscovery.class);
         CuratorFramework curator = mock(CuratorFramework.class);
         when(factory.create(Matchers.<CuratorFramework>any(CuratorFramework.class), anyString(),
                 Matchers.<NodeDiscovery.NodeDataParser<ServiceEndPoint>>any())).thenReturn(nodeDiscovery);
 
-        _discovery = new HostDiscovery(factory, curator, FOO.getServiceName());
+        _discovery = new ZooKeeperHostDiscovery(factory, curator, FOO.getServiceName());
 
         // Capture the parser.
         ArgumentCaptor<NodeDiscovery.NodeDataParser<ServiceEndPoint>> parserCaptor =
@@ -70,17 +70,17 @@ public class HostDiscoveryTest {
 
     @Test (expected = NullPointerException.class)
     public void testNullCurator() {
-        new HostDiscovery(null, FOO.getServiceName());
+        new ZooKeeperHostDiscovery(null, FOO.getServiceName());
     }
 
     @Test (expected = NullPointerException.class)
     public void testNullServiceName() throws Exception {
-        new HostDiscovery(mock(CuratorFramework.class), null);
+        new ZooKeeperHostDiscovery(mock(CuratorFramework.class), null);
     }
 
     @Test (expected = IllegalArgumentException.class)
     public void testEmptyServiceName() throws Exception {
-        new HostDiscovery(mock(CuratorFramework.class), "");
+        new ZooKeeperHostDiscovery(mock(CuratorFramework.class), "");
     }
 
     @Test
@@ -121,7 +121,7 @@ public class HostDiscoveryTest {
     @SuppressWarnings("unchecked")
     @Test
     public void testExistingData() throws Exception {
-        HostDiscovery.NodeDiscoveryFactory factory = mock(HostDiscovery.NodeDiscoveryFactory.class);
+        ZooKeeperHostDiscovery.NodeDiscoveryFactory factory = mock(ZooKeeperHostDiscovery.NodeDiscoveryFactory.class);
         NodeDiscovery<ServiceEndPoint> nodeDiscovery = mock(NodeDiscovery.class);
         when(factory.create(Matchers.<CuratorFramework>any(), anyString(),
                 Matchers.<NodeDiscovery.NodeDataParser<ServiceEndPoint>>any())).thenReturn(nodeDiscovery);
@@ -140,7 +140,7 @@ public class HostDiscoveryTest {
             }
         }).when(nodeDiscovery).start();
 
-        HostDiscovery discovery = new HostDiscovery(factory, mock(CuratorFramework.class),
+        ZooKeeperHostDiscovery discovery = new ZooKeeperHostDiscovery(factory, mock(CuratorFramework.class),
                 FOO.getServiceName());
 
         assertEquals(ImmutableList.of(FOO), ImmutableList.copyOf(discovery.getHosts()));
@@ -253,7 +253,7 @@ public class HostDiscoveryTest {
         _listener.onNodeRemoved(path, endPoint);
     }
 
-    private static final class CountingListener implements HostDiscovery.EndPointListener {
+    private static final class CountingListener implements ZooKeeperHostDiscovery.EndPointListener {
         private int _numAdds;
         private int _numRemoves;
 

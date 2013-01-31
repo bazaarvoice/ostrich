@@ -80,7 +80,6 @@ public class ServicePoolCachingTest {
 
         _hostDiscovery = mock(HostDiscovery.class);
         when(_hostDiscovery.getHosts()).thenReturn(ImmutableList.of(FOO_ENDPOINT));
-        when(_hostDiscovery.contains(FOO_ENDPOINT)).thenReturn(true);
 
         _loadBalanceAlgorithm = mock(LoadBalanceAlgorithm.class);
         when(_loadBalanceAlgorithm.choose(any(Iterable.class), any(ServicePoolStatistics.class)))

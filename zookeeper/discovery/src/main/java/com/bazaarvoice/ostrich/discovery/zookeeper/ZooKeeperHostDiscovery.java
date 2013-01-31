@@ -1,6 +1,7 @@
 package com.bazaarvoice.ostrich.discovery.zookeeper;
 
 import com.bazaarvoice.curator.recipes.NodeDiscovery;
+import com.bazaarvoice.ostrich.HostDiscovery;
 import com.bazaarvoice.ostrich.ServiceEndPoint;
 import com.bazaarvoice.ostrich.ServiceEndPointJsonCodec;
 import com.bazaarvoice.ostrich.metrics.Metrics;
@@ -31,8 +32,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * path in ZooKeeper and will monitor which end points are known to exist.  As end pionts come and go the results of
  * calling the {@link #getHosts} method change.
  */
-public class HostDiscovery implements com.bazaarvoice.ostrich.HostDiscovery {
-    private static final Logger LOG = LoggerFactory.getLogger(HostDiscovery.class);
+public class ZooKeeperHostDiscovery implements HostDiscovery {
+    private static final Logger LOG = LoggerFactory.getLogger(ZooKeeperHostDiscovery.class);
 
     /**
      * The root path in ZooKeeper for where service registrations are stored.
@@ -53,12 +54,12 @@ public class HostDiscovery implements com.bazaarvoice.ostrich.HostDiscovery {
     private final Meter _numZooKeeperRemoves;
     private final Meter _numZooKeeperChanges;
 
-    public HostDiscovery(CuratorFramework curator, String serviceName) {
+    public ZooKeeperHostDiscovery(CuratorFramework curator, String serviceName) {
         this(new NodeDiscoveryFactory(), curator, serviceName);
     }
 
     @VisibleForTesting
-    HostDiscovery(NodeDiscoveryFactory factory, CuratorFramework curator, String serviceName) {
+    ZooKeeperHostDiscovery(NodeDiscoveryFactory factory, CuratorFramework curator, String serviceName) {
         checkNotNull(factory);
         checkNotNull(curator);
         checkNotNull(serviceName);
@@ -102,11 +103,6 @@ public class HostDiscovery implements com.bazaarvoice.ostrich.HostDiscovery {
     @Override
     public Iterable<ServiceEndPoint> getHosts() {
         return Iterables.unmodifiableIterable(_endPoints.elementSet());
-    }
-
-    @Override
-    public boolean contains(ServiceEndPoint endPoint) {
-        return _endPoints.contains(endPoint);
     }
 
     @Override

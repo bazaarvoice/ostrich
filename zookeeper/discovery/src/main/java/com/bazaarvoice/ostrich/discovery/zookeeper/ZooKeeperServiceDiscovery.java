@@ -1,6 +1,7 @@
 package com.bazaarvoice.ostrich.discovery.zookeeper;
 
 import com.bazaarvoice.curator.recipes.NodeDiscovery;
+import com.bazaarvoice.ostrich.ServiceDiscovery;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Iterables;
 import com.netflix.curator.framework.CuratorFramework;
@@ -19,7 +20,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * This class only watches the root service path's child nodes -- it doesn't make sure that a service has child nodes
  * of its own.
  */
-public class ServiceDiscovery implements com.bazaarvoice.ostrich.ServiceDiscovery {
+public class ZooKeeperServiceDiscovery implements ServiceDiscovery {
     /**
      * The root path in ZooKeeper for where service registrations are stored.
      * <p/>
@@ -45,12 +46,12 @@ public class ServiceDiscovery implements com.bazaarvoice.ostrich.ServiceDiscover
 
     private final NodeDiscovery<String> _nodeDiscovery;
 
-    public ServiceDiscovery(CuratorFramework curator) {
+    public ZooKeeperServiceDiscovery(CuratorFramework curator) {
         this(new NodeDiscovery<String>(curator, ROOT_SERVICES_PATH, SERVICE_NAME_PARSER));
     }
 
     @VisibleForTesting
-    ServiceDiscovery(NodeDiscovery<String> nodeDiscovery) {
+    ZooKeeperServiceDiscovery(NodeDiscovery<String> nodeDiscovery) {
         _nodeDiscovery = checkNotNull(nodeDiscovery);
         _nodeDiscovery.start();
     }

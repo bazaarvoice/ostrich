@@ -1,6 +1,7 @@
 package com.bazaarvoice.ostrich.examples.calculator.user;
 
-import com.bazaarvoice.ostrich.discovery.zookeeper.HostDiscovery;
+import com.bazaarvoice.ostrich.discovery.zookeeper.ZooKeeperHostDiscovery;
+import com.bazaarvoice.ostrich.discovery.zookeeper.ZooKeeperHostDiscovery;
 import com.bazaarvoice.ostrich.dropwizard.healthcheck.ContainsHealthyEndPointCheck;
 import com.bazaarvoice.ostrich.examples.calculator.client.CalculatorService;
 import com.bazaarvoice.ostrich.examples.calculator.client.CalculatorServiceFactory;
@@ -85,7 +86,7 @@ public class CalculatorProxyUser {
 
         CalculatorService service = ServicePoolBuilder.create(CalculatorService.class)
                 .withServiceFactory(new CalculatorServiceFactory(configuration.getHttpClientConfiguration()))
-                .withHostDiscovery(new HostDiscovery(curator, "calculator"))
+                .withHostDiscovery(new ZooKeeperHostDiscovery(curator, "calculator"))
                 .withCachingPolicy(cachingPolicy)
                 .buildProxy(new ExponentialBackoffRetry(5, 50, 1000, TimeUnit.MILLISECONDS));
 

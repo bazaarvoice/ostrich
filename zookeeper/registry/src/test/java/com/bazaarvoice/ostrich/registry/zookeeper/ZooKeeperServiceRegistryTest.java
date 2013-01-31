@@ -16,8 +16,8 @@ import org.mockito.stubbing.Answer;
 
 import java.util.concurrent.TimeUnit;
 
-import static com.bazaarvoice.ostrich.registry.zookeeper.ServiceRegistry.MAX_DATA_SIZE;
-import static com.bazaarvoice.ostrich.registry.zookeeper.ServiceRegistry.makeEndPointPath;
+import static com.bazaarvoice.ostrich.registry.zookeeper.ZooKeeperServiceRegistry.MAX_DATA_SIZE;
+import static com.bazaarvoice.ostrich.registry.zookeeper.ZooKeeperServiceRegistry.makeEndPointPath;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
@@ -29,16 +29,16 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class ServiceRegistryTest {
+public class ZooKeeperServiceRegistryTest {
     private static final ServiceEndPoint FOO = newEndPoint("Foo", "server:80", "");
     private static final String FOO_PATH = makeEndPointPath(FOO);
 
-    private ServiceRegistry.NodeFactory _nodeFactory;
-    private ServiceRegistry _registry;
+    private ZooKeeperServiceRegistry.NodeFactory _nodeFactory;
+    private ZooKeeperServiceRegistry _registry;
 
     @Before
     public void setup() {
-        _nodeFactory = mock(ServiceRegistry.NodeFactory.class);
+        _nodeFactory = mock(ZooKeeperServiceRegistry.NodeFactory.class);
         when(_nodeFactory.create(anyString(), any(byte[].class)))
                 .thenAnswer(new Answer<PersistentEphemeralNode>() {
                     @Override
@@ -46,7 +46,7 @@ public class ServiceRegistryTest {
                         return mock(PersistentEphemeralNode.class);
                     }
                 });
-        _registry = new ServiceRegistry(_nodeFactory);
+        _registry = new ZooKeeperServiceRegistry(_nodeFactory);
     }
 
     @After
@@ -56,17 +56,17 @@ public class ServiceRegistryTest {
 
     @Test(expected = NullPointerException.class)
     public void testNullCurator() throws Exception {
-        new ServiceRegistry((CuratorFramework) null);
+        new ZooKeeperServiceRegistry((CuratorFramework) null);
     }
 
     @Test(expected = NullPointerException.class)
     public void testNullFactory() {
-        new ServiceRegistry((ServiceRegistry.NodeFactory) null);
+        new ZooKeeperServiceRegistry((ZooKeeperServiceRegistry.NodeFactory) null);
     }
 
     @Test
     public void testConstructor() {
-        new ServiceRegistry(mock(CuratorFramework.class));
+        new ZooKeeperServiceRegistry(mock(CuratorFramework.class));
     }
 
     @Test(expected = NullPointerException.class)

@@ -3,6 +3,7 @@ package com.bazaarvoice.ostrich.registry.zookeeper;
 import com.bazaarvoice.curator.recipes.PersistentEphemeralNode;
 import com.bazaarvoice.ostrich.ServiceEndPoint;
 import com.bazaarvoice.ostrich.ServiceEndPointJsonCodec;
+import com.bazaarvoice.ostrich.ServiceRegistry;
 import com.bazaarvoice.ostrich.metrics.Metrics;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
@@ -30,7 +31,7 @@ import static com.google.common.base.Preconditions.checkState;
 /**
  * A <code>ServiceRegistry</code> implementation that uses ZooKeeper as its backing data store.
  */
-public class ServiceRegistry implements com.bazaarvoice.ostrich.ServiceRegistry
+public class ZooKeeperServiceRegistry implements ServiceRegistry
 {
     /**
      * The root path in ZooKeeper for where service registrations are stored.
@@ -55,7 +56,7 @@ public class ServiceRegistry implements com.bazaarvoice.ostrich.ServiceRegistry
     /** The ephemeral data that's been written to ZooKeeper.  Saved in case the connection is lost and then regained. */
     private final Map<String, PersistentEphemeralNode> _nodes = Maps.newConcurrentMap();
 
-    private final Metrics _metrics = Metrics.forClass(ServiceRegistry.class);
+    private final Metrics _metrics = Metrics.forClass(ZooKeeperServiceRegistry.class);
     private final LoadingCache<String, Counter> _numRegisteredEndpoints = CacheBuilder.newBuilder()
             .build(new CacheLoader<String, Counter>() {
                 @Override
@@ -64,12 +65,12 @@ public class ServiceRegistry implements com.bazaarvoice.ostrich.ServiceRegistry
                 }
             });
 
-    public ServiceRegistry(CuratorFramework curator) {
+    public ZooKeeperServiceRegistry(CuratorFramework curator) {
         this(new NodeFactory(curator));
     }
 
     @VisibleForTesting
-    ServiceRegistry(NodeFactory nodeFactory) {
+    ZooKeeperServiceRegistry(NodeFactory nodeFactory) {
         _nodeFactory = checkNotNull(nodeFactory);
     }
 

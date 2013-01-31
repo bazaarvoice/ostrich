@@ -16,14 +16,6 @@ public interface HostDiscovery extends Closeable {
     Iterable<ServiceEndPoint> getHosts();
 
     /**
-     * Returns true if the specified end point is a member of the set returned by {@link #getHosts()}.
-     *
-     * @param endPoint The end point to test.
-     * @return True if the specified end point is a member of the set returned by {@link #getHosts()}.
-     */
-    boolean contains(ServiceEndPoint endPoint);
-
-    /**
      * Add an end point listener.
      *
      * @param listener The end point listener to add.
