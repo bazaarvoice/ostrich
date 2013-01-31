@@ -3,13 +3,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.bazaarvoice.soa.examples.calculator</groupId>
+        <groupId>com.bazaarvoice.ostrich.examples.calculator</groupId>
         <artifactId>calculator</artifactId>
-        <version>1.4.1-SNAPSHOT</version>
+        <version>1.5.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <groupId>com.bazaarvoice.soa.examples.calculator</groupId>
+    <groupId>com.bazaarvoice.ostrich.examples.calculator</groupId>
     <artifactId>calculator-client</artifactId>
     <packaging>jar</packaging>
 
@@ -18,13 +18,15 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.bazaarvoice.soa</groupId>
-            <artifactId>soa-core</artifactId>
+            <groupId>com.bazaarvoice.ostrich</groupId>
+            <artifactId>core</artifactId>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>
-            <groupId>com.bazaarvoice.zookeeper</groupId>
-            <artifactId>zookeeper-dropwizard</artifactId>
+            <groupId>com.bazaarvoice.ostrich</groupId>
+            <artifactId>dropwizard</artifactId>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>
@@ -35,6 +37,7 @@
         <dependency>
             <groupId>com.yammer.dropwizard</groupId>
             <artifactId>dropwizard-client</artifactId>
+            <version>${dropwizard.version}</version>
         </dependency>
     </dependencies>
 </project>

@@ -2,9 +2,15 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.bazaarvoice.soa</groupId>
-    <artifactId>soa</artifactId>
-    <version>1.4.1-SNAPSHOT</version>
+    <parent>
+        <groupId>com.bazaarvoice.commons</groupId>
+        <artifactId>bv-opensource-super-pom</artifactId>
+        <version>1.0</version>
+    </parent>
+
+    <groupId>com.bazaarvoice.ostrich</groupId>
+    <artifactId>ostrich</artifactId>
+    <version>1.5.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <scm>
@@ -13,12 +19,12 @@
         <developerConnection>scm:git:git@github.com:bazaarvoice/ostrich.git</developerConnection>
     </scm>
 
-    <name>soa</name>
+    <name>ostrich</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <bazaarvoice.zookeeper.version>0.1.0</bazaarvoice.zookeeper.version>
+        <curator.extensions.version>1.0.2</curator.extensions.version>
     </properties>
 
     <build>
@@ -40,19 +46,6 @@
 
     <dependencyManagement>
         <dependencies>
-            <dependency>
-                <groupId>com.bazaarvoice.zookeeper</groupId>
-                <artifactId>zookeeper-recipes</artifactId>
-                <version>${bazaarvoice.zookeeper.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.bazaarvoice.zookeeper</groupId>
-                <artifactId>zookeeper-test</artifactId>
-                <version>${bazaarvoice.zookeeper.version}</version>
-                <scope>test</scope>
-            </dependency>
-
             <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
@@ -102,18 +95,7 @@
     <modules>
         <module>core</module>
         <module>dropwizard</module>
-        <module>discovery-server</module>
+        <module>zookeeper</module>
         <module>examples</module>
     </modules>
-
-    <distributionManagement>
-        <repository>
-            <id>bazaarvoice-deploy</id>
-            <url>https://repo.bazaarvoice.com/nexus/content/repositories/releases/</url>
-        </repository>
-        <snapshotRepository>
-            <id>bazaarvoice-deploy</id>
-            <url>https://repo.bazaarvoice.com/nexus/content/repositories/snapshots/</url>
-        </snapshotRepository>
-    </distributionManagement>
 </project>

@@ -3,52 +3,22 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.bazaarvoice.soa</groupId>
-        <artifactId>soa</artifactId>
-        <version>1.4.1-SNAPSHOT</version>
+        <groupId>com.bazaarvoice.ostrich</groupId>
+        <artifactId>ostrich</artifactId>
+        <version>1.5.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <groupId>com.bazaarvoice.soa.examples</groupId>
-    <artifactId>soa-examples</artifactId>
+    <groupId>com.bazaarvoice.ostrich.examples</groupId>
+    <artifactId>examples</artifactId>
     <packaging>pom</packaging>
 
     <name>examples</name>
-    <description>Examples of how to use SOA</description>
+    <description>Examples of how to use Ostrich</description>
 
     <properties>
-        <dropwizard.version>0.4.4</dropwizard.version>
+        <dropwizard.version>0.6.1</dropwizard.version>
     </properties>
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>com.bazaarvoice.soa</groupId>
-                <artifactId>soa-core</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.bazaarvoice.soa</groupId>
-                <artifactId>soa-dropwizard</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.bazaarvoice.zookeeper</groupId>
-                <artifactId>zookeeper-core</artifactId>
-                <version>${bazaarvoice.zookeeper.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.bazaarvoice.zookeeper</groupId>
-                <artifactId>zookeeper-dropwizard</artifactId>
-                <version>${bazaarvoice.zookeeper.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.yammer.dropwizard</groupId>
-                <artifactId>dropwizard-client</artifactId>
-                <version>${dropwizard.version}</version>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
 
     <modules>
         <module>calculator</module>

@@ -3,23 +3,23 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.bazaarvoice.soa</groupId>
-        <artifactId>soa</artifactId>
-        <version>1.4.1-SNAPSHOT</version>
+        <groupId>com.bazaarvoice.ostrich</groupId>
+        <artifactId>ostrich</artifactId>
+        <version>1.5.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <groupId>com.bazaarvoice.soa</groupId>
-    <artifactId>soa-dropwizard</artifactId>
+    <groupId>com.bazaarvoice.ostrich</groupId>
+    <artifactId>dropwizard</artifactId>
     <packaging>jar</packaging>
 
     <name>dropwizard</name>
-    <description>Helpers for using SOA with Dropwizard</description>
+    <description>Helpers for using Ostrich with Dropwizard</description>
 
     <dependencies>
         <dependency>
-            <groupId>com.bazaarvoice.soa</groupId>
-            <artifactId>soa-core</artifactId>
+            <groupId>com.bazaarvoice.ostrich</groupId>
+            <artifactId>core</artifactId>
             <version>${project.version}</version>
         </dependency>
 

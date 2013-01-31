@@ -3,31 +3,20 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.bazaarvoice.soa</groupId>
-        <artifactId>soa</artifactId>
-        <version>1.4.1-SNAPSHOT</version>
+        <groupId>com.bazaarvoice.ostrich</groupId>
+        <artifactId>ostrich</artifactId>
+        <version>1.5.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <groupId>com.bazaarvoice.soa</groupId>
-    <artifactId>soa-core</artifactId>
+    <groupId>com.bazaarvoice.ostrich</groupId>
+    <artifactId>core</artifactId>
     <packaging>jar</packaging>
 
     <name>core</name>
-    <description>Core implementation of SOA</description>
+    <description>Core classes that form Ostrich</description>
 
     <dependencies>
-        <dependency>
-            <groupId>com.bazaarvoice.zookeeper</groupId>
-            <artifactId>zookeeper-recipes</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.bazaarvoice.zookeeper</groupId>
-            <artifactId>zookeeper-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>

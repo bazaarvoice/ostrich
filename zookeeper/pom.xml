@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.bazaarvoice.ostrich</groupId>
+        <artifactId>ostrich</artifactId>
+        <version>1.5.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <groupId>com.bazaarvoice.ostrich</groupId>
+    <artifactId>zookeeper</artifactId>
+    <packaging>pom</packaging>
+
+    <name>zookeeper</name>
+    <description>Implementations of core Ostrich classes that are backed by ZooKeeper</description>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.bazaarvoice.ostrich</groupId>
+                <artifactId>core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.bazaarvoice.curator</groupId>
+                <artifactId>recipes</artifactId>
+                <version>${curator.extensions.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <modules>
+        <module>discovery</module>
+        <module>registry</module>
+    </modules>
+</project>
