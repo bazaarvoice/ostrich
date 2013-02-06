@@ -24,7 +24,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <curator.extensions.version>1.0.2</curator.extensions.version>
+        <curator.extensions.version>1.0.6</curator.extensions.version>
     </properties>
 
     <build>
