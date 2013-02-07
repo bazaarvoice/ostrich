@@ -1,14 +1,11 @@
 package com.bazaarvoice.ostrich.examples.calculator.service;
 
-import com.bazaarvoice.curator.dropwizard.ManagedCuratorFramework;
 import com.bazaarvoice.ostrich.ServiceEndPoint;
 import com.bazaarvoice.ostrich.ServiceEndPointBuilder;
 import com.bazaarvoice.ostrich.registry.zookeeper.ZooKeeperServiceRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.netflix.curator.framework.CuratorFramework;
-import com.netflix.curator.framework.CuratorFrameworkFactory;
 import com.yammer.dropwizard.Service;
 import com.yammer.dropwizard.config.Bootstrap;
 import com.yammer.dropwizard.config.Environment;
@@ -55,7 +52,7 @@ public class CalculatorService extends Service<CalculatorConfiguration> {
                 .withPayload(getJson(env).writeValueAsString(payload))
                 .build();
 
-        final CuratorFramework curator = newCurator(config.getZooKeeperConfiguration(), env);
+        final CuratorFramework curator = config.getZooKeeperConfiguration().newManagedCurator(env);
         env.manage(new Managed() {
             ZooKeeperServiceRegistry registry = new ZooKeeperServiceRegistry(curator);
 
@@ -73,16 +70,6 @@ public class CalculatorService extends Service<CalculatorConfiguration> {
 
     private ObjectMapper getJson(Environment env) {
         return env.getObjectMapperFactory().build();
-    }
-
-    private static CuratorFramework newCurator(ZooKeeperConfiguration config, Environment env) {
-        CuratorFramework curator = CuratorFrameworkFactory.newClient(config.getConnectString(), config.getRetry());
-        if (!Strings.isNullOrEmpty(config.getNamespace())) {
-            curator = curator.usingNamespace(config.getNamespace());
-        }
-
-        env.manage(new ManagedCuratorFramework(curator));
-        return curator;
     }
 
     public static void main(String[] args) throws Exception {

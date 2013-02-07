@@ -1,11 +1,9 @@
 package com.bazaarvoice.ostrich.examples.dictionary.user;
 
 import com.bazaarvoice.ostrich.discovery.zookeeper.ZooKeeperHostDiscovery;
-import com.bazaarvoice.ostrich.discovery.zookeeper.ZooKeeperHostDiscovery;
 import com.bazaarvoice.ostrich.dropwizard.healthcheck.ContainsHealthyEndPointCheck;
 import com.bazaarvoice.ostrich.examples.dictionary.client.DictionaryService;
 import com.bazaarvoice.ostrich.examples.dictionary.client.DictionaryServiceFactory;
-import com.bazaarvoice.ostrich.examples.dictionary.service.ZooKeeperConfiguration;
 import com.bazaarvoice.ostrich.pool.ServiceCachingPolicy;
 import com.bazaarvoice.ostrich.pool.ServiceCachingPolicyBuilder;
 import com.bazaarvoice.ostrich.pool.ServicePoolBuilder;
@@ -18,7 +16,6 @@ import com.google.common.io.Closeables;
 import com.google.common.io.Files;
 import com.google.common.io.LineProcessor;
 import com.netflix.curator.framework.CuratorFramework;
-import com.netflix.curator.framework.CuratorFrameworkFactory;
 import com.yammer.dropwizard.config.ConfigurationFactory;
 import com.yammer.dropwizard.validation.Validator;
 import com.yammer.metrics.HealthChecks;
@@ -28,6 +25,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class DictionaryUser {
     private static final Logger LOG = LoggerFactory.getLogger(DictionaryUser.class);
@@ -81,16 +80,15 @@ public class DictionaryUser {
     }
 
     public static void main(String[] args) throws Exception {
-        // Load the config.yaml file specified as the first argument.  Remaining arguments are files to spell check.
-        if (args.length < 2) {
-            System.err.println("usage: DictionaryUser config.yaml <word-file> ...");
-        }
+        checkArgument(args.length == 2);
 
-        ConfigurationFactory<DictionaryConfiguration> configFactory = ConfigurationFactory.forClass(
-                DictionaryConfiguration.class, new Validator());
-        DictionaryConfiguration configuration = configFactory.build(new File(args[0]));
+        // Load the config.yaml file specified as the first argument.
+        DictionaryConfiguration config = ConfigurationFactory
+                .forClass(DictionaryConfiguration.class, new Validator())
+                .build(new File(args[0]));
 
-        CuratorFramework curator = newCurator(configuration.getZooKeeperConfiguration());
+        CuratorFramework curator = config.getZooKeeperConfiguration().newCurator();
+        curator.start();
 
         // Connection caching is optional, but included here for the sake of demonstration.
         ServiceCachingPolicy cachingPolicy = new ServiceCachingPolicyBuilder()
@@ -101,9 +99,10 @@ public class DictionaryUser {
 
         // The service is partitioned, but partition filtering is configured by the ServiceFactory in this case
         // when the builder calls its configure() method.
+        DictionaryServiceFactory serviceFactory = new DictionaryServiceFactory(config.getHttpClientConfiguration());
         DictionaryService service = ServicePoolBuilder.create(DictionaryService.class)
-                .withServiceFactory(new DictionaryServiceFactory(configuration.getHttpClientConfiguration()))
-                .withHostDiscovery(new ZooKeeperHostDiscovery(curator, "dictionary"))
+                .withServiceFactory(serviceFactory)
+                .withHostDiscovery(new ZooKeeperHostDiscovery(curator, serviceFactory.getServiceName()))
                 .withCachingPolicy(cachingPolicy)
                 .buildProxy(new ExponentialBackoffRetry(5, 50, 1000, TimeUnit.MILLISECONDS));
 
@@ -119,12 +118,5 @@ public class DictionaryUser {
 
         ServicePoolProxies.close(service);
         Closeables.closeQuietly(curator);
-    }
-
-    private static CuratorFramework newCurator(ZooKeeperConfiguration config) {
-        CuratorFramework curator = CuratorFrameworkFactory.newClient(config.getConnectString(), config.getRetry());
-        curator.start();
-
-        return curator.usingNamespace(config.getNamespace());
     }
 }

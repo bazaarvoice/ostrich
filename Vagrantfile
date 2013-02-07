@@ -4,11 +4,11 @@
 Vagrant::Config.run do |config|
   config.vm.define :zookeeper do |zookeeper_config|
     # Every Vagrant virtual environment requires a box to build off of.
-    zookeeper_config.vm.box = "ubuntu-12.04-server-64bit"
+    zookeeper_config.vm.box = "ubuntu-12.10-server-64bit"
 
     # The url from where the 'config.vm.box' box will be fetched if it
     # doesn't already exist on the user's system.
-    zookeeper_config.vm.box_url = "http://files.vagrantup.com/precise64.box"
+    zookeeper_config.vm.box_url = "http://cloud-images.ubuntu.com/quantal/current/quantal-server-cloudimg-vagrant-amd64-disk1.box"
 
     # Forward a port from the guest to the host, which allows for outside
     # computers to access the VM, whereas host only networking does not.
@@ -23,24 +23,14 @@ Vagrant::Config.run do |config|
       shell.inline = <<-eos
         #!/bin/bash
 
-        function cpad {
-          local s=" $* "
-          while [ ${#s} -lt 100 ]; do
-            if [ ${#s} -lt 100 ]; then s="=$s"; fi
-            if [ ${#s} -lt 100 ]; then s="$s="; fi
-          done
-          echo "$s"
-        }
-
         # Upgrade to the latest version of all packages
-        cpad Upgrading Packages
+        echo Upgrading Packages
         DEBIAN_FRONTEND="noninteractive" sudo apt-get --assume-yes update
         DEBIAN_FRONTEND="noninteractive" sudo apt-get --assume-yes upgrade
         echo
 
         # Install zookeeper
-        cpad Installing ZooKeeper
-        DEBIAN_FRONTEND="noninteractive" sudo apt-get --assume-yes install python-software-properties
+        echo Installing ZooKeeper
         sudo add-apt-repository --yes ppa:hadoop-ubuntu/dev
         DEBIAN_FRONTEND="noninteractive" sudo apt-get --assume-yes update
         DEBIAN_FRONTEND="noninteractive" sudo apt-get --assume-yes install hadoop-zookeeper-server

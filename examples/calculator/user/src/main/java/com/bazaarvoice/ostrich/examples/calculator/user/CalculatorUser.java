@@ -3,11 +3,9 @@ package com.bazaarvoice.ostrich.examples.calculator.user;
 import com.bazaarvoice.ostrich.ServiceCallback;
 import com.bazaarvoice.ostrich.ServicePool;
 import com.bazaarvoice.ostrich.discovery.zookeeper.ZooKeeperHostDiscovery;
-import com.bazaarvoice.ostrich.discovery.zookeeper.ZooKeeperHostDiscovery;
 import com.bazaarvoice.ostrich.dropwizard.healthcheck.ContainsHealthyEndPointCheck;
 import com.bazaarvoice.ostrich.examples.calculator.client.CalculatorService;
 import com.bazaarvoice.ostrich.examples.calculator.client.CalculatorServiceFactory;
-import com.bazaarvoice.ostrich.examples.calculator.service.ZooKeeperConfiguration;
 import com.bazaarvoice.ostrich.exceptions.ServiceException;
 import com.bazaarvoice.ostrich.pool.ServiceCachingPolicy;
 import com.bazaarvoice.ostrich.pool.ServiceCachingPolicyBuilder;
@@ -15,7 +13,6 @@ import com.bazaarvoice.ostrich.pool.ServicePoolBuilder;
 import com.bazaarvoice.ostrich.retry.ExponentialBackoffRetry;
 import com.google.common.io.Closeables;
 import com.netflix.curator.framework.CuratorFramework;
-import com.netflix.curator.framework.CuratorFrameworkFactory;
 import com.yammer.dropwizard.config.ConfigurationFactory;
 import com.yammer.dropwizard.validation.Validator;
 import com.yammer.metrics.HealthChecks;
@@ -25,6 +22,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class CalculatorUser {
     private static final Logger LOG = LoggerFactory.getLogger(CalculatorUser.class);
@@ -69,17 +68,15 @@ public class CalculatorUser {
     }
 
     public static void main(String[] args) throws Exception {
-        // Load the config.yaml file specified as the first argument.  Or just use defaults if none specified.
-        CalculatorConfiguration configuration;
-        if (args.length > 0) {
-            ConfigurationFactory<CalculatorConfiguration> configFactory = ConfigurationFactory.forClass(
-                    CalculatorConfiguration.class, new Validator());
-            configuration = configFactory.build(new File(args[0]));
-        } else {
-            configuration = new CalculatorConfiguration();
-        }
+        checkArgument(args.length == 1);
 
-        CuratorFramework curator = newCurator(configuration.getZooKeeperConfiguration());
+        // Load the config.yaml file specified as the first argument.
+        CalculatorConfiguration config = ConfigurationFactory
+                .forClass(CalculatorConfiguration.class, new Validator())
+                .build(new File(args[0]));
+
+        CuratorFramework curator = config.getZooKeeperConfiguration().newCurator();
+        curator.start();
 
         // Connection caching is optional, but included here for the sake of demonstration.
         ServiceCachingPolicy cachingPolicy = new ServiceCachingPolicyBuilder()
@@ -88,9 +85,10 @@ public class CalculatorUser {
                 .withMaxServiceInstanceIdleTime(5, TimeUnit.MINUTES)
                 .build();
 
+        CalculatorServiceFactory serviceFactory = new CalculatorServiceFactory(config.getHttpClientConfiguration());
         ServicePool<CalculatorService> pool = ServicePoolBuilder.create(CalculatorService.class)
-                .withServiceFactory(new CalculatorServiceFactory(configuration.getHttpClientConfiguration()))
-                .withHostDiscovery(new ZooKeeperHostDiscovery(curator, "calculator"))
+                .withServiceFactory(serviceFactory)
+                .withHostDiscovery(new ZooKeeperHostDiscovery(curator, serviceFactory.getServiceName()))
                 .withCachingPolicy(cachingPolicy)
                 .build();
 
@@ -104,12 +102,5 @@ public class CalculatorUser {
 
         Closeables.closeQuietly(pool);
         Closeables.closeQuietly(curator);
-    }
-
-    private static CuratorFramework newCurator(ZooKeeperConfiguration config) {
-        CuratorFramework curator = CuratorFrameworkFactory.newClient(config.getConnectString(), config.getRetry());
-        curator.start();
-
-        return curator.usingNamespace(config.getNamespace());
     }
 }

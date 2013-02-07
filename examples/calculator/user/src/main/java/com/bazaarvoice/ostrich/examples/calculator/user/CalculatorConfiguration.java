@@ -1,6 +1,6 @@
 package com.bazaarvoice.ostrich.examples.calculator.user;
 
-import com.bazaarvoice.ostrich.examples.calculator.service.ZooKeeperConfiguration;
+import com.bazaarvoice.curator.dropwizard.ZooKeeperConfiguration;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.yammer.dropwizard.client.JerseyClientConfiguration;
 
