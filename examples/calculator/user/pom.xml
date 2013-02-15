@@ -55,7 +55,7 @@
     <dependencies>
         <dependency>
             <groupId>com.bazaarvoice.curator</groupId>
-            <artifactId>recipes</artifactId>
+            <artifactId>dropwizard</artifactId>
             <version>${curator.extensions.version}</version>
         </dependency>
 
@@ -80,12 +80,6 @@
         <dependency>
             <groupId>com.bazaarvoice.ostrich.examples.calculator</groupId>
             <artifactId>calculator-client</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.bazaarvoice.ostrich.examples.calculator</groupId>
-            <artifactId>calculator-service</artifactId>
             <version>${project.version}</version>
         </dependency>
 

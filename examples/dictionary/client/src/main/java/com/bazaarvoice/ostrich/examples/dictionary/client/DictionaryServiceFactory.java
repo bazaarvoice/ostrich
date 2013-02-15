@@ -3,7 +3,6 @@ package com.bazaarvoice.ostrich.examples.dictionary.client;
 import com.bazaarvoice.ostrich.ServiceEndPoint;
 import com.bazaarvoice.ostrich.ServiceFactory;
 import com.bazaarvoice.ostrich.pool.ServicePoolBuilder;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientHandlerException;
 import com.sun.jersey.api.client.UniformInterfaceException;
@@ -14,6 +13,7 @@ import com.sun.jersey.client.apache4.config.DefaultApacheHttpClient4Config;
 import com.yammer.dropwizard.client.HttpClientBuilder;
 import com.yammer.dropwizard.client.HttpClientConfiguration;
 import com.yammer.dropwizard.jersey.JacksonMessageBodyProvider;
+import com.yammer.dropwizard.json.ObjectMapperFactory;
 import com.yammer.dropwizard.validation.Validator;
 import org.apache.http.client.HttpClient;
 
@@ -41,7 +41,7 @@ public class DictionaryServiceFactory implements ServiceFactory<DictionaryServic
         HttpClient httpClient = new HttpClientBuilder().using(configuration).build();
         ApacheHttpClient4Handler handler = new ApacheHttpClient4Handler(httpClient, null, true);
         ApacheHttpClient4Config config = new DefaultApacheHttpClient4Config();
-        config.getSingletons().add(new JacksonMessageBodyProvider(new ObjectMapper(), new Validator()));
+        config.getSingletons().add(new JacksonMessageBodyProvider(new ObjectMapperFactory().build(), new Validator()));
         return new ApacheHttpClient4(handler, config);
     }
 

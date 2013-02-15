@@ -24,12 +24,6 @@
         </dependency>
 
         <dependency>
-            <groupId>com.bazaarvoice.ostrich</groupId>
-            <artifactId>ostrich-dropwizard</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
-        <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
         </dependency>
