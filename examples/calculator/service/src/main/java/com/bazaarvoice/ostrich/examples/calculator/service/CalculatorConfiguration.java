@@ -11,9 +11,9 @@ public class CalculatorConfiguration extends Configuration {
     @NotNull
     @Valid
     @JsonProperty
-    private final ZooKeeperConfiguration zookeeper = new ZooKeeperConfiguration();
+    private final ZooKeeperConfiguration zooKeeper = new ZooKeeperConfiguration();
 
     public ZooKeeperConfiguration getZooKeeperConfiguration() {
-        return zookeeper;
+        return zooKeeper;
     }
 }

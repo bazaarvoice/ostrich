@@ -23,7 +23,7 @@ public class DictionaryConfiguration extends Configuration {
     @Valid
     @NotNull
     @JsonProperty
-    private ZooKeeperConfiguration zookeeper = new ZooKeeperConfiguration();
+    private ZooKeeperConfiguration zooKeeper = new ZooKeeperConfiguration();
 
     public File getWordFile() {
         return wordFile;
@@ -34,6 +34,6 @@ public class DictionaryConfiguration extends Configuration {
     }
 
     public ZooKeeperConfiguration getZooKeeperConfiguration() {
-        return zookeeper;
+        return zooKeeper;
     }
 }

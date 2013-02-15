@@ -11,17 +11,22 @@ import com.bazaarvoice.ostrich.pool.ServicePoolProxies;
 import com.bazaarvoice.ostrich.retry.ExponentialBackoffRetry;
 import com.google.common.io.Closeables;
 import com.netflix.curator.framework.CuratorFramework;
+import com.yammer.dropwizard.config.ConfigurationException;
 import com.yammer.dropwizard.config.ConfigurationFactory;
+import com.yammer.dropwizard.util.JarLocation;
 import com.yammer.dropwizard.validation.Validator;
 import com.yammer.metrics.HealthChecks;
+import net.sourceforge.argparse4j.ArgumentParsers;
+import net.sourceforge.argparse4j.inf.ArgumentParser;
+import net.sourceforge.argparse4j.inf.ArgumentParserException;
+import net.sourceforge.argparse4j.inf.Namespace;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
-
-import static com.google.common.base.Preconditions.checkArgument;
 
 /**
  * Variation of {@link CalculatorUser} that uses a dynamic service proxy instead of making direct calls to
@@ -64,13 +69,12 @@ public class CalculatorProxyUser {
     }
 
     public static void main(String[] args) throws Exception {
-        checkArgument(args.length == 1);
+        Namespace parsedArgs = parseCommandLine(args);
 
-        // Load the config.yaml file specified as the first argument.
-        CalculatorConfiguration config = ConfigurationFactory
-                .forClass(CalculatorConfiguration.class, new Validator())
-                .build(new File(args[0]));
+        // Load the config.yaml file specified as the first argument (optional).
+        CalculatorConfiguration config = loadConfigFile(parsedArgs.getString("config-file"));
 
+        // Connect to ZooKeeper
         CuratorFramework curator = config.getZooKeeperConfiguration().newCurator();
         curator.start();
 
@@ -98,5 +102,23 @@ public class CalculatorProxyUser {
 
         ServicePoolProxies.close(service);
         Closeables.closeQuietly(curator);
+    }
+
+    private static Namespace parseCommandLine(String[] args) throws ArgumentParserException {
+        String usage = "java -jar " + new JarLocation(CalculatorProxyUser.class);
+        ArgumentParser argParser = ArgumentParsers.newArgumentParser(usage).defaultHelp(true);
+        argParser.addArgument("config-file").nargs("?").help("yaml configuration file");
+        return argParser.parseArgs(args);
+    }
+
+    private static CalculatorConfiguration loadConfigFile(String configFile)
+            throws IOException, ConfigurationException {
+        ConfigurationFactory<CalculatorConfiguration> configFactory = ConfigurationFactory
+                .forClass(CalculatorConfiguration.class, new Validator());
+        if (configFile != null) {
+            return configFactory.build(new File(configFile));
+        } else {
+            return configFactory.build();
+        }
     }
 }

@@ -29,14 +29,10 @@ Running the Example
         $ java -Ddw.wordRange=l-z -Ddw.http.port=8180 -Ddw.http.adminPort=8181 \
             -jar target/dictionary-service-*.jar server
 
-5.  Create a minimal YAML configuration file for the dictionary client:
-
-        $ echo "{}" > /tmp/config.yaml
-
-6.  In another window, run a dictionary client to spell check a file:
+5.  In another window, run a dictionary client to spell check a file:
 
         $ cd examples/dictionary/user
-        $ java -jar target/dictionary-user-*.jar /tmp/config.yaml /usr/share/dict/README
+        $ java -jar target/dictionary-user-*.jar config.yaml /usr/share/dict/README
 
 Configuration
 -------------

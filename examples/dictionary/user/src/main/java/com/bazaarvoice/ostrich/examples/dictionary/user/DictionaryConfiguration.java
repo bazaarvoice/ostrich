@@ -14,7 +14,7 @@ public class DictionaryConfiguration {
     @Valid
     @NotNull
     @JsonProperty
-    private ZooKeeperConfiguration zookeeper = new ZooKeeperConfiguration();
+    private ZooKeeperConfiguration zooKeeper = new ZooKeeperConfiguration();
 
     @Valid
     @NotNull
@@ -22,7 +22,7 @@ public class DictionaryConfiguration {
     private JerseyClientConfiguration httpClient = new JerseyClientConfiguration();
 
     public ZooKeeperConfiguration getZooKeeperConfiguration() {
-        return zookeeper;
+        return zooKeeper;
     }
 
     public JerseyClientConfiguration getHttpClientConfiguration() {

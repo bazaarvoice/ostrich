@@ -5,8 +5,10 @@
         </encoder>
     </appender>
 
+    <logger name="com.bazaarvoice.ostrich.pool" level="WARN"/>
     <logger name="org.apache.zookeeper" level="OFF"/>
     <logger name="com.netflix.curator" level="OFF"/>
+    <logger name="org.hibernate.validator" level="OFF"/>
 
     <root level="INFO">
         <appender-ref ref="STDOUT"/>

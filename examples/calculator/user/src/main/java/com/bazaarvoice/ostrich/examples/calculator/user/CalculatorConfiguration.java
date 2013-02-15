@@ -11,10 +11,10 @@ import javax.validation.constraints.NotNull;
  * YAML-friendly configuration class.
  */
 public class CalculatorConfiguration {
-    @NotNull
     @Valid
+    @NotNull
     @JsonProperty
-    private final ZooKeeperConfiguration zookeeper = new ZooKeeperConfiguration();
+    private ZooKeeperConfiguration zooKeeper = new ZooKeeperConfiguration();
 
     @Valid
     @NotNull
@@ -22,7 +22,7 @@ public class CalculatorConfiguration {
     private JerseyClientConfiguration httpClient = new JerseyClientConfiguration();
 
     public ZooKeeperConfiguration getZooKeeperConfiguration() {
-        return zookeeper;
+        return zooKeeper;
     }
 
     public JerseyClientConfiguration getHttpClientConfiguration() {

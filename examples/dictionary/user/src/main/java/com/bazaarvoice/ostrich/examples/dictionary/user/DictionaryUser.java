@@ -16,17 +16,21 @@ import com.google.common.io.Closeables;
 import com.google.common.io.Files;
 import com.google.common.io.LineProcessor;
 import com.netflix.curator.framework.CuratorFramework;
+import com.yammer.dropwizard.config.ConfigurationException;
 import com.yammer.dropwizard.config.ConfigurationFactory;
+import com.yammer.dropwizard.util.JarLocation;
 import com.yammer.dropwizard.validation.Validator;
 import com.yammer.metrics.HealthChecks;
+import net.sourceforge.argparse4j.ArgumentParsers;
+import net.sourceforge.argparse4j.inf.ArgumentParser;
+import net.sourceforge.argparse4j.inf.ArgumentParserException;
+import net.sourceforge.argparse4j.inf.Namespace;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
-
-import static com.google.common.base.Preconditions.checkArgument;
 
 public class DictionaryUser {
     private static final Logger LOG = LoggerFactory.getLogger(DictionaryUser.class);
@@ -80,12 +84,10 @@ public class DictionaryUser {
     }
 
     public static void main(String[] args) throws Exception {
-        checkArgument(args.length == 2);
+        Namespace parsedArgs = parseCommandLine(args);
 
         // Load the config.yaml file specified as the first argument.
-        DictionaryConfiguration config = ConfigurationFactory
-                .forClass(DictionaryConfiguration.class, new Validator())
-                .build(new File(args[0]));
+        DictionaryConfiguration config = loadConfigFile(parsedArgs.getString("config-file"));
 
         CuratorFramework curator = config.getZooKeeperConfiguration().newCurator();
         curator.start();
@@ -112,11 +114,30 @@ public class DictionaryUser {
         HealthChecks.register(new ContainsHealthyEndPointCheck(ServicePoolProxies.getPool(service), "dictionary-user"));
 
         DictionaryUser user = new DictionaryUser(service);
-        for (int i = 1; i < args.length; i++) {
-            user.spellCheck(new File(args[i]));
+        for (String wordFile : parsedArgs.<String>getList("word-file")) {
+            user.spellCheck(new File(wordFile));
         }
 
         ServicePoolProxies.close(service);
         Closeables.closeQuietly(curator);
+    }
+
+    private static Namespace parseCommandLine(String[] args) throws ArgumentParserException {
+        String usage = "java -jar " + new JarLocation(DictionaryUser.class);
+        ArgumentParser argParser = ArgumentParsers.newArgumentParser(usage).defaultHelp(true);
+        argParser.addArgument("config-file").nargs("?").help("yaml configuration file");
+        argParser.addArgument("word-file").nargs("+").help("one or more files containing words");
+        return argParser.parseArgs(args);
+    }
+
+    private static DictionaryConfiguration loadConfigFile(String configFile)
+            throws IOException, ConfigurationException {
+        ConfigurationFactory<DictionaryConfiguration> configFactory = ConfigurationFactory
+                .forClass(DictionaryConfiguration.class, new Validator());
+        if (configFile != null) {
+            return configFactory.build(new File(configFile));
+        } else {
+            return configFactory.build();
+        }
     }
 }

@@ -1,0 +1,9 @@
+# By default, connect to a localhost ZooKeeper ensemble
+zooKeeper:
+  connectString: localhost:2181
+
+# Configure the HTTP client used to make outbound requests
+httpClient:
+  connectionTimeout: 500ms
+  timeout: 500ms
+  keepAlive: 1s

@@ -23,7 +23,7 @@ Running the Example
 4.  In another window, start a calculator client (See notes below on configuration):
 
         $ cd examples/calculator/user
-        $ java -jar target/calculator-user-*.jar
+        $ java -jar target/calculator-user-*.jar config.yaml
 
 5.  Simulate server failure:
 

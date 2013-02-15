@@ -37,7 +37,6 @@ import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.helpers.MessageFormatter;
 
 import java.io.IOException;
 import java.util.Set;
@@ -276,8 +275,7 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
                 timer.stop();
             }
         } catch (NoCachedInstancesAvailableException e) {
-            LOG.debug(MessageFormatter.format("Service cache exhausted. End point ID: {}", endPoint.getId())
-                             .getMessage(), e);
+            LOG.debug("Service cache exhausted. End point ID: {}", endPoint.getId(), e);
             // Don't mark an end point as bad just because there are no cached end points for it.
             throw e;
         } catch (Exception e) {
@@ -286,8 +284,7 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
                 // layer while trying to communicate with the end point.  These errors are often transient, so we
                 // enqueue a health check for the end point and mark it as unavailable for the time being.
                 markEndPointAsBad(endPoint);
-                LOG.debug(MessageFormatter.format("Bad end point discovered. End point ID: {}", endPoint.getId())
-                             .getMessage(), e);
+                LOG.debug("Bad end point discovered. End point ID: {}", endPoint.getId(), e);
             }
             throw e;
         } finally {
@@ -296,8 +293,7 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
                     _serviceCache.checkIn(endPoint, service);
                 } catch (Exception e) {
                     // This should never happen, but log just in case.
-                    LOG.warn(MessageFormatter.format("Error returning end point to cache. End point ID: {}",
-                                                      endPoint.getId()).getMessage(), e);
+                    LOG.warn("Error returning end point to cache. End point ID: {}", endPoint.getId(), e);
                 }
             }
         }
