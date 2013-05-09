@@ -331,7 +331,7 @@ public class ServicePoolTest {
     }
 
     @Test
-    public void testKeepsRetryingUntilRetryPolicyReturnsFalse() {
+    public void testKeepsRetryingUntilRetryPolicyReturnsFalseAndReturnsUnderlyingException() {
         RetryPolicy retry = mock(RetryPolicy.class);
         when(retry.allowRetry(anyInt(), anyLong())).thenReturn(true, true, false);
 
@@ -339,7 +339,7 @@ public class ServicePoolTest {
             _pool.execute(retry, new ServiceCallback<Service, Void>() {
                 @Override
                 public Void call(Service service) throws ServiceException {
-                    throw new ServiceException();
+                    throw new IllegalArgumentException();
                 }
             });
 
@@ -347,6 +347,7 @@ public class ServicePoolTest {
         } catch (MaxRetriesException expected) {
             // Make sure we tried 3 times.
             verify(retry).allowRetry(eq(3), anyLong());
+            assertTrue(expected.getCause() instanceof IllegalArgumentException);
         }
     }
 

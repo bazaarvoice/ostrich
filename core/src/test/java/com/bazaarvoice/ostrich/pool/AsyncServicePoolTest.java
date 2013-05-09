@@ -6,7 +6,6 @@ import com.bazaarvoice.ostrich.ServiceCallback;
 import com.bazaarvoice.ostrich.ServiceEndPoint;
 import com.bazaarvoice.ostrich.ServiceEndPointPredicate;
 import com.bazaarvoice.ostrich.exceptions.MaxRetriesException;
-import com.bazaarvoice.ostrich.exceptions.ServiceException;
 import com.google.common.base.Ticker;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -198,7 +197,7 @@ public class AsyncServicePoolTest {
     @SuppressWarnings("unchecked")
     @Test
     public void testExecuteAllPropagatesMaxRetriesExceptionWhenOutOfRetries() throws Exception {
-        ServiceException exception = mock(ServiceException.class);
+        IllegalArgumentException exception = mock(IllegalArgumentException.class);
         when(_mockPool.getAllEndPoints()).thenReturn(Lists.newArrayList(mock(ServiceEndPoint.class)));
         when(_mockPool.executeOnEndPoint(any(ServiceEndPoint.class), any(ServiceCallback.class))).thenThrow(exception);
         when(_mockPool.isRetriableException(any(Exception.class))).thenReturn(true);
@@ -215,6 +214,10 @@ public class AsyncServicePoolTest {
             fail();
         } catch(ExecutionException e) {
             assertTrue(e.getCause() instanceof MaxRetriesException);
+
+            // Verify that the MaxRetriesException propagates the underlying exception from the service pool
+            MaxRetriesException mre = (MaxRetriesException) e.getCause();
+            assertTrue(mre.getCause() instanceof IllegalArgumentException);
         }
     }
 
