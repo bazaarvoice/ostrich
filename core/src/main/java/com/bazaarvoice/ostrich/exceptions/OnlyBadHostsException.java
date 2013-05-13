@@ -5,4 +5,20 @@ package com.bazaarvoice.ostrich.exceptions;
  */
 public class OnlyBadHostsException extends DiscoveryException {
     private static final long serialVersionUID = 0;
+
+    public OnlyBadHostsException() {
+        super();
+    }
+
+    public OnlyBadHostsException(String message) {
+        super(message);
+    }
+
+    public OnlyBadHostsException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
+    public OnlyBadHostsException(Throwable cause) {
+        super(cause);
+    }
 }
