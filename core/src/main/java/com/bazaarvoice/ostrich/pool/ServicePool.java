@@ -185,10 +185,29 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
     public <R> R execute(PartitionContext partitionContext, RetryPolicy retry, ServiceCallback<S, R> callback) {
         Stopwatch sw = new Stopwatch(_ticker).start();
         int numAttempts = 0;
-        Exception lastException;
+        Exception lastException = null;
 
         do {
-            ServiceEndPoint endPoint = chooseEndPoint(getValidEndPoints(), partitionContext);
+            Iterable<ServiceEndPoint> allEndPoints = getAllEndPoints();
+            if (Iterables.isEmpty(allEndPoints)) {
+                throw (lastException == null)
+                        ? new NoAvailableHostsException()
+                        : new NoAvailableHostsException(lastException);
+            }
+
+            Iterable<ServiceEndPoint> validEndPoints = getValidEndPoints(allEndPoints);
+            if (Iterables.isEmpty(validEndPoints)) {
+                throw (lastException == null)
+                        ? new OnlyBadHostsException()
+                        : new OnlyBadHostsException(lastException);
+            }
+
+            ServiceEndPoint endPoint = chooseEndPoint(validEndPoints, partitionContext);
+            if (endPoint == null) {
+                throw (lastException == null)
+                        ? new NoSuitableHostsException()
+                        : new NoSuitableHostsException(lastException);
+            }
 
             try {
                 R result = executeOnEndPoint(endPoint, callback);
@@ -227,39 +246,28 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
      * NOTE: This method is package private specifically so that {@link AsyncServicePool} can call it.
      */
     Iterable<ServiceEndPoint> getAllEndPoints() {
-        Iterable<ServiceEndPoint> hosts = _hostDiscovery.getHosts();
-        if (Iterables.isEmpty(hosts)) {
-            // There were no service end points available, we have no choice but to stop trying and just exit.
-            throw new NoAvailableHostsException();
-        }
-
-        return hosts;
+        return _hostDiscovery.getHosts();
     }
 
     /**
      * Determine the set of usable {@link ServiceEndPoint}s.
-     * <p/>
-     * NOTE: This method is package private specifically so that {@link AsyncServicePool} can call it.
      */
-    Iterable<ServiceEndPoint> getValidEndPoints() {
-        Iterable<ServiceEndPoint> goodHosts = Iterables.filter(getAllEndPoints(), _badEndPointFilter);
-        if (Iterables.isEmpty(goodHosts)) {
-            // All available hosts are bad, so we must give up.
-            throw new OnlyBadHostsException();
-        }
-
-        return goodHosts;
+    private Iterable<ServiceEndPoint> getValidEndPoints(Iterable<ServiceEndPoint> endPoints) {
+        return Iterables.filter(endPoints, _badEndPointFilter);
     }
 
     private ServiceEndPoint chooseEndPoint(Iterable<ServiceEndPoint> endPoints, PartitionContext partitionContext) {
         endPoints = _partitionFilter.filter(endPoints, partitionContext);
+
         if (endPoints == null || Iterables.isEmpty(endPoints)) {
-            throw new NoSuitableHostsException();
+            return null;
         }
+
         ServiceEndPoint endPoint = _loadBalanceAlgorithm.choose(endPoints, _servicePoolStatistics);
         if (endPoint == null) {
-            throw new NoSuitableHostsException();
+            return null;
         }
+
         return endPoint;
     }
 
@@ -351,23 +359,25 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
 
     @Override
     public HealthCheckResults checkForHealthyEndPoint() {
-        Set<ServiceEndPoint> endPoints;
         DefaultHealthCheckResults aggregate = new DefaultHealthCheckResults();
 
-        try {
-            // Take a snapshot of the current end points.
-            endPoints = Sets.newHashSet(getValidEndPoints());
-        } catch (Exception e) {
-            // No valid end points means no healthy end points.
+        Iterable<ServiceEndPoint> allEndPoints = getAllEndPoints();
+        if (Iterables.isEmpty(allEndPoints)) {
+            // There were no end points
             return aggregate;
         }
 
+        Iterable<ServiceEndPoint> validEndPoints = getValidEndPoints(allEndPoints);
+        if (Iterables.isEmpty(validEndPoints)) {
+            // There were no valid end points
+            return aggregate;
+        }
+
+        Set<ServiceEndPoint> endPoints = Sets.newHashSet(validEndPoints);
         while (!endPoints.isEmpty()) {
-            ServiceEndPoint endPoint;
-            try {
-                // Prefer end points in the order the load balancer recommends.
-                endPoint = chooseEndPoint(endPoints, PartitionContextBuilder.empty());
-            } catch (Exception e) {
+            // Prefer end points in the order the load balancer recommends.
+            ServiceEndPoint endPoint = chooseEndPoint(endPoints, PartitionContextBuilder.empty());
+            if (endPoint == null) {
                 // Load balancer didn't like our end points, so just go sequentially.
                 endPoint = endPoints.iterator().next();
             }

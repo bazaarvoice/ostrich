@@ -331,7 +331,7 @@ public class ServicePoolTest {
     }
 
     @Test
-    public void testKeepsRetryingUntilRetryPolicyReturnsFalseAndReturnsUnderlyingException() {
+    public void testKeepsRetryingUntilRetryPolicyReturnsFalse() {
         RetryPolicy retry = mock(RetryPolicy.class);
         when(retry.allowRetry(anyInt(), anyLong())).thenReturn(true, true, false);
 
@@ -339,7 +339,7 @@ public class ServicePoolTest {
             _pool.execute(retry, new ServiceCallback<Service, Void>() {
                 @Override
                 public Void call(Service service) throws ServiceException {
-                    throw new IllegalArgumentException();
+                    throw new ServiceException();
                 }
             });
 
@@ -347,7 +347,6 @@ public class ServicePoolTest {
         } catch (MaxRetriesException expected) {
             // Make sure we tried 3 times.
             verify(retry).allowRetry(eq(3), anyLong());
-            assertTrue(expected.getCause() instanceof IllegalArgumentException);
         }
     }
 
@@ -372,6 +371,58 @@ public class ServicePoolTest {
             fail();
         } catch (MaxRetriesException expected) {
             assertEquals(Sets.newHashSet(FOO_SERVICE, BAR_SERVICE, BAZ_SERVICE), seenServices);
+        }
+    }
+
+    @Test
+    public void testMaxRetriesExceptionIncludesUnderlyingCause() {
+        final RuntimeException e = new RuntimeException();
+        try {
+            _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Void>() {
+                @Override
+                public Void call(Service service) throws ServiceException {
+                    throw e;
+                }
+            });
+
+            fail();
+        } catch (MaxRetriesException expected) {
+            assertSame(e, expected.getCause());
+        }
+    }
+
+    @Test
+    public void testOnlyBadHostsExceptionIncludesUnderlyingCauseIfItMadeARequest() {
+        // Exhaust all but one of the available end points...
+        int numEndPointsAvailable = Iterables.size(_hostDiscovery.getHosts());
+        for (int i = 0; i < numEndPointsAvailable - 1; i++) {
+            try {
+                _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Void>() {
+                    @Override
+                    public Void call(Service service) throws ServiceException {
+                        throw new ServiceException();
+                    }
+                });
+                fail();  // should have propagated service exception
+            } catch (MaxRetriesException e) {
+                // Expected
+            }
+        }
+
+        // Executing a request only has one choice of endpoint now...
+        RetryPolicy retry = mock(RetryPolicy.class);
+        when(retry.allowRetry(anyInt(), anyLong())).thenReturn(true, true, false);
+
+        final RuntimeException e = new RuntimeException();
+        try {
+            _pool.execute(retry, new ServiceCallback<Service, Void>() {
+                @Override
+                public Void call(Service service) throws ServiceException {
+                    throw e;
+                }
+            });
+        } catch (OnlyBadHostsException expected) {
+            assertSame(e, expected.getCause());
         }
     }
 

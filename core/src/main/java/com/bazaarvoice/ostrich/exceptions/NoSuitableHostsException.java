@@ -6,4 +6,20 @@ package com.bazaarvoice.ostrich.exceptions;
  */
 public class NoSuitableHostsException extends DiscoveryException {
     private static final long serialVersionUID = 0;
+
+    public NoSuitableHostsException() {
+        super();
+    }
+
+    public NoSuitableHostsException(String message) {
+        super(message);
+    }
+
+    public NoSuitableHostsException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
+    public NoSuitableHostsException(Throwable cause) {
+        super(cause);
+    }
 }

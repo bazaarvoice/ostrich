@@ -6,9 +6,11 @@ import com.bazaarvoice.ostrich.ServiceCallback;
 import com.bazaarvoice.ostrich.ServiceEndPoint;
 import com.bazaarvoice.ostrich.ServiceEndPointPredicate;
 import com.bazaarvoice.ostrich.exceptions.MaxRetriesException;
+import com.bazaarvoice.ostrich.exceptions.NoAvailableHostsException;
 import com.bazaarvoice.ostrich.metrics.Metrics;
 import com.google.common.base.Stopwatch;
 import com.google.common.base.Ticker;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.Meter;
@@ -107,7 +109,12 @@ class AsyncServicePool<S> implements com.bazaarvoice.ostrich.AsyncServicePool<S>
                                                final ServiceCallback<S, R> callback) {
         Collection<Future<R>> futures = Lists.newArrayList();
 
-        for (final ServiceEndPoint endPoint : _pool.getAllEndPoints()) {
+        Iterable<ServiceEndPoint> endPoints = _pool.getAllEndPoints();
+        if (Iterables.isEmpty(endPoints)) {
+            throw new NoAvailableHostsException();
+        }
+
+        for (final ServiceEndPoint endPoint : endPoints) {
             if (!predicate.apply(endPoint)) {
                 continue;
             }
