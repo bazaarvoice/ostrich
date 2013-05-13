@@ -185,10 +185,17 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
     public <R> R execute(PartitionContext partitionContext, RetryPolicy retry, ServiceCallback<S, R> callback) {
         Stopwatch sw = new Stopwatch(_ticker).start();
         int numAttempts = 0;
-        Exception lastException;
+        Exception lastException = null;
 
         do {
-            ServiceEndPoint endPoint = chooseEndPoint(getValidEndPoints(), partitionContext);
+            Iterable<ServiceEndPoint> endPoints;
+            try {
+                endPoints = getValidEndPoints();
+            } catch (OnlyBadHostsException e) {
+                throw (lastException != null) ? new OnlyBadHostsException(lastException) : e;
+            }
+
+            ServiceEndPoint endPoint = chooseEndPoint(endPoints, partitionContext);
 
             try {
                 R result = executeOnEndPoint(endPoint, callback);

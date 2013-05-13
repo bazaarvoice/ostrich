@@ -352,6 +352,30 @@ public class ServicePoolTest {
     }
 
     @Test
+    public void testMoreRetriesThanEndPoints() {
+        // One host but two retries.
+        reset(_hostDiscovery);
+        when(_hostDiscovery.getHosts()).thenReturn(ImmutableList.of(FOO_ENDPOINT));
+
+        RetryPolicy retry = mock(RetryPolicy.class);
+        when(retry.allowRetry(anyInt(), anyLong())).thenReturn(true, false);
+
+        try {
+            _pool.execute(retry, new ServiceCallback<Service, Void>() {
+                @Override
+                public Void call(Service service) throws ServiceException {
+                    throw new IllegalArgumentException();
+                }
+            });
+
+            fail();
+        } catch (OnlyBadHostsException expected) {
+            verify(retry).allowRetry(eq(1), anyLong());
+            assertTrue(expected.getCause() instanceof IllegalArgumentException);
+        }
+    }
+
+    @Test
     public void testRetriesWithDifferentServiceEndPoints() {
         RetryPolicy retry = mock(RetryPolicy.class);
         when(retry.allowRetry(anyInt(), anyLong())).thenReturn(true, true, false);
