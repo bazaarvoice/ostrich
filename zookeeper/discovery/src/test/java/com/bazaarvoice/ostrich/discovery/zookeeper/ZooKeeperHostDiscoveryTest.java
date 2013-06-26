@@ -8,7 +8,7 @@ import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.io.Closeables;
-import com.netflix.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFramework;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

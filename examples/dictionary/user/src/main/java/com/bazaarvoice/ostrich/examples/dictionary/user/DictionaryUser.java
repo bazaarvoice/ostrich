@@ -15,7 +15,7 @@ import com.google.common.base.Splitter;
 import com.google.common.io.Closeables;
 import com.google.common.io.Files;
 import com.google.common.io.LineProcessor;
-import com.netflix.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFramework;
 import com.yammer.dropwizard.config.ConfigurationException;
 import com.yammer.dropwizard.config.ConfigurationFactory;
 import com.yammer.dropwizard.util.JarLocation;

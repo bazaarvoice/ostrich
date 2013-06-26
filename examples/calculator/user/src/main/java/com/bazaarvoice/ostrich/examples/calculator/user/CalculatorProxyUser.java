@@ -10,7 +10,7 @@ import com.bazaarvoice.ostrich.pool.ServicePoolBuilder;
 import com.bazaarvoice.ostrich.pool.ServicePoolProxies;
 import com.bazaarvoice.ostrich.retry.ExponentialBackoffRetry;
 import com.google.common.io.Closeables;
-import com.netflix.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFramework;
 import com.yammer.dropwizard.config.ConfigurationException;
 import com.yammer.dropwizard.config.ConfigurationFactory;
 import com.yammer.dropwizard.util.JarLocation;

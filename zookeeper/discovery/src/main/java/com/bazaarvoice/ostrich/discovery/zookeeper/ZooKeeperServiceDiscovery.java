@@ -4,7 +4,7 @@ import com.bazaarvoice.curator.recipes.NodeDiscovery;
 import com.bazaarvoice.ostrich.ServiceDiscovery;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Iterables;
-import com.netflix.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFramework;
 
 import java.io.IOException;
 import java.util.Map;

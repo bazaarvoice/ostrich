@@ -6,7 +6,7 @@ import com.bazaarvoice.ostrich.ServiceEndPointBuilder;
 import com.bazaarvoice.ostrich.ServiceEndPointJsonCodec;
 import com.google.common.base.Charsets;
 import com.google.common.base.Strings;
-import com.netflix.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFramework;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

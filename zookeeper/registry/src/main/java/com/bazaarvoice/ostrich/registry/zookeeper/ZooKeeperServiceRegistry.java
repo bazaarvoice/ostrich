@@ -11,8 +11,8 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.Maps;
-import com.netflix.curator.framework.CuratorFramework;
-import com.netflix.curator.utils.ZKPaths;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.utils.ZKPaths;
 import com.yammer.metrics.core.Counter;
 import org.apache.zookeeper.CreateMode;
 

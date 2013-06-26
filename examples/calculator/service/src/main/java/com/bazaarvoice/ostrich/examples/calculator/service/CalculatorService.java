@@ -5,7 +5,7 @@ import com.bazaarvoice.ostrich.ServiceEndPointBuilder;
 import com.bazaarvoice.ostrich.registry.zookeeper.ZooKeeperServiceRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
-import com.netflix.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFramework;
 import com.yammer.dropwizard.Service;
 import com.yammer.dropwizard.config.Bootstrap;
 import com.yammer.dropwizard.config.Environment;
