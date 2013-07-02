@@ -46,7 +46,7 @@ class ServiceCache<S> implements Closeable {
     private final GenericKeyedObjectPool<ServiceEndPoint, S> _pool;
     private final AtomicLong _revisionNumber = new AtomicLong();
     private final Map<ServiceEndPoint, Long> _invalidRevisions = new MapMaker().weakKeys().makeMap();
-    private final Map<S, Long> _checkOutRevisions = Maps.newConcurrentMap();
+    private final Map<ServiceHandle, Long> _checkedOutRevisions = Maps.newHashMap();
     private final Future<?> _evictionFuture;
     private volatile boolean _isClosed = false;
     private final Metrics _metrics;
@@ -162,21 +162,23 @@ class ServiceCache<S> implements Closeable {
      * out.  Once the checked out instance is no longer in use, it should be returned by calling {@link #checkIn}.
      *
      * @param endPoint The end point to retrieve a cached service instance for.
-     * @return A cached service instance for the requested end point.
+     * @return A service handle that contains a cached service instance for the requested end point.
      * @throws NoCachedInstancesAvailableException If the cache has reached total maximum capacity, or maximum capacity
      *         for the requested end point, and no connections that aren't already checked out are available.
      */
-    public S checkOut(ServiceEndPoint endPoint) throws Exception {
+    public ServiceHandle<S> checkOut(ServiceEndPoint endPoint) throws Exception {
         checkNotNull(endPoint);
         _requestCount.incrementAndGet();
 
         try {
+            long revision = _revisionNumber.incrementAndGet();
             S service = _pool.borrowObject(endPoint);
+            ServiceHandle<S> handle = new ServiceHandle<S>(service, endPoint);
 
             // Remember the revision that we've checked this service out on in case we need to invalidate it later
-            _checkOutRevisions.put(service, _revisionNumber.incrementAndGet());
+            _checkedOutRevisions.put(handle, revision);
 
-            return service;
+            return handle;
         } catch (NoSuchElementException e) {
             _missCount.incrementAndGet();
 
@@ -189,18 +191,19 @@ class ServiceCache<S> implements Closeable {
     /**
      * Returns a service instance for an end point to the cache so that it may be used by other users.
      *
-     * @param endPoint The end point that the service instance belongs to.
-     * @param service  The service instance to return to the pool.
+     * @param handle The service handle that is being checked in.
      * @throws Exception Never.
      */
-    public void checkIn(ServiceEndPoint endPoint, S service) throws Exception {
-        checkNotNull(endPoint);
-        checkNotNull(service);
+    public void checkIn(ServiceHandle<S> handle) throws Exception {
+        checkNotNull(handle);
+
+        S service = handle.getService();
+        ServiceEndPoint endPoint = handle.getEndPoint();
 
         // Figure out if we should check this revision in.  If it was created before the last known invalid revision
         // for this particular end point, or the cache is closed, then we shouldn't check it in.
         Long invalidRevision = _invalidRevisions.get(endPoint);
-        Long serviceRevision = _checkOutRevisions.remove(service);
+        Long serviceRevision = _checkedOutRevisions.remove(handle);
 
         if (_isClosed || (invalidRevision != null && serviceRevision < invalidRevision)) {
             _pool.invalidateObject(endPoint, service);

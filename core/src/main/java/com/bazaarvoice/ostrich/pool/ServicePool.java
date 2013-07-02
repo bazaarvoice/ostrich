@@ -277,14 +277,14 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
      * NOTE: This method is package private specifically so that {@link AsyncServicePool} can call it.
      */
     <R> R executeOnEndPoint(ServiceEndPoint endPoint, ServiceCallback<S, R> callback) throws Exception {
-        S service = null;
+        ServiceHandle<S> handle = null;
 
         try {
-            service = _serviceCache.checkOut(endPoint);
+            handle = _serviceCache.checkOut(endPoint);
 
             TimerContext timer = _callbackExecutionTime.time();
             try {
-                return callback.call(service);
+                return callback.call(handle.getService());
             } finally {
                 timer.stop();
             }
@@ -302,9 +302,9 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
             }
             throw e;
         } finally {
-            if (service != null) {
+            if (handle != null) {
                 try {
-                    _serviceCache.checkIn(endPoint, service);
+                    _serviceCache.checkIn(handle);
                 } catch (Exception e) {
                     // This should never happen, but log just in case.
                     LOG.warn("Error returning end point to cache. End point ID: {}, {}",
