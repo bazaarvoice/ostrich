@@ -8,7 +8,7 @@ Vagrant::Config.run do |config|
 
     # The url from where the 'config.vm.box' box will be fetched if it
     # doesn't already exist on the user's system.
-    zookeeper_config.vm.box_url = "http://cloud-images.ubuntu.com/quantal/current/quantal-server-cloudimg-vagrant-amd64-disk1.box"
+    zookeeper_config.vm.box_url = "https://github.com/downloads/roderik/VagrantQuantal64Box/quantal64.box"
 
     # Forward a port from the guest to the host, which allows for outside
     # computers to access the VM, whereas host only networking does not.
@@ -26,7 +26,7 @@ Vagrant::Config.run do |config|
         # Upgrade to the latest version of all packages
         echo Upgrading Packages
         DEBIAN_FRONTEND="noninteractive" sudo apt-get --assume-yes update
-        DEBIAN_FRONTEND="noninteractive" sudo apt-get --assume-yes upgrade
+        DEBIAN_FRONTEND="noninteractive" sudo apt-get --assume-yes install software-properties-common
         echo
 
         # Install zookeeper
