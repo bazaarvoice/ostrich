@@ -99,7 +99,7 @@ public class CalculatorUser {
         // If using Yammer Metrics or running in Dropwizard (which includes Yammer Metrics), you may want a health
         // check that pings a service you depend on. This will register a simple check that will confirm the service
         // pool contains at least one healthy end point.
-        HealthChecks.register(new ContainsHealthyEndPointCheck(pool, "calculator-user"));
+        HealthChecks.register(ContainsHealthyEndPointCheck.forPool(pool, "calculator-user"));
 
         CalculatorUser user = new CalculatorUser(pool);
         user.use();

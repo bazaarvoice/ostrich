@@ -111,7 +111,7 @@ public class DictionaryUser {
         // If using Yammer Metrics or running in Dropwizard (which includes Yammer Metrics), you may want a health
         // check that pings a service you depend on. This will register a simple check that will confirm the service
         // pool contains at least one healthy end point.
-        HealthChecks.register(new ContainsHealthyEndPointCheck(ServicePoolProxies.getPool(service), "dictionary-user"));
+        HealthChecks.register(ContainsHealthyEndPointCheck.forProxy(service, "dictionary-user"));
 
         DictionaryUser user = new DictionaryUser(service);
         for (String wordFile : parsedArgs.<String>getList("word-file")) {

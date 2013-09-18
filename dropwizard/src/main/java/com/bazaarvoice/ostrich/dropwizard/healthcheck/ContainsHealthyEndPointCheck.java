@@ -3,6 +3,7 @@ package com.bazaarvoice.ostrich.dropwizard.healthcheck;
 import com.bazaarvoice.ostrich.HealthCheckResult;
 import com.bazaarvoice.ostrich.HealthCheckResults;
 import com.bazaarvoice.ostrich.ServicePool;
+import com.bazaarvoice.ostrich.pool.ServicePoolProxies;
 import com.google.common.base.Strings;
 import com.yammer.metrics.core.HealthCheck;
 
@@ -16,17 +17,33 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * point, so beware the possibility of overloading your services with health checks if this is run excessively.
  */
 public class ContainsHealthyEndPointCheck extends HealthCheck {
-    private ServicePool<?> _pool;
+    private final ServicePool<?> _pool;
 
-    /**
-     * Constructs a health check for the given pool that will show as healthy if it has at least one healthy end point.
-     * @param pool The {@code ServicePool} to look for healthy end points in.
-     * @param name The name of the health check. May not be empty or null.
-     */
-    public ContainsHealthyEndPointCheck(ServicePool<?> pool, String name) {
+    protected ContainsHealthyEndPointCheck(ServicePool<?> pool, String name) {
         super(name);
         checkArgument(!Strings.isNullOrEmpty(name));
         _pool = checkNotNull(pool);
+    }
+
+    /**
+     * Returns a newly constructed health check for the given pool that will show as healthy if it has at least one healthy end point.
+     *
+     * @param pool The {@code ServicePool} to look for healthy end points in.
+     * @param name The name of the health check. May not be empty or null.
+     */
+    public static ContainsHealthyEndPointCheck forPool(ServicePool<?> pool, String name) {
+        return new ContainsHealthyEndPointCheck(pool, name);
+    }
+
+    /**
+     * Returns a newly constructed health check for the pool of the given proxy that will show as healthy if
+     * it has at least one healthy end point.
+     *
+     * @param proxy The {@code ServicePoolProxy} containing the service pool to look for valid end points in.
+     * @param name  The name of the health check. May not be empty or null.
+     */
+    public static ContainsHealthyEndPointCheck forProxy(Object proxy, String name) {
+        return new ContainsHealthyEndPointCheck(ServicePoolProxies.getPool(proxy), name);
     }
 
     @Override
