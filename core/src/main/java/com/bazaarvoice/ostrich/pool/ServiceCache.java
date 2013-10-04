@@ -46,7 +46,7 @@ class ServiceCache<S> implements Closeable {
     private final GenericKeyedObjectPool<ServiceEndPoint, S> _pool;
     private final AtomicLong _revisionNumber = new AtomicLong();
     private final Map<ServiceEndPoint, Long> _invalidRevisions = new MapMaker().weakKeys().makeMap();
-    private final Map<ServiceHandle, Long> _checkedOutRevisions = Maps.newHashMap();
+    private final Map<ServiceHandle, Long> _checkedOutRevisions = new MapMaker().makeMap();
     private final Future<?> _evictionFuture;
     private volatile boolean _isClosed = false;
     private final Metrics _metrics;
