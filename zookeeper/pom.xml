@@ -5,11 +5,10 @@
     <parent>
         <groupId>com.bazaarvoice.ostrich</groupId>
         <artifactId>ostrich</artifactId>
-        <version>1.6.1-SNAPSHOT</version>
+        <version>1.7.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <groupId>com.bazaarvoice.ostrich</groupId>
     <artifactId>zookeeper</artifactId>
     <packaging>pom</packaging>
 
