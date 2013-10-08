@@ -19,7 +19,10 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class ContainsHealthyEndPointCheck extends HealthCheck {
     private final ServicePool<?> _pool;
 
-    protected ContainsHealthyEndPointCheck(ServicePool<?> pool, String name) {
+    /**
+     * @deprecated Use {@link #forPool(com.bazaarvoice.ostrich.ServicePool, String)} instead.
+     */
+    public ContainsHealthyEndPointCheck(ServicePool<?> pool, String name) {
         super(name);
         checkArgument(!Strings.isNullOrEmpty(name));
         _pool = checkNotNull(pool);
