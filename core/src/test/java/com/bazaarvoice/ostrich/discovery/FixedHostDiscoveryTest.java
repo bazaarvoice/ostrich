@@ -1,10 +1,10 @@
 package com.bazaarvoice.ostrich.discovery;
 
+import com.bazaarvoice.ostrich.MoreCloseables;
 import com.bazaarvoice.ostrich.ServiceEndPoint;
 import com.bazaarvoice.ostrich.ServiceEndPointBuilder;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-import com.google.common.io.Closeables;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -35,7 +35,7 @@ public class FixedHostDiscoveryTest {
 
     @After
     public void teardown() throws Exception {
-        Closeables.closeQuietly(_discovery);
+        MoreCloseables.closeQuietly(_discovery);
     }
 
     @Test(expected = NullPointerException.class)

@@ -1,5 +1,6 @@
 package com.bazaarvoice.ostrich.examples.calculator.user;
 
+import com.bazaarvoice.ostrich.MoreCloseables;
 import com.bazaarvoice.ostrich.ServiceCallback;
 import com.bazaarvoice.ostrich.ServicePool;
 import com.bazaarvoice.ostrich.discovery.zookeeper.ZooKeeperHostDiscovery;
@@ -11,8 +12,6 @@ import com.bazaarvoice.ostrich.pool.ServiceCachingPolicy;
 import com.bazaarvoice.ostrich.pool.ServiceCachingPolicyBuilder;
 import com.bazaarvoice.ostrich.pool.ServicePoolBuilder;
 import com.bazaarvoice.ostrich.retry.ExponentialBackoffRetry;
-import com.google.common.io.Closeables;
-import org.apache.curator.framework.CuratorFramework;
 import com.yammer.dropwizard.config.ConfigurationException;
 import com.yammer.dropwizard.config.ConfigurationFactory;
 import com.yammer.dropwizard.util.JarLocation;
@@ -22,6 +21,7 @@ import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.Namespace;
+import org.apache.curator.framework.CuratorFramework;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,8 +104,8 @@ public class CalculatorUser {
         CalculatorUser user = new CalculatorUser(pool);
         user.use();
 
-        Closeables.closeQuietly(pool);
-        Closeables.closeQuietly(curator);
+        MoreCloseables.closeQuietly(pool);
+        MoreCloseables.closeQuietly(curator);
     }
 
     private static Namespace parseCommandLine(String[] args) throws ArgumentParserException {
