@@ -93,7 +93,7 @@ public class ConsistentHashPartitionFilter implements PartitionFilter {
             // Use the default context.
             Object value = partitionContext.get();
             if (value != null) {
-                hasher.putString(value.toString());
+                hasher.putUnencodedChars(value.toString());
                 empty = false;
             }
         }
@@ -101,8 +101,8 @@ public class ConsistentHashPartitionFilter implements PartitionFilter {
             Object value = partitionContext.get(partitionKey);
             if (value != null) {
                 // Include both the key and value in the hash so "reviewId" of 1 and "reviewerId" of 1 hash differently.
-                hasher.putString(partitionKey);
-                hasher.putString(value.toString());
+                hasher.putUnencodedChars(partitionKey);
+                hasher.putUnencodedChars(value.toString());
                 empty = false;
             }
         }
@@ -150,7 +150,7 @@ public class ConsistentHashPartitionFilter implements PartitionFilter {
         for (int i = 0; list.size() < _entriesPerEndPoint; i++) {
             Hasher hasher = Hashing.md5().newHasher();
             hasher.putInt(i);
-            hasher.putString(endPointId);
+            hasher.putUnencodedChars(endPointId);
             ByteBuffer buf = ByteBuffer.wrap(hasher.hash().asBytes());
             while (buf.hasRemaining() && list.size() < _entriesPerEndPoint) {
                 list.add(buf.getInt());

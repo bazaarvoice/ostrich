@@ -1,9 +1,9 @@
 package com.bazaarvoice.ostrich.discovery.zookeeper;
 
 import com.bazaarvoice.curator.recipes.NodeDiscovery;
+import com.bazaarvoice.ostrich.MoreCloseables;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
-import com.google.common.io.Closeables;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.utils.ZKPaths;
 import org.junit.After;
@@ -32,7 +32,7 @@ public class ZooKeeperServiceDiscoveryTest {
 
     @After
     public void teardown() throws Exception {
-        Closeables.closeQuietly(_discovery);
+        MoreCloseables.closeQuietly(_discovery);
     }
 
     @Test(expected = NullPointerException.class)

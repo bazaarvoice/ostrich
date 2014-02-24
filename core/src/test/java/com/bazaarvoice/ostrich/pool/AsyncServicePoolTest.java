@@ -1,5 +1,6 @@
 package com.bazaarvoice.ostrich.pool;
 
+import com.bazaarvoice.ostrich.MoreCloseables;
 import com.bazaarvoice.ostrich.PartitionContext;
 import com.bazaarvoice.ostrich.RetryPolicy;
 import com.bazaarvoice.ostrich.ServiceCallback;
@@ -9,7 +10,6 @@ import com.bazaarvoice.ostrich.exceptions.MaxRetriesException;
 import com.google.common.base.Ticker;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import com.google.common.io.Closeables;
 import com.google.common.util.concurrent.MoreExecutors;
 import org.junit.After;
 import org.junit.Before;
@@ -58,7 +58,7 @@ public class AsyncServicePoolTest {
     @After
     public void teardown() {
         for (AsyncServicePool<Service> pool : _asyncServicePools) {
-            Closeables.closeQuietly(pool);
+            MoreCloseables.closeQuietly(pool);
         }
     }
 

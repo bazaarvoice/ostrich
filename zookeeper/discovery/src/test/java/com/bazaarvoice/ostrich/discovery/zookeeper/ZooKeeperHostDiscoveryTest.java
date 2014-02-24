@@ -1,13 +1,13 @@
 package com.bazaarvoice.ostrich.discovery.zookeeper;
 
 import com.bazaarvoice.curator.recipes.NodeDiscovery;
+import com.bazaarvoice.ostrich.MoreCloseables;
 import com.bazaarvoice.ostrich.ServiceEndPoint;
 import com.bazaarvoice.ostrich.ServiceEndPointBuilder;
 import com.bazaarvoice.ostrich.ServiceEndPointJsonCodec;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
-import com.google.common.io.Closeables;
 import org.apache.curator.framework.CuratorFramework;
 import org.junit.After;
 import org.junit.Before;
@@ -65,7 +65,7 @@ public class ZooKeeperHostDiscoveryTest {
 
     @After
     public void teardown() throws Exception {
-        Closeables.closeQuietly(_discovery);
+        MoreCloseables.closeQuietly(_discovery);
     }
 
     @Test (expected = NullPointerException.class)
