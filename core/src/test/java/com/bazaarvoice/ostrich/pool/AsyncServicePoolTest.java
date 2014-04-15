@@ -56,9 +56,9 @@ public class AsyncServicePoolTest {
     }
 
     @After
-    public void teardown() {
+    public void teardown() throws Exception {
         for (AsyncServicePool<Service> pool : _asyncServicePools) {
-            Closeables.closeQuietly(pool);
+            Closeables.close(pool, true);
         }
     }
 

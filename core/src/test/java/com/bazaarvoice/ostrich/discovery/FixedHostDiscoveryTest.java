@@ -35,7 +35,7 @@ public class FixedHostDiscoveryTest {
 
     @After
     public void teardown() throws Exception {
-        Closeables.closeQuietly(_discovery);
+        Closeables.close(_discovery, true);
     }
 
     @Test(expected = NullPointerException.class)

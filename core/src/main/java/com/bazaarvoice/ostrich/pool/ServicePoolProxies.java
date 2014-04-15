@@ -3,6 +3,7 @@ package com.bazaarvoice.ostrich.pool;
 import com.bazaarvoice.ostrich.HealthCheckResults;
 import com.google.common.io.Closeables;
 
+import java.io.IOException;
 import java.lang.reflect.Proxy;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -31,7 +32,11 @@ public abstract class ServicePoolProxies {
      */
     public static <S> void close(S dynamicProxy) {
         // Use closeQuietly since ServicePool.close() doesn't throw IOException.
-        Closeables.closeQuietly(getPool(dynamicProxy));
+        try {
+            Closeables.close(getPool(dynamicProxy), true);
+        } catch (IOException e) {
+            throw new AssertionError();  // close swallows IOExceptions
+        }
     }
 
     /**

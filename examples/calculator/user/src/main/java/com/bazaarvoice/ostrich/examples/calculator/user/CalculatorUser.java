@@ -104,8 +104,8 @@ public class CalculatorUser {
         CalculatorUser user = new CalculatorUser(pool);
         user.use();
 
-        Closeables.closeQuietly(pool);
-        Closeables.closeQuietly(curator);
+        Closeables.close(pool, true);
+        Closeables.close(curator, true);
     }
 
     private static Namespace parseCommandLine(String[] args) throws ArgumentParserException {
