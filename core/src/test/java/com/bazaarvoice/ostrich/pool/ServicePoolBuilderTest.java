@@ -41,7 +41,8 @@ public class ServicePoolBuilderTest {
         when(_serviceFactory.getServiceName()).thenReturn(Service.class.getSimpleName());
 
         _cachingPolicy = mock(ServiceCachingPolicy.class);
-        when(_cachingPolicy.getCacheExhaustionAction()).thenReturn(ServiceCachingPolicy.ExhaustionAction.GROW);
+        //when(_cachingPolicy.getCacheExhaustionAction()).thenReturn(ServiceCachingPolicy.ExhaustionAction.GROW);
+        when(_cachingPolicy.getBlockWhenExhausted()).thenReturn(false);
 
         _hostDiscovery = mock(HostDiscovery.class);
         _healthCheckExecutor = mock(ScheduledExecutorService.class);

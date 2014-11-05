@@ -225,7 +225,7 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
                 LOG.debug("Exception", e);
                 lastException = e;
             }
-        } while (retry.allowRetry(++numAttempts, sw.elapsedMillis()));
+        } while (retry.allowRetry(++numAttempts, sw.elapsed(TimeUnit.MILLISECONDS)));
 
         throw new MaxRetriesException(lastException);
     }
@@ -443,12 +443,12 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
 
         try {
             return  _serviceFactory.isHealthy(endPoint)
-                    ? new SuccessfulHealthCheckResult(endPoint.getId(), sw.stop().elapsedTime(TimeUnit.NANOSECONDS))
-                    : new FailedHealthCheckResult(endPoint.getId(), sw.stop().elapsedTime(TimeUnit.NANOSECONDS));
+                    ? new SuccessfulHealthCheckResult(endPoint.getId(), sw.stop().elapsed(TimeUnit.NANOSECONDS))
+                    : new FailedHealthCheckResult(endPoint.getId(), sw.stop().elapsed(TimeUnit.NANOSECONDS));
         } catch (Exception e) {
-            return new FailedHealthCheckResult(endPoint.getId(), sw.stop().elapsedTime(TimeUnit.NANOSECONDS), e);
+            return new FailedHealthCheckResult(endPoint.getId(), sw.stop().elapsed(TimeUnit.NANOSECONDS), e);
         } finally {
-            _healthCheckTime.update(sw.elapsedTime(TimeUnit.NANOSECONDS), TimeUnit.NANOSECONDS);
+            _healthCheckTime.update(sw.elapsed(TimeUnit.NANOSECONDS), TimeUnit.NANOSECONDS);
         }
     }
 
