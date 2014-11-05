@@ -70,7 +70,7 @@ public class ServiceCachingPolicyBuilder {
      * @return
      */
     public ServiceCachingPolicyBuilder withBlockWhenExhausted(boolean blockWhenExhausted) {
-        this._blockWhenExhausted = blockWhenExhausted;
+        _blockWhenExhausted = blockWhenExhausted;
         return this;
     }
 

@@ -32,7 +32,7 @@ public interface ServiceCachingPolicy {
     long getMaxServiceInstanceIdleTime(TimeUnit unit);
 
     /**
-     * Whether or nto to block when it is not possible to allocate a new service instance because the cache is at its limit
+     * Whether or not to block when it is not possible to allocate a new service instance because the cache is at its limit
      * for service instances.
      */
     boolean getBlockWhenExhausted();
