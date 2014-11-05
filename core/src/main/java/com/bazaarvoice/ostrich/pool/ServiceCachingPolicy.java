@@ -32,23 +32,8 @@ public interface ServiceCachingPolicy {
     long getMaxServiceInstanceIdleTime(TimeUnit unit);
 
     /**
-     * What action to take when it is not possible to allocate a new service instance because the cache is at its limit
+     * Whether or not to block when it is not possible to allocate a new service instance because the cache is at its limit
      * for service instances.
-     * <p/>
-     * NOTE: Setting this to {@link ExhaustionAction#GROW} will make it so that the cache can (temporarily) hold more
-     * instances than {@link #getMaxNumServiceInstances()} or {@link #getMaxNumServiceInstancesPerEndPoint()} says it
-     * should be able to hold.
      */
-    ExhaustionAction getCacheExhaustionAction();
-
-    enum ExhaustionAction {
-        /** Throw an exception when at the limit of the number of allowed instances. */
-        FAIL,
-
-        /** Create a new temporary service instance when at the limit of the number of allowed instances. */
-        GROW,
-
-        /** Wait until an instance is returned to the cache when at the limit of the number of allowed instances. */
-        WAIT
-    }
+    boolean getBlockWhenExhausted();
 }

@@ -10,9 +10,10 @@ public class ServiceCachingPolicyBuilderTest {
     @Test
     public void testCacheExhaustionActionSet() {
         ServiceCachingPolicyBuilder builder = new ServiceCachingPolicyBuilder();
-        builder.withCacheExhaustionAction(ServiceCachingPolicy.ExhaustionAction.GROW);
+        builder.withBlockWhenExhausted(false);
 
-        assertEquals(ServiceCachingPolicy.ExhaustionAction.GROW, builder.build().getCacheExhaustionAction());
+        ServiceCachingPolicy _cachingPolicy = builder.build();
+        assertEquals(false, _cachingPolicy.getBlockWhenExhausted());
     }
     
     @Test
@@ -37,12 +38,6 @@ public class ServiceCachingPolicyBuilderTest {
         builder.withMaxServiceInstanceIdleTime(10, TimeUnit.SECONDS);
 
         assertEquals(10, builder.build().getMaxServiceInstanceIdleTime(TimeUnit.SECONDS));
-    }
-
-    @Test(expected = NullPointerException.class)
-    public void testNullExhaustionAction() {
-        ServiceCachingPolicyBuilder builder = new ServiceCachingPolicyBuilder();
-        builder.withCacheExhaustionAction(null);
     }
 
     @Test(expected = IllegalStateException.class)
