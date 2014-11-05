@@ -63,7 +63,6 @@ public class ServiceCacheTest {
         _cachingPolicy = mock(ServiceCachingPolicy.class);
         when(_cachingPolicy.getMaxNumServiceInstances()).thenReturn(-1);
         when(_cachingPolicy.getMaxNumServiceInstancesPerEndPoint()).thenReturn(1);
-        // when(_cachingPolicy.getCacheExhaustionAction()).thenReturn(ServiceCachingPolicy.ExhaustionAction.FAIL);
         when(_cachingPolicy.getBlockWhenExhausted()).thenReturn(false);
     }
 
@@ -77,7 +76,6 @@ public class ServiceCacheTest {
     @Test
     public void testKeyedObjectPoolIsCorrectlyConfigured() {
         // Set values to be different from corresponding GenericKeyedObjectPool defaults.
-        // when(_cachingPolicy.getCacheExhaustionAction()).thenReturn(ServiceCachingPolicy.ExhaustionAction.GROW);
         when(_cachingPolicy.getBlockWhenExhausted()).thenReturn(false);
         when(_cachingPolicy.getMaxNumServiceInstances()).thenReturn(20);
         when(_cachingPolicy.getMaxNumServiceInstancesPerEndPoint()).thenReturn(5);
@@ -341,7 +339,6 @@ public class ServiceCacheTest {
 
     @Test(expected = NoCachedInstancesAvailableException.class)
     public void testFailCacheExhaustionAction() throws Exception {
-        //when(_cachingPolicy.getCacheExhaustionAction()).thenReturn(ServiceCachingPolicy.ExhaustionAction.FAIL);
         when(_cachingPolicy.getBlockWhenExhausted()).thenReturn(false);
 
         ServiceCache<Service> cache = newCache();
@@ -352,7 +349,6 @@ public class ServiceCacheTest {
     // not a valid test anymore!!!
     // @Test
     public void testGrowCacheExhaustionAction() throws Exception {
-        //when(_cachingPolicy.getCacheExhaustionAction()).thenReturn(ServiceCachingPolicy.ExhaustionAction.GROW);
         when(_cachingPolicy.getBlockWhenExhausted()).thenReturn(false);
 
         ServiceCache<Service> cache = newCache();
@@ -364,7 +360,6 @@ public class ServiceCacheTest {
     //@Test
     public void testInstancesCreatedWhileGrowingAreNotReused() throws Exception {
         when(_cachingPolicy.getMaxNumServiceInstancesPerEndPoint()).thenReturn(1);
-        //when(_cachingPolicy.getCacheExhaustionAction()).thenReturn(ServiceCachingPolicy.ExhaustionAction.GROW);
         when(_cachingPolicy.getBlockWhenExhausted()).thenReturn(false);
 
         ServiceCache<Service> cache = newCache();
@@ -395,7 +390,6 @@ public class ServiceCacheTest {
     @Test
     public void testWaitCacheExhaustionAction() throws Exception {
         when(_cachingPolicy.getMaxNumServiceInstancesPerEndPoint()).thenReturn(1);
-        //when(_cachingPolicy.getCacheExhaustionAction()).thenReturn(ServiceCachingPolicy.ExhaustionAction.WAIT);
         when(_cachingPolicy.getBlockWhenExhausted()).thenReturn(true);
 
         final ServiceCache<Service> cache = newCache();
@@ -519,7 +513,6 @@ public class ServiceCacheTest {
     // @Test
     public void testActiveCountAccurateWhenGrowing() throws Exception {
         when(_cachingPolicy.getMaxNumServiceInstancesPerEndPoint()).thenReturn(1);
-        //when(_cachingPolicy.getCacheExhaustionAction()).thenReturn(ServiceCachingPolicy.ExhaustionAction.GROW);
         when(_cachingPolicy.getBlockWhenExhausted()).thenReturn(false);
 
         ServiceCache<Service> cache = newCache();
