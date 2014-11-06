@@ -39,8 +39,10 @@ public interface ServiceCachingPolicy {
      * instances than {@link #getMaxNumServiceInstances()} or {@link #getMaxNumServiceInstancesPerEndPoint()} says it
      * should be able to hold.
      */
+    @Deprecated
     ExhaustionAction getCacheExhaustionAction();
 
+    @Deprecated
     enum ExhaustionAction {
         /** Throw an exception when at the limit of the number of allowed instances. */
         FAIL,
@@ -51,4 +53,11 @@ public interface ServiceCachingPolicy {
         /** Wait until an instance is returned to the cache when at the limit of the number of allowed instances. */
         WAIT
     }
+
+    /**
+     * Whether or not to block when it is not possible to allocate a new service instance because the cache is at its limit
+     * for service instances.
+     */
+    boolean getBlockWhenExhausted();
+
 }
