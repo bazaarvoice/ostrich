@@ -36,4 +36,15 @@ public interface ServiceCachingPolicy {
      * for service instances.
      */
     boolean getBlockWhenExhausted();
+
+    /**
+     *
+     * Previously there was a way to specify exhaustAction as specified in the enum below
+     *
+     *  enum ExhaustionAction {FAIL,GROW,WAIT}
+     *
+     * However, ever since updating to commons-pool-2.2 we lost that ability and are restricted to only
+     * block if exhausted OR fail, as set in {@code GenericKeyedObjectPoolConfig#setBlockWhenExhausted(boolean)}
+     *
+     */
 }
