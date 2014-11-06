@@ -2,21 +2,20 @@ package com.bazaarvoice.ostrich.pool;
 
 import java.util.concurrent.TimeUnit;
 
-import static com.bazaarvoice.ostrich.pool.ServiceCachingPolicy.ExhaustionAction;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
 public class ServiceCachingPolicyBuilder {
     public static final ServiceCachingPolicy NO_CACHING = new ServiceCachingPolicyBuilder()
-            .withMaxNumServiceInstances(0)
-            .withMaxNumServiceInstancesPerEndPoint(0)
-            .withCacheExhaustionAction(ExhaustionAction.GROW)
+            .withMaxNumServiceInstances(1)
+            .withMaxNumServiceInstancesPerEndPoint(1)
+            .withBlockWhenExhausted(false)
             .build();
 
     private int _maxNumServiceInstances = -1;
     private int _maxNumServiceInstancesPerEndPoint = -1;
     private long _maxServiceInstanceIdleTimeNanos;
-    private ExhaustionAction _cacheExhaustionAction = ExhaustionAction.GROW;
+    private boolean _blockWhenExhausted = true;
 
     /**
      * Set the maximum number of cached service instances for the built policy.  If never called, the policy will allow
@@ -65,16 +64,13 @@ public class ServiceCachingPolicyBuilder {
     }
 
     /**
-     * Set the {@code ExhaustionAction} for the built caching policy.  If never called, will default to
-     * {@code ExhaustionAction.GROW}.
+     * Set blockWhenExhausted for the build caching policy. Default is set to {@code true}
      *
-     * @param action The action to take when the cache is exhausted, either completely or for a requested end point.
+     * @param blockWhenExhausted boolean to set whether not to block when cache is exhausted
      * @return this
      */
-    public ServiceCachingPolicyBuilder withCacheExhaustionAction(ExhaustionAction action) {
-        checkNotNull(action);
-
-        _cacheExhaustionAction = action;
+    public ServiceCachingPolicyBuilder withBlockWhenExhausted(boolean blockWhenExhausted) {
+        _blockWhenExhausted = blockWhenExhausted;
         return this;
     }
 
@@ -89,7 +85,7 @@ public class ServiceCachingPolicyBuilder {
         final int maxNumServiceInstances = _maxNumServiceInstances;
         final int maxNumServiceInstancesPerEndPoint = _maxNumServiceInstancesPerEndPoint;
         final long maxServiceInstanceIdleTimeNanos = _maxServiceInstanceIdleTimeNanos;
-        final ExhaustionAction cacheExhaustionAction = _cacheExhaustionAction;
+        final boolean blockWhenExhausted = _blockWhenExhausted;
 
         return new ServiceCachingPolicy() {
             @Override
@@ -108,8 +104,8 @@ public class ServiceCachingPolicyBuilder {
             }
 
             @Override
-            public ExhaustionAction getCacheExhaustionAction() {
-                return cacheExhaustionAction;
+            public boolean getBlockWhenExhausted() {
+                return blockWhenExhausted;
             }
         };
     }
