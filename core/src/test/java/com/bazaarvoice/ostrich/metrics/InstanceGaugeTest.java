@@ -5,7 +5,7 @@ import org.junit.Test;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 
-import static junit.framework.Assert.assertEquals;
+import static org.junit.Assert.assertEquals;
 
 public class InstanceGaugeTest {
     private final InstanceGauge _gauge = new InstanceGauge();
