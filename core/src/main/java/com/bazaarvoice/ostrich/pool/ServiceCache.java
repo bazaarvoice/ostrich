@@ -6,13 +6,15 @@ import com.bazaarvoice.ostrich.exceptions.NoCachedInstancesAvailableException;
 import com.bazaarvoice.ostrich.metrics.Metrics;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.MapMaker;
-import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
 import com.yammer.metrics.util.RatioGauge;
-import org.apache.commons.pool.BaseKeyedPoolableObjectFactory;
-import org.apache.commons.pool.impl.GenericKeyedObjectPool;
+import org.apache.commons.pool2.BaseKeyedPooledObjectFactory;
+import org.apache.commons.pool2.PooledObject;
+import org.apache.commons.pool2.impl.DefaultPooledObject;
+import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
+import org.apache.commons.pool2.impl.GenericKeyedObjectPoolConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,6 +27,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static com.bazaarvoice.ostrich.pool.ServiceCachingPolicy.*;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
@@ -84,52 +87,78 @@ class ServiceCache<S> implements Closeable {
         _loadTimer = _metrics.newTimer(serviceName, "load-time", TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
 
         _metrics.newGauge(serviceName, "cache-hit-ratio", new RatioGauge() {
-            @Override protected double getNumerator() { return _requestCount.get() - _missCount.get(); }
-            @Override protected double getDenominator() { return _requestCount.get(); }
+            @Override
+            protected double getNumerator() {
+                return _requestCount.get() - _missCount.get();
+            }
+
+            @Override
+            protected double getDenominator() {
+                return _requestCount.get();
+            }
         });
         _metrics.newGauge(serviceName, "cache-miss-ratio", new RatioGauge() {
-            @Override protected double getNumerator() { return _missCount.get(); }
-            @Override protected double getDenominator() { return _requestCount.get(); }
+            @Override
+            protected double getNumerator() {
+                return _missCount.get();
+            }
+
+            @Override
+            protected double getDenominator() {
+                return _requestCount.get();
+            }
         });
 
         _metrics.newGauge(serviceName, "load-success-ratio", new RatioGauge() {
-            @Override protected double getNumerator() { return _loadSuccessCount.get(); }
-            @Override protected double getDenominator() {
+            @Override
+            protected double getNumerator() {
+                return _loadSuccessCount.get();
+            }
+
+            @Override
+            protected double getDenominator() {
                 return _loadSuccessCount.get() + _loadFailureCount.get();
             }
         });
         _metrics.newGauge(serviceName, "load-failure-ratio", new RatioGauge() {
-            @Override protected double getNumerator() { return _loadFailureCount.get(); }
-            @Override protected double getDenominator() {
+            @Override
+            protected double getNumerator() {
+                return _loadFailureCount.get();
+            }
+
+            @Override
+            protected double getDenominator() {
                 return _loadSuccessCount.get() + _loadFailureCount.get();
             }
         });
 
-        GenericKeyedObjectPool.Config poolConfig = new GenericKeyedObjectPool.Config();
+        GenericKeyedObjectPoolConfig poolConfig = new GenericKeyedObjectPoolConfig();
 
         // Global configuration
-        poolConfig.maxTotal = policy.getMaxNumServiceInstances();
-        poolConfig.numTestsPerEvictionRun = policy.getMaxNumServiceInstances();
-        poolConfig.minEvictableIdleTimeMillis = policy.getMaxServiceInstanceIdleTime(TimeUnit.MILLISECONDS);
+        poolConfig.setMaxTotal(policy.getMaxNumServiceInstances());
+        poolConfig.setNumTestsPerEvictionRun(policy.getMaxNumServiceInstances());
+        poolConfig.setMinEvictableIdleTimeMillis(policy.getMaxServiceInstanceIdleTime(TimeUnit.MILLISECONDS));
 
-        switch (policy.getCacheExhaustionAction()) {
-            case FAIL:
-                poolConfig.whenExhaustedAction = GenericKeyedObjectPool.WHEN_EXHAUSTED_FAIL;
-                break;
-            case GROW:
-                poolConfig.whenExhaustedAction = GenericKeyedObjectPool.WHEN_EXHAUSTED_GROW;
-                break;
-            case WAIT:
-                poolConfig.whenExhaustedAction = GenericKeyedObjectPool.WHEN_EXHAUSTED_BLOCK;
-                break;
+        ExhaustionAction exhaustionAction = policy.getCacheExhaustionAction();
+        if(exhaustionAction != null) {
+            switch (exhaustionAction) {
+                case WAIT:
+                    poolConfig.setBlockWhenExhausted(true);
+                    break;
+                default:
+                    poolConfig.setBlockWhenExhausted(false);
+            }
+        }
+        else {
+            poolConfig.setBlockWhenExhausted(policy.getBlockWhenExhausted());
         }
 
         // Per end point configuration
-        poolConfig.maxActive = policy.getMaxNumServiceInstancesPerEndPoint();
-        poolConfig.maxIdle = policy.getMaxNumServiceInstancesPerEndPoint();
+        poolConfig.setMaxTotalPerKey(policy.getMaxNumServiceInstancesPerEndPoint());
+        poolConfig.setMaxIdlePerKey(policy.getMaxNumServiceInstancesPerEndPoint());
 
         // Make sure all instances in the pool are checked for staleness during eviction runs.
-        poolConfig.numTestsPerEvictionRun = policy.getMaxNumServiceInstances();
+        poolConfig.setNumTestsPerEvictionRun(policy.getMaxNumServiceInstances());
 
         _pool = new GenericKeyedObjectPool<ServiceEndPoint, S>(new PoolServiceFactory<S>(serviceFactory), poolConfig);
 
@@ -203,9 +232,9 @@ class ServiceCache<S> implements Closeable {
         // Figure out if we should check this revision in.  If it was created before the last known invalid revision
         // for this particular end point, or the cache is closed, then we shouldn't check it in.
         Long invalidRevision = _invalidRevisions.get(endPoint);
-        Long serviceRevision = _checkedOutRevisions.remove(handle);
+        Long checkedOutRevision = _checkedOutRevisions.remove(handle);
 
-        if (_isClosed || (invalidRevision != null && serviceRevision < invalidRevision)) {
+        if (_isClosed || (invalidRevision != null && checkedOutRevision != null && checkedOutRevision < invalidRevision)) {
             _pool.invalidateObject(endPoint, service);
         } else {
             _pool.returnObject(endPoint, service);
@@ -242,7 +271,7 @@ class ServiceCache<S> implements Closeable {
         _pool.clear(endPoint);
     }
 
-    private class PoolServiceFactory<S> extends BaseKeyedPoolableObjectFactory<ServiceEndPoint, S> {
+    private class PoolServiceFactory<S> extends BaseKeyedPooledObjectFactory<ServiceEndPoint, S> {
         private final ServiceFactory<S> _serviceFactory;
 
         public PoolServiceFactory(ServiceFactory<S> serviceFactory) {
@@ -250,9 +279,8 @@ class ServiceCache<S> implements Closeable {
         }
 
         @Override
-        public S makeObject(final ServiceEndPoint endPoint) throws Exception {
+        public S create(ServiceEndPoint endPoint) throws Exception {
             _missCount.incrementAndGet();
-
             TimerContext timer = _loadTimer.time();
             try {
                 S service = _serviceFactory.create(endPoint);
@@ -267,8 +295,14 @@ class ServiceCache<S> implements Closeable {
         }
 
         @Override
-        public void destroyObject(ServiceEndPoint endPoint, S service) throws Exception {
-            _serviceFactory.destroy(endPoint, service);
+        public PooledObject<S> wrap(S service) {
+            return new DefaultPooledObject<S>(service);
+        }
+
+        @Override
+        public void destroyObject(ServiceEndPoint endPoint, PooledObject<S> service)
+                throws Exception {
+            _serviceFactory.destroy(endPoint, service.getObject());
         }
     }
 }

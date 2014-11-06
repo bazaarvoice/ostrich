@@ -10,8 +10,11 @@ public class ServiceCachingPolicyBuilderTest {
     @Test
     public void testCacheExhaustionActionSet() {
         ServiceCachingPolicyBuilder builder = new ServiceCachingPolicyBuilder();
+        builder.withBlockWhenExhausted(false);
         builder.withCacheExhaustionAction(ServiceCachingPolicy.ExhaustionAction.GROW);
 
+        ServiceCachingPolicy _cachingPolicy = builder.build();
+        assertEquals(false, _cachingPolicy.getBlockWhenExhausted());
         assertEquals(ServiceCachingPolicy.ExhaustionAction.GROW, builder.build().getCacheExhaustionAction());
     }
     
