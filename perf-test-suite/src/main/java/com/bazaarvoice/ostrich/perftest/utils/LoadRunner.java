@@ -1,13 +1,17 @@
 package com.bazaarvoice.ostrich.perftest.utils;
 
+import com.bazaarvoice.ostrich.ThreadSafeServiceFactory;
+import com.bazaarvoice.ostrich.perftest.core.Service;
 import com.bazaarvoice.ostrich.perftest.core.SimpleServiceFactory;
 import com.bazaarvoice.ostrich.pool.ServiceRunner;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
+import com.google.common.collect.Lists;
 
 import java.io.PrintStream;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -20,79 +24,112 @@ public class LoadRunner {
     private final PrintStream _out;
     private final boolean _doPrintStats;
     private final long _totalRuntime;
-    private final SimpleServiceFactory _serviceFactory;
-    private final ServiceRunner _serviceRunner;
     private final List<Thread> _workers;
     private final long _startTime;
     private final int _reportingIntervalSeconds;
     private final Arguments _arguments;
+
+    private final Meter _serviceCreated;
+    private final Meter _serviceDestroyed;
+    private final Meter _serviceCalled;
+    private final Meter _cacheMissed;
+    private final Meter _serviceFailed;
+    private final Meter _chaosCreated;
+    private final Meter _stableCreated;
+    private final Timer _checkoutTimer;
+    private final Timer _checkinTimer;
+    private final Timer _serviceTimer;
+    private final Timer _totalTimer;
+    private final Timer _evictionTimer;
+    private final Timer _registerTimer;
+    private final Timer _loadTimer;
+
     private long _counter = 0;
 
     public LoadRunner(Arguments arguments) {
 
         MetricRegistry metricRegistry = new MetricRegistry();
-        _arguments = arguments;
+        ThreadSafeServiceFactory<Service<String, String>> serviceFactory = SimpleServiceFactory.newInstance(metricRegistry);
+        ServiceRunner serviceRunner = new ServiceRunner(serviceFactory, metricRegistry, arguments);
+        ChaosRunner chaosRunner = new ChaosRunner(serviceRunner.getServiceCache(), arguments, metricRegistry);
 
-        this._serviceFactory = SimpleServiceFactory.newInstance(metricRegistry);
-        this._serviceRunner = new ServiceRunner(_serviceFactory, metricRegistry, _arguments);
-        this._workers = _serviceRunner.generateWorkers();
-        this._out = arguments.getOutput();
-        this._doPrintStats = arguments.doPrintStats();
-        this._totalRuntime = arguments.getRunTimeSecond();
-        this._reportingIntervalSeconds = arguments.getReportingIntervalSeconds();
+        _arguments = arguments;
+        _out = arguments.getOutput();
+        _doPrintStats = arguments.doPrintStats();
+        _totalRuntime = arguments.getRunTimeSecond();
+        _reportingIntervalSeconds = arguments.getReportingIntervalSeconds();
+
+        _workers = Lists.newArrayList();
+        _workers.addAll(serviceRunner.generateWorkers());
+        _workers.addAll(chaosRunner.generateChaosWorkers());
 
         for (Thread thread : _workers) {
             thread.start();
         }
 
-        this._startTime = currentTimeSeconds();
+        _startTime = currentTimeSeconds();
+
+        _serviceCreated = metricRegistry.meter("com.bazaarvoice.ostrich.perftest.core.SimpleServiceFactory.ServiceFactory.Created");
+        _serviceDestroyed = metricRegistry.meter("com.bazaarvoice.ostrich.perftest.core.SimpleServiceFactory.ServiceFactory.Destroyed");
+        _serviceCalled = metricRegistry.meter("com.bazaarvoice.ostrich.pool.ServiceRunner.ServiceRunner.Executed");
+        _cacheMissed = metricRegistry.meter("com.bazaarvoice.ostrich.pool.ServiceRunner.ServiceRunner.Cache-Miss");
+        _serviceFailed = metricRegistry.meter("com.bazaarvoice.ostrich.pool.ServiceRunner.ServiceRunner.Failure");
+        _chaosCreated = metricRegistry.meter("com.bazaarvoice.ostrich.perftest.utils.ChaosRunner.ChaosRunner.Chaos");
+        _stableCreated = metricRegistry.meter("com.bazaarvoice.ostrich.perftest.utils.ChaosRunner.ChaosRunner.Stable");
+        _checkoutTimer = metricRegistry.timer("com.bazaarvoice.ostrich.pool.ServiceRunner.ServiceRunner.Checkout");
+        _checkinTimer = metricRegistry.timer("com.bazaarvoice.ostrich.pool.ServiceRunner.ServiceRunner.Checkin");
+        _serviceTimer = metricRegistry.timer("com.bazaarvoice.ostrich.perftest.core.SimpleServiceFactory.ServiceFactory.Timer");
+        _totalTimer = metricRegistry.timer("com.bazaarvoice.ostrich.pool.ServiceRunner.ServiceRunner.Total");
+        if(arguments.isRunSingletonMode()) {
+            _evictionTimer = metricRegistry.timer("com.bazaarvoice.ostrich.pool.MultiThreadedClientServiceCache.SimpleService.eviction-time");
+            _registerTimer = metricRegistry.timer("com.bazaarvoice.ostrich.pool.MultiThreadedClientServiceCache.SimpleService.register-time");
+            _loadTimer = metricRegistry.timer("dummy");
+        }
+        else {
+            _loadTimer = metricRegistry.timer("com.bazaarvoice.ostrich.pool.SingleThreadedClientServiceCache.SimpleService.load-time");
+            _evictionTimer = _registerTimer = metricRegistry.timer("dummy");
+        }
+
     }
 
     public void printLog() {
 
         long currentRuntime = currentTimeSeconds() - _startTime;
 
-        Meter serviceCreated = _serviceFactory.getServiceCreated();
-        Meter serviceDestroyed = _serviceFactory.getServiceDestroyed();
-        Meter serviceCalled = _serviceRunner.getServiceMeter();
-        Timer checkoutTimer = _serviceRunner.getCheckoutTimer();
-        Timer checkinTimer = _serviceRunner.getCheckinTimer();
-        Timer serviceTimer = _serviceFactory.getServiceTimer();
-        Timer totalTimer = _serviceRunner.getTotalExecTimer();
-
         _out.print(String.format("%d,", _counter++));
 
         _out.print(String.format("%d,%.2f,%.2f,%.2f,%.2f,",
-                serviceCreated.getCount(), serviceCreated.getMeanRate(), serviceCreated.getOneMinuteRate(),
-                serviceCreated.getFiveMinuteRate(), serviceCreated.getFifteenMinuteRate()));
+                _serviceCreated.getCount(), _serviceCreated.getMeanRate(), _serviceCreated.getOneMinuteRate(),
+                _serviceCreated.getFiveMinuteRate(), _serviceCreated.getFifteenMinuteRate()));
         _out.print(String.format("%d,%.2f,%.2f,%.2f,%.2f,",
-                serviceDestroyed.getCount(), serviceDestroyed.getMeanRate(), serviceDestroyed.getOneMinuteRate(),
-                serviceDestroyed.getFiveMinuteRate(), serviceDestroyed.getFifteenMinuteRate()));
+                _serviceDestroyed.getCount(), _serviceDestroyed.getMeanRate(), _serviceDestroyed.getOneMinuteRate(),
+                _serviceDestroyed.getFiveMinuteRate(), _serviceDestroyed.getFifteenMinuteRate()));
         _out.print(String.format("%d,%.2f,%.2f,%.2f,%.2f,",
-                serviceCalled.getCount(), serviceCalled.getMeanRate(), serviceCalled.getOneMinuteRate(),
-                serviceCalled.getFiveMinuteRate(), serviceCalled.getFifteenMinuteRate()));
+                _serviceCalled.getCount(), _serviceCalled.getMeanRate(), _serviceCalled.getOneMinuteRate(),
+                _serviceCalled.getFiveMinuteRate(), _serviceCalled.getFifteenMinuteRate()));
 
-        Snapshot checkoutTimerSnapshot = checkoutTimer.getSnapshot();
-        Snapshot checkinTimerSnapshot = checkinTimer.getSnapshot();
-        Snapshot serviceTimerSnapshot = serviceTimer.getSnapshot();
-        Snapshot totalTimerSnapshot = totalTimer.getSnapshot();
+        Snapshot checkoutTimerSnapshot = _checkoutTimer.getSnapshot();
+        Snapshot checkinTimerSnapshot = _checkinTimer.getSnapshot();
+        Snapshot serviceTimerSnapshot = _serviceTimer.getSnapshot();
+        Snapshot totalTimerSnapshot = _totalTimer.getSnapshot();
 
         _out.print(String.format("%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,",
-                checkoutTimer.getCount(), nsToMs(checkoutTimerSnapshot.getMin()),
+                _checkoutTimer.getCount(), nsToMs(checkoutTimerSnapshot.getMin()),
                 nsToMs(checkoutTimerSnapshot.getMax()), nsToMs(checkoutTimerSnapshot.getMean()),
-                checkoutTimer.getOneMinuteRate(), checkoutTimer.getFiveMinuteRate(), checkoutTimer.getFifteenMinuteRate()));
+                _checkoutTimer.getOneMinuteRate(), _checkoutTimer.getFiveMinuteRate(), _checkoutTimer.getFifteenMinuteRate()));
         _out.print(String.format("%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,",
-                checkinTimer.getCount(), nsToMs(checkinTimerSnapshot.getMin()),
+                _checkinTimer.getCount(), nsToMs(checkinTimerSnapshot.getMin()),
                 nsToMs(checkinTimerSnapshot.getMax()), nsToMs(checkinTimerSnapshot.getMean()),
-                checkinTimer.getOneMinuteRate(), checkinTimer.getFiveMinuteRate(), checkinTimer.getFifteenMinuteRate()));
+                _checkinTimer.getOneMinuteRate(), _checkinTimer.getFiveMinuteRate(), _checkinTimer.getFifteenMinuteRate()));
         _out.print(String.format("%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,",
-                serviceTimer.getCount(), nsToMs(serviceTimerSnapshot.getMin()),
+                _serviceTimer.getCount(), nsToMs(serviceTimerSnapshot.getMin()),
                 nsToMs(serviceTimerSnapshot.getMax()), nsToMs(serviceTimerSnapshot.getMean()),
-                serviceTimer.getOneMinuteRate(), serviceTimer.getFiveMinuteRate(), serviceTimer.getFifteenMinuteRate()));
+                _serviceTimer.getOneMinuteRate(), _serviceTimer.getFiveMinuteRate(), _serviceTimer.getFifteenMinuteRate()));
         _out.print(String.format("%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,",
-                totalTimer.getCount(), nsToMs(totalTimerSnapshot.getMin()),
+                _totalTimer.getCount(), nsToMs(totalTimerSnapshot.getMin()),
                 nsToMs(totalTimerSnapshot.getMax()), nsToMs(totalTimerSnapshot.getMean()),
-                totalTimer.getOneMinuteRate(), totalTimer.getFiveMinuteRate(), totalTimer.getFifteenMinuteRate()));
+                _totalTimer.getOneMinuteRate(), _totalTimer.getFiveMinuteRate(), _totalTimer.getFifteenMinuteRate()));
+
 
         _out.println();
         _out.flush();
@@ -100,33 +137,58 @@ public class LoadRunner {
         if (_doPrintStats) {
             System.out.print("\u001b[2J");
 
+            System.out.println(new Date());
+
             System.out.println(String.format("Running %d seconds of %s with threads: %d, work size: %d, idle time: %d, " +
-                            "max instance: %d, exhaust action: %s",
+                            "max instance: %d, exhaust action: %s, singleton-mode: %s, eviction-ttl: %d, chaos-worker: %d, chaos-interval: %d",
                     currentRuntime, _arguments.getRunTimeSecond(), _arguments.getThreadSize(), _arguments.getWorkSize(),
-                    _arguments.getIdleTimeSecond(), _arguments.getMaxInstance(), _arguments.getExhaustionAction().name()));
+                    _arguments.getIdleTimeSecond(), _arguments.getMaxInstance(), _arguments.getExhaustionAction().name(),
+                    _arguments.isRunSingletonMode(), _arguments.getEvictionTTL(),
+                    _arguments.getChaosWorkers(), _arguments.getChaosInterval()));
+
+            System.out.println(String.format("Called count: %d\tCache Miss: %d\tFailed Count: %d\tService Created: %d" +
+                            "\tService Destroyed: %d\tChaos: %d\tStable: %d\tRegister: %d\tEvict: %d\tLoad: %d",
+                    _serviceCalled.getCount(), _cacheMissed.getCount(), _serviceFailed.getCount(),
+                    _serviceCreated.getCount(), _serviceDestroyed.getCount(),
+                    _chaosCreated.getCount(), _stableCreated.getCount(),
+                    _registerTimer.getCount(), _evictionTimer.getCount(), _loadTimer.getCount()));
 
             System.out.println();
 
             System.out.println(String.format("\tcreated / destroyed\t-- 1-min: %3.2f/s / %3.2f/s" +
                             "\t5-min: %3.2f/s / %3.2f/s  \t15-min: %3.2f/s / %3.2f/s\tmean: %3.2f/s / %3.2f/s",
-                    serviceCreated.getOneMinuteRate(), serviceDestroyed.getOneMinuteRate(),
-                    serviceCreated.getFiveMinuteRate(), serviceDestroyed.getFiveMinuteRate(),
-                    serviceCreated.getFifteenMinuteRate(), serviceDestroyed.getFifteenMinuteRate(),
-                    serviceCreated.getMeanRate(), serviceDestroyed.getMeanRate()));
+                    _serviceCreated.getOneMinuteRate(), _serviceDestroyed.getOneMinuteRate(),
+                    _serviceCreated.getFiveMinuteRate(), _serviceDestroyed.getFiveMinuteRate(),
+                    _serviceCreated.getFifteenMinuteRate(), _serviceDestroyed.getFifteenMinuteRate(),
+                    _serviceCreated.getMeanRate(), _serviceDestroyed.getMeanRate()));
+
+            System.out.println(String.format("\tchaos / stable\t\t-- 1-min: %3.2f/s / %3.2f/s" +
+                            "\t5-min: %3.2f/s / %3.2f/s  \t15-min: %3.2f/s / %3.2f/s\tmean: %3.2f/s / %3.2f/s",
+                    _chaosCreated.getOneMinuteRate(), _stableCreated.getOneMinuteRate(),
+                    _chaosCreated.getFiveMinuteRate(), _stableCreated.getFiveMinuteRate(),
+                    _chaosCreated.getFifteenMinuteRate(), _stableCreated.getFifteenMinuteRate(),
+                    _chaosCreated.getMeanRate(), _stableCreated.getMeanRate()));
+
+            System.out.println(String.format("\texecuted / failure\t-- 1-min: %3.2f/s / %3.2f/s" +
+                            "\t5-min: %3.2f/s / %3.2f/s  \t15-min: %3.2f/s / %3.2f/s\tmean: %3.2f/s / %3.2f/s",
+                    _serviceCalled.getOneMinuteRate(), _serviceFailed.getOneMinuteRate(),
+                    _serviceCalled.getFiveMinuteRate(), _serviceFailed.getFiveMinuteRate(),
+                    _serviceCalled.getFifteenMinuteRate(), _serviceFailed.getFifteenMinuteRate(),
+                    _serviceCalled.getMeanRate(), _serviceFailed.getMeanRate()));
 
             System.out.println(String.format("\tservice / total\t\t-- 1-min: %3.2f/s / %3.2f/s" +
                             "\t5-min: %3.2f/s / %3.2f/s  \t15-min: %3.2f/s / %3.2f/s\tmean: %3.2f/s / %3.2f/s",
-                    serviceTimer.getOneMinuteRate(), totalTimer.getOneMinuteRate(),
-                    serviceTimer.getFiveMinuteRate(), totalTimer.getFiveMinuteRate(),
-                    serviceTimer.getFifteenMinuteRate(), totalTimer.getFifteenMinuteRate(),
-                    serviceTimer.getMeanRate(), totalTimer.getMeanRate()));
+                    _serviceTimer.getOneMinuteRate(), _totalTimer.getOneMinuteRate(),
+                    _serviceTimer.getFiveMinuteRate(), _totalTimer.getFiveMinuteRate(),
+                    _serviceTimer.getFifteenMinuteRate(), _totalTimer.getFifteenMinuteRate(),
+                    _serviceTimer.getMeanRate(), _totalTimer.getMeanRate()));
 
             System.out.println(String.format("\tcheckout / checkin\t-- 1-min: %3.2f/s / %3.2f/s" +
                             "\t5-min: %3.2f/s / %3.2f/s  \t15-min: %3.2f/s / %3.2f/s\tmean: %3.2f/s / %3.2f/s",
-                    checkoutTimer.getOneMinuteRate(), checkinTimer.getOneMinuteRate(),
-                    checkoutTimer.getFiveMinuteRate(), checkinTimer.getFiveMinuteRate(),
-                    checkoutTimer.getFifteenMinuteRate(), checkinTimer.getFifteenMinuteRate(),
-                    checkoutTimer.getMeanRate(), checkinTimer.getMeanRate()));
+                    _checkoutTimer.getOneMinuteRate(), _checkinTimer.getOneMinuteRate(),
+                    _checkoutTimer.getFiveMinuteRate(), _checkinTimer.getFiveMinuteRate(),
+                    _checkoutTimer.getFifteenMinuteRate(), _checkinTimer.getFifteenMinuteRate(),
+                    _checkoutTimer.getMeanRate(), _checkinTimer.getMeanRate()));
 
             System.out.println();
 
