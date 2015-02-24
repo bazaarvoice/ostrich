@@ -99,7 +99,11 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
                 .<ServiceEndPoint, Boolean>build()
                 .asMap());
         checkNotNull(cachingPolicy);
-        _serviceCache = new ServiceCache<>(cachingPolicy, serviceFactory, metrics);
+        _serviceCache = new ServiceCacheBuilder<S>()
+                .withServiceFactory(serviceFactory)
+                .withCachingPolicy(cachingPolicy)
+                .withMetricRegistry(metrics)
+                .build();
         _partitionFilter = checkNotNull(partitionFilter);
         _loadBalanceAlgorithm = checkNotNull(loadBalanceAlgorithm);
 
@@ -286,7 +290,8 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
      * <p/>
      * NOTE: This method is package private specifically so that {@link AsyncServicePool} can call it.
      */
-    <R> R executeOnEndPoint(ServiceEndPoint endPoint, ServiceCallback<S, R> callback) throws Exception {
+    <R> R executeOnEndPoint(ServiceEndPoint endPoint, ServiceCallback<S, R> callback)
+            throws Exception {
         ServiceHandle<S> handle = null;
 
         try {
@@ -424,6 +429,7 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
     }
 
     private synchronized void addEndPoint(ServiceEndPoint endPoint) {
+        _serviceCache.register(endPoint);
         _recentlyRemovedEndPoints.remove(endPoint);
         _badEndPoints.remove(endPoint);
         LOG.debug("End point added to service pool. End point ID: {}", endPoint.getId());
@@ -564,6 +570,7 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
                 _count += 1;
 
                 if (result.isHealthy()) {
+                    _serviceCache.register(_endPoint);
                     _badEndPoints.remove(_endPoint, this);
                     this.cancel(false);
                 } else {
