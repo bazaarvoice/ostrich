@@ -39,7 +39,7 @@ public class LoadRunner {
     private final Timer _checkoutTimer;
     private final Timer _checkinTimer;
     private final Timer _serviceTimer;
-    private final Timer totalTimer;
+    private final Timer _totalTimer;
     private final Timer _evictionTimer;
     private final Timer _registerTimer;
     private final Timer _loadTimer;
@@ -79,7 +79,7 @@ public class LoadRunner {
         _checkoutTimer = metricRegistry.timer("com.bazaarvoice.ostrich.pool.ServiceRunner.ServiceRunner.Checkout");
         _checkinTimer = metricRegistry.timer("com.bazaarvoice.ostrich.pool.ServiceRunner.ServiceRunner.Checkin");
         _serviceTimer = metricRegistry.timer("com.bazaarvoice.ostrich.perftest.core.SimpleServiceFactory.ServiceFactory.Timer");
-        totalTimer = metricRegistry.timer("com.bazaarvoice.ostrich.pool.ServiceRunner.ServiceRunner.Total");
+        _totalTimer = metricRegistry.timer("com.bazaarvoice.ostrich.pool.ServiceRunner.ServiceRunner.Total");
         if(arguments.isRunSingletonMode()) {
             _evictionTimer = metricRegistry.timer("com.bazaarvoice.ostrich.pool.MultiThreadedClientServiceCache.SimpleService.eviction-time");
             _registerTimer = metricRegistry.timer("com.bazaarvoice.ostrich.pool.MultiThreadedClientServiceCache.SimpleService.register-time");
@@ -111,7 +111,7 @@ public class LoadRunner {
         Snapshot checkoutTimerSnapshot = _checkoutTimer.getSnapshot();
         Snapshot checkinTimerSnapshot = _checkinTimer.getSnapshot();
         Snapshot serviceTimerSnapshot = _serviceTimer.getSnapshot();
-        Snapshot totalTimerSnapshot = totalTimer.getSnapshot();
+        Snapshot totalTimerSnapshot = _totalTimer.getSnapshot();
 
         _out.print(String.format("%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,",
                 _checkoutTimer.getCount(), nsToMs(checkoutTimerSnapshot.getMin()),
@@ -126,9 +126,10 @@ public class LoadRunner {
                 nsToMs(serviceTimerSnapshot.getMax()), nsToMs(serviceTimerSnapshot.getMean()),
                 _serviceTimer.getOneMinuteRate(), _serviceTimer.getFiveMinuteRate(), _serviceTimer.getFifteenMinuteRate()));
         _out.print(String.format("%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,",
-                totalTimer.getCount(), nsToMs(totalTimerSnapshot.getMin()),
+                _totalTimer.getCount(), nsToMs(totalTimerSnapshot.getMin()),
                 nsToMs(totalTimerSnapshot.getMax()), nsToMs(totalTimerSnapshot.getMean()),
-                totalTimer.getOneMinuteRate(), totalTimer.getFiveMinuteRate(), totalTimer.getFifteenMinuteRate()));
+                _totalTimer.getOneMinuteRate(), _totalTimer.getFiveMinuteRate(), _totalTimer.getFifteenMinuteRate()));
+
 
         _out.println();
         _out.flush();
@@ -177,10 +178,10 @@ public class LoadRunner {
 
             System.out.println(String.format("\tservice / total\t\t-- 1-min: %3.2f/s / %3.2f/s" +
                             "\t5-min: %3.2f/s / %3.2f/s  \t15-min: %3.2f/s / %3.2f/s\tmean: %3.2f/s / %3.2f/s",
-                    _serviceTimer.getOneMinuteRate(), totalTimer.getOneMinuteRate(),
-                    _serviceTimer.getFiveMinuteRate(), totalTimer.getFiveMinuteRate(),
-                    _serviceTimer.getFifteenMinuteRate(), totalTimer.getFifteenMinuteRate(),
-                    _serviceTimer.getMeanRate(), totalTimer.getMeanRate()));
+                    _serviceTimer.getOneMinuteRate(), _totalTimer.getOneMinuteRate(),
+                    _serviceTimer.getFiveMinuteRate(), _totalTimer.getFiveMinuteRate(),
+                    _serviceTimer.getFifteenMinuteRate(), _totalTimer.getFifteenMinuteRate(),
+                    _serviceTimer.getMeanRate(), _totalTimer.getMeanRate()));
 
             System.out.println(String.format("\tcheckout / checkin\t-- 1-min: %3.2f/s / %3.2f/s" +
                             "\t5-min: %3.2f/s / %3.2f/s  \t15-min: %3.2f/s / %3.2f/s\tmean: %3.2f/s / %3.2f/s",

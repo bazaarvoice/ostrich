@@ -35,7 +35,7 @@ public class ServiceCachingPolicyBuilder {
      * @return ServiceCachingPolicy configured to build a {@code MultiThreadClientServiceCache}
      */
     public static ServiceCachingPolicy newMultiThreadedClientPolicy(final int evictionTTLDuration) {
-        checkArgument(evictionTTLDuration > 0);
+        checkArgument(evictionTTLDuration >= 0);
         return new ServiceCachingPolicy() {
             @Override
             public int getMaxNumServiceInstances() {
