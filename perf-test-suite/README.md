@@ -70,12 +70,26 @@ After determining and setting those desired values the suite will run the desire
       -m,--max-instances <arg>    Max instances per end point in service cache,
                                   default is 10
 
+      -g,--singleton-mode         Run with singleton policy mode, default is
+                                  false
+
+      -n,--eviction-ttl <arg>     Eviction TTL for bad clients in singleton
+                                  policy mode, default is 5 second
+                                  crunch hash, default is 1024 X 5 (5kb)
+
 ### Overall load tweaking parameters
 
       -t,--thread-size <arg>      # of workers threads to run, default is 100
 
       -w,--work-size <arg>        length of the string to generate randomly and
                                   crunch hash, default is 5120 (5kb)
+
+### Chaos parameter to cause havoc on cache
+
+      -c,--chaos-count <arg>      Number of chaos workers to use, default is 2
+
+      -l,--chaos-interval <arg>   time (in seconds) to wait between chaos,
+                                   default is 15
 
 ### I/O and runtime parameters
 
@@ -155,27 +169,37 @@ A CSV style output provides a number of metrics, it can either be STDOUT or if p
  
 Example:
 
-    counter,cr-totl,cr-mnrt,cr-1mrt,cr-5mrt,cr-15rt,dt-totl,dt-mnrt,dt-1mrt,dt-5mrt,dt-15rt,sc-totl,sc-mnrt,sc-1mrt,sc-5mrt,sc-15rt,co-totl,co-min,co-max,co-mean,co-1mrt,co-5mrt,co-15rt,ci-totl,ci-min,ci-max,ci-mean,ci-1mrt,ci-5mrt,ci-15rt,st-totl,st-min,st-max,st-mean,st-1mrt,st-5mrt,st-15rt,tt-totl,tt-min,tt-max,tt-mean,tt-1mrt,tt-5mrt,tt-15rt,
-    0,100,599.86,0.00,0.00,0.00,0,0.00,0.00,0.00,0.00,0,0.00,0.00,0.00,0.00,100,0.10,33.07,11.70,0.00,0.00,0.00,0,0.00,0.00,0.00,0.00,0.00,0.00,0,0.00,0.00,0.00,0.00,0.00,0.00,0,0.00,0.00,0.00,0.00,0.00,0.00,
-    1,1516,1286.03,0.00,0.00,0.00,0,0.00,0.00,0.00,0.00,1495,1346.02,0.00,0.00,0.00,1513,0.07,234.06,19.36,0.00,0.00,0.00,1497,0.02,232.63,8.97,0.00,0.00,0.00,1513,0.15,443.13,29.43,0.00,0.00,0.00,1500,0.36,538.90,58.12,0.00,0.00,0.00,
+    counter,cr-totl,cr-mnrt,cr-1mrt,cr-5mrt,cr-15rt,dt-totl,dt-mnrt,dt-1mrt,dt-5mrt,dt-15rt,\
+        sc-totl,sc-mnrt,sc-1mrt,sc-5mrt,sc-15rt,co-totl,co-min,co-max,co-mean,co-1mrt,co-5mrt,co-15rt,\
+        ci-totl,ci-min,ci-max,ci-mean,ci-1mrt,ci-5mrt,ci-15rt,st-totl,st-min,st-max,st-mean,st-1mrt,st-5mrt,st-15rt,\
+        tt-totl,tt-min,tt-max,tt-mean,tt-1mrt,tt-5mrt,tt-15rt,
+    0,100,599.86,0.00,0.00,0.00,0,0.00,0.00,0.00,0.00,0,0.00,0.00,0.00,0.00,100,0.10,33.07,11.70,0.00,0.00,0.00,0,\
+        0.00,0.00,0.00,0.00,0.00,0.00,0,0.00,0.00,0.00,0.00,0.00,0.00,0,0.00,0.00,0.00,0.00,0.00,0.00,
+    1,1516,1286.03,0.00,0.00,0.00,0,0.00,0.00,0.00,0.00,1495,1346.02,0.00,0.00,0.00,1513,0.07,\234.06,19.36,0.00,0.00,\
+        0.00,1497,0.02,232.63,8.97,0.00,0.00,0.00,1513,0.15,443.13,29.43,0.00,0.00,0.00,1500,0.36,538.90,58.12,0.00,0.00,0.00,
 
 
 #### Rolling statistics
 
 If requested (via --statistics / -s) a rolling statistics output on STDOUT provides the following metrics:
- 
-    service created & destroyed, with total count and 1 minute, 5 minute, 15 minute and mean rates
- 
-    service times (just the hash) & total time (service plus ostrich overhead) with total number of execution and 1 minute, 5 minute, 15 minute and mean rates of each execution
- 
-    checkin & checkout times with total number of check in and check outs, and 1 minute, 5 minute, 15 minute and mean rates of each check in and check out
 
-#### Example:
+    <Current date-time>
+    Running ## seconds of <total-runtime> with threads: ##, work size: ##, idle time: ##, max instance: ##, \
+            exhaust action: <>, singleton-mode: <>, eviction-ttl: ##, chaos-worker: ##, chaos-interval: ##
+    Called count: ####    Cache Miss: ####    Failed Count: ####    Service Created: ####    Service Destroyed: #### \
+            Chaos: ####    Stable: ####    Register: ####    Evict: ####    Load: ####
 
-    Running 5 seconds of 30 with threads: 25, work size: 12000, idle time: 10, max instance: 10, exhaust action: GROW
-        created / destroyed    -- total:     3651 /        0  1-min: 708.20/s / 0.00/s      5-min: 708.20/s / 0.00/s      15-min: 708.20/s / 0.00/s      mean: 706.61/s / 0.00/s
-        service / total        -- total:     3648 /     3648  1-min: 708.60/s / 719.60/s    5-min: 708.60/s / 719.60/s    15-min: 708.60/s / 719.60/s    mean: 5.24ms / 7.84ms
-        checkout / checkin     -- total:     3652 /     3649  1-min: 720.00/s / 719.60/s    5-min: 720.00/s / 719.60/s    15-min: 720.00/s / 719.60/s    mean: 1.73ms / 0.70ms
+    created / destroyed   -- 1-min: #.##/s / #.##/s    5-min: #.##/s / #.##/s      15-min: #.##/s / #.##/s    mean: #.##/s / #.##/s
+    chaos / stable        -- 1-min: #.##/s / #.##/s    5-min: #.##/s / #.##/s      15-min: #.##/s / #.##/s    mean: #.##/s / #.##/s
+    executed / failure    -- 1-min: #.##/s / #.##/s    5-min: #.##/s / #.##/s      15-min: #.##/s / #.##/s    mean: #.##/s / #.##/s
+    service / total       -- 1-min: #.##/s / #.##/s    5-min: #.##/s / #.##/s      15-min: #.##/s / #.##/s    mean: #.##/s / #.##/s
+    checkout / checkin    -- 1-min: #.##/s / #.##/s    5-min: #.##/s / #.##/s      15-min: #.##/s / #.##/s    mean: #.##/s / #.##/s
+
+    Service     -- mean: #.##ms    min: #.##ms    max: #.##ms    75th: #.##ms    95th: #.##ms    98th: #.##ms    99th: #.##ms    999th: #.##ms
+    Checkout    -- mean: #.##ms    min: #.##ms    max: #.##ms    75th: #.##ms    95th: #.##ms    98th: #.##ms    99th: #.##ms    999th: #.##ms
+    Checkin     -- mean: #.##ms    min: #.##ms    max: #.##ms    75th: #.##ms    95th: #.##ms    98th: #.##ms    99th: #.##ms    999th: #.##ms
+    Total       -- mean: #.##ms    min: #.##ms    max: #.##ms    75th: #.##ms    95th: #.##ms    98th: #.##ms    99th: #.##ms    999th: #.##ms
+
 
 ## Running Example
 

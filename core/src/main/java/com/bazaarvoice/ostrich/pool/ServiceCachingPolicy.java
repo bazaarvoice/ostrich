@@ -51,4 +51,20 @@ public interface ServiceCachingPolicy {
         /** Wait until an instance is returned to the cache when at the limit of the number of allowed instances. */
         WAIT
     }
+
+    /**
+     * This defaults to false, i.e. the default Policy to support a ServiceCache of single threaded clients.
+     *
+     * If this is set to true, all other params are ignored, and their getters throws unsupported operation exception
+     *
+     * @return true is policy is intended for multi threaded clients
+     */
+    boolean useMultiThreadedClientPolicy();
+
+    /**
+     * This makes the evicted items ttl configurable
+     *
+     * @return amount of time in seconds to keep an evicted item around
+     */
+    int evictionTTLForMultiThreadedClientPolicy();
 }

@@ -14,6 +14,20 @@ public class ServiceCachingPolicyBuilderTest {
 
         assertEquals(ServiceCachingPolicy.ExhaustionAction.GROW, builder.build().getCacheExhaustionAction());
     }
+
+    @Test
+    public void testUseMultiThreadedClientPolicy() {
+        ServiceCachingPolicy cachingPolicy = ServiceCachingPolicyBuilder.DEFAULT_MULTI_THREAD_CLIENTS_POLICY;
+
+        assertEquals(true, cachingPolicy.useMultiThreadedClientPolicy());
+    }
+
+    @Test
+    public void testDefaultMultiThreadedClientPolicy() {
+        ServiceCachingPolicyBuilder builder = new ServiceCachingPolicyBuilder();
+
+        assertEquals(false, builder.build().useMultiThreadedClientPolicy());
+    }
     
     @Test
     public void testMaxNumServiceInstancesSet() {
@@ -61,5 +75,29 @@ public class ServiceCachingPolicyBuilderTest {
     public void testInvalidMaxServiceInstanceIdleTime() {
         ServiceCachingPolicyBuilder builder = new ServiceCachingPolicyBuilder();
         builder.withMaxServiceInstanceIdleTime(0, TimeUnit.MILLISECONDS);
+    }
+
+    @Test (expected = UnsupportedOperationException.class)
+    public void testUseMultiThreadedClientPolicyWithMaxNumServiceInstancesPerEndPoint() {
+        ServiceCachingPolicy cachingPolicy = ServiceCachingPolicyBuilder.DEFAULT_MULTI_THREAD_CLIENTS_POLICY;
+        assertEquals(1, cachingPolicy.getMaxNumServiceInstancesPerEndPoint());
+    }
+
+    @Test (expected = UnsupportedOperationException.class)
+    public void testUseMultiThreadedClientPolicyWithMaxServiceInstanceIdleTime() {
+        ServiceCachingPolicy cachingPolicy = ServiceCachingPolicyBuilder.DEFAULT_MULTI_THREAD_CLIENTS_POLICY;
+        assertEquals(1, cachingPolicy.getMaxServiceInstanceIdleTime(TimeUnit.SECONDS));
+    }
+
+    @Test (expected = UnsupportedOperationException.class)
+    public void testUseMultiThreadedClientPolicyWithMaxNumServiceInstances() {
+        ServiceCachingPolicy cachingPolicy = ServiceCachingPolicyBuilder.DEFAULT_MULTI_THREAD_CLIENTS_POLICY;
+        assertEquals(1, cachingPolicy.getMaxNumServiceInstances());
+    }
+
+    @Test (expected = UnsupportedOperationException.class)
+    public void testUseMultiThreadedClientPolicyWithCacheExhaustionAction() {
+        ServiceCachingPolicy cachingPolicy = ServiceCachingPolicyBuilder.DEFAULT_MULTI_THREAD_CLIENTS_POLICY;
+        assertEquals(ServiceCachingPolicy.ExhaustionAction.GROW, cachingPolicy.getCacheExhaustionAction());
     }
 }

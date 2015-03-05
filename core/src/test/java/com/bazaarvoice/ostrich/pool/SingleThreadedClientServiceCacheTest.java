@@ -41,13 +41,13 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class ServiceCacheTest {
+public class SingleThreadedClientServiceCacheTest {
     private static final ServiceEndPoint END_POINT = mock(ServiceEndPoint.class);
 
     private ServiceFactory<Service> _factory;
     private ServiceCachingPolicy _cachingPolicy;
     private MetricRegistry _registry = new MetricRegistry();
-    private List<ServiceCache<?>> _caches = Lists.newArrayList();
+    private List<SingleThreadedClientServiceCache<?>> _caches = Lists.newArrayList();
 
     @SuppressWarnings("unchecked")
     @Before
@@ -70,7 +70,7 @@ public class ServiceCacheTest {
 
     @After
     public void teardown() {
-        for (ServiceCache<?> cache : _caches) {
+        for (SingleThreadedClientServiceCache<?> cache : _caches) {
             cache.close();
         }
     }
@@ -125,7 +125,7 @@ public class ServiceCacheTest {
         NullPointerException exception = mock(NullPointerException.class);
         when(_factory.create(any(ServiceEndPoint.class))).thenThrow(exception);
 
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
         try {
             cache.checkOut(END_POINT);
             fail();
@@ -136,7 +136,7 @@ public class ServiceCacheTest {
 
     @Test
     public void testServiceInstanceIsReused() throws Exception {
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
         ServiceHandle<Service> handle = cache.checkOut(END_POINT);
         cache.checkIn(handle);
 
@@ -148,7 +148,7 @@ public class ServiceCacheTest {
         // Allow 2 instances per end point
         when(_cachingPolicy.getMaxNumServiceInstancesPerEndPoint()).thenReturn(2);
 
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
         ServiceHandle<Service> handle = cache.checkOut(END_POINT);
         assertNotSame(handle.getService(), cache.checkOut(END_POINT).getService());
     }
@@ -159,7 +159,7 @@ public class ServiceCacheTest {
         when(_factory.create(any(ServiceEndPoint.class))).thenReturn(service);
         when(_cachingPolicy.getMaxNumServiceInstancesPerEndPoint()).thenReturn(-1);
 
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
         ServiceHandle<Service> handle1 = cache.checkOut(END_POINT);
         ServiceHandle<Service> handle2 = cache.checkOut(END_POINT);
 
@@ -177,7 +177,7 @@ public class ServiceCacheTest {
         Service service = mock(Service.class);
         when(_factory.create(any(ServiceEndPoint.class))).thenReturn(service);
 
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
 
         ServiceEndPoint endPoint1 = mock(ServiceEndPoint.class);
         ServiceEndPoint endPoint2 = mock(ServiceEndPoint.class);
@@ -206,7 +206,7 @@ public class ServiceCacheTest {
         // Make the cache only hold one instance total.
         when(_cachingPolicy.getMaxNumServiceInstances()).thenReturn(1);
 
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
         ServiceHandle<Service> handle = cache.checkOut(END_POINT);
 
         cache.checkIn(handle);
@@ -218,7 +218,7 @@ public class ServiceCacheTest {
 
     @Test
     public void testEvictedEndPointDestroyedManualEviction() throws Exception {
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
         ServiceHandle<Service> handle = cache.checkOut(END_POINT);
         cache.checkIn(handle);
         cache.evict(END_POINT);
@@ -228,7 +228,7 @@ public class ServiceCacheTest {
 
     @Test
     public void testEvictedEndPointHasServiceInstancesRemovedFromCache() throws Exception {
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
 
         ServiceHandle<Service> handle = cache.checkOut(END_POINT);
         cache.checkIn(handle);
@@ -239,7 +239,7 @@ public class ServiceCacheTest {
 
     @Test
     public void testEvictedEndPointWhileServiceInstanceCheckedOut() throws Exception {
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
 
         ServiceHandle<Service> handle = cache.checkOut(END_POINT);
         cache.evict(END_POINT);
@@ -254,7 +254,7 @@ public class ServiceCacheTest {
         when(_factory.create(any(ServiceEndPoint.class))).thenReturn(service);
         when(_cachingPolicy.getMaxNumServiceInstancesPerEndPoint()).thenReturn(-1);
 
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
 
         ServiceHandle<Service> handle1 = cache.checkOut(END_POINT);
         ServiceHandle<Service> handle2 = cache.checkOut(END_POINT);
@@ -273,7 +273,7 @@ public class ServiceCacheTest {
         when(_factory.create(any(ServiceEndPoint.class))).thenReturn(service);
         when(_cachingPolicy.getMaxNumServiceInstancesPerEndPoint()).thenReturn(-1);
 
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
         ServiceHandle<Service> handle1 = cache.checkOut(END_POINT);
 
         cache.evict(END_POINT);
@@ -293,7 +293,7 @@ public class ServiceCacheTest {
         Service service = mock(Service.class);
         when(_factory.create(any(ServiceEndPoint.class))).thenReturn(service);
 
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
 
         ServiceHandle<Service> handle = cache.checkOut(END_POINT);
         cache.evict(END_POINT);
@@ -310,7 +310,7 @@ public class ServiceCacheTest {
         Service service = mock(Service.class);
         when(_factory.create(any(ServiceEndPoint.class))).thenReturn(service);
 
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
 
         ServiceEndPoint invalidEndPoint = mock(ServiceEndPoint.class);
         ServiceEndPoint validEndPoint = mock(ServiceEndPoint.class);
@@ -331,7 +331,7 @@ public class ServiceCacheTest {
     public void testFailCacheExhaustionAction() throws Exception {
         when(_cachingPolicy.getCacheExhaustionAction()).thenReturn(ServiceCachingPolicy.ExhaustionAction.FAIL);
 
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
         cache.checkOut(END_POINT);
         cache.checkOut(END_POINT);
     }
@@ -340,7 +340,7 @@ public class ServiceCacheTest {
     public void testGrowCacheExhaustionAction() throws Exception {
         when(_cachingPolicy.getCacheExhaustionAction()).thenReturn(ServiceCachingPolicy.ExhaustionAction.GROW);
 
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
         cache.checkOut(END_POINT);
         cache.checkOut(END_POINT);
     }
@@ -350,7 +350,7 @@ public class ServiceCacheTest {
         when(_cachingPolicy.getMaxNumServiceInstancesPerEndPoint()).thenReturn(1);
         when(_cachingPolicy.getCacheExhaustionAction()).thenReturn(ServiceCachingPolicy.ExhaustionAction.GROW);
 
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
 
         // Grow the cache a bunch, remembering each service that was created...
         Set<ServiceHandle<Service>> seenHandles = Sets.newHashSet();
@@ -380,7 +380,7 @@ public class ServiceCacheTest {
         when(_cachingPolicy.getMaxNumServiceInstancesPerEndPoint()).thenReturn(1);
         when(_cachingPolicy.getCacheExhaustionAction()).thenReturn(ServiceCachingPolicy.ExhaustionAction.WAIT);
 
-        final ServiceCache<Service> cache = newCache();
+        final SingleThreadedClientServiceCache<Service> cache = newCache();
         ServiceHandle<Service> handle = cache.checkOut(END_POINT);
 
         // Run a 2nd check out operation in a background thread.  It should block because there is only one service
@@ -434,40 +434,40 @@ public class ServiceCacheTest {
         newCache(executor);
         verify(executor).scheduleAtFixedRate(
                 any(Runnable.class),
-                eq(ServiceCache.EVICTION_DURATION_IN_SECONDS),
-                eq(ServiceCache.EVICTION_DURATION_IN_SECONDS),
+                eq(SingleThreadedClientServiceCache.EVICTION_DURATION_IN_SECONDS),
+                eq(SingleThreadedClientServiceCache.EVICTION_DURATION_IN_SECONDS),
                 eq(TimeUnit.SECONDS));
     }
 
     @Test(expected = NullPointerException.class)
     public void testNumIdleNullEndPoint() {
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
         cache.getNumIdleInstances(null);
     }
 
     @Test(expected = NullPointerException.class)
     public void testNumActiveNullEndPoint() {
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
         cache.getNumActiveInstances(null);
     }
 
     @Test
     public void testNumIdleStartsAtZero() {
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
 
         assertEquals(0, cache.getNumIdleInstances(END_POINT));
     }
 
     @Test
     public void testNumActiveStartsAtZero() {
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
 
         assertEquals(0, cache.getNumActiveInstances(END_POINT));
     }
 
     @Test
     public void testNumActiveUpdatedOnCheckOut() throws Exception {
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
         cache.checkOut(END_POINT);
 
         assertEquals(1, cache.getNumActiveInstances(END_POINT));
@@ -475,7 +475,7 @@ public class ServiceCacheTest {
 
     @Test
     public void testNumIdleUpdatedOnCheckIn() throws Exception {
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
         cache.checkIn(cache.checkOut(END_POINT));
 
         assertEquals(1, cache.getNumIdleInstances(END_POINT));
@@ -483,7 +483,7 @@ public class ServiceCacheTest {
 
     @Test
     public void testActiveServiceNotCountedIdle() throws Exception {
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
         cache.checkOut(END_POINT);
 
         assertEquals(0, cache.getNumIdleInstances(END_POINT));
@@ -491,7 +491,7 @@ public class ServiceCacheTest {
 
     @Test
     public void testIdleServiceNotCountedActive() throws Exception {
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
         cache.checkIn(cache.checkOut(END_POINT));
 
         assertEquals(0, cache.getNumActiveInstances(END_POINT));
@@ -502,7 +502,7 @@ public class ServiceCacheTest {
         when(_cachingPolicy.getMaxNumServiceInstancesPerEndPoint()).thenReturn(1);
         when(_cachingPolicy.getCacheExhaustionAction()).thenReturn(ServiceCachingPolicy.ExhaustionAction.GROW);
 
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
         cache.checkOut(END_POINT);
         cache.checkOut(END_POINT);
 
@@ -511,7 +511,7 @@ public class ServiceCacheTest {
 
     @Test
     public void testCloseDestroysCachedInstances() throws Exception {
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
         ServiceHandle<Service> handle = cache.checkOut(END_POINT);
         cache.checkIn(handle);
         cache.close();
@@ -519,7 +519,7 @@ public class ServiceCacheTest {
         verify(_factory).destroy(END_POINT, handle.getService());
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings ({"unchecked", "rawtypes"})
     @Test
     public void testCloseCancelsEvictionFuture() {
         when(_cachingPolicy.getMaxServiceInstanceIdleTime(any(TimeUnit.class))).thenReturn(10L);
@@ -531,7 +531,7 @@ public class ServiceCacheTest {
                 anyLong(),
                 any(TimeUnit.class))).thenReturn(future);
 
-        ServiceCache<Service> cache = newCache(executor);
+        SingleThreadedClientServiceCache<Service> cache = newCache(executor);
         cache.close();
 
         verify(future).cancel(anyBoolean());
@@ -539,19 +539,19 @@ public class ServiceCacheTest {
 
     @Test
     public void testMultipleClose() {
-        ServiceCache<Service> cache = newCache();
+        SingleThreadedClientServiceCache<Service> cache = newCache();
         cache.close();
         cache.close();
     }
 
-    private ServiceCache<Service> newCache() {
-        ServiceCache<Service> cache = new ServiceCache<>(_cachingPolicy, _factory, _registry);
+    private SingleThreadedClientServiceCache<Service> newCache() {
+        SingleThreadedClientServiceCache<Service> cache = new SingleThreadedClientServiceCache<>(_cachingPolicy, _factory, _registry);
         _caches.add(cache);
         return cache;
     }
 
-    private ServiceCache<Service> newCache(ScheduledExecutorService executor) {
-        ServiceCache<Service> cache = new ServiceCache<>(_cachingPolicy, _factory, executor, _registry);
+    private SingleThreadedClientServiceCache<Service> newCache(ScheduledExecutorService executor) {
+        SingleThreadedClientServiceCache<Service> cache = new SingleThreadedClientServiceCache<>(_cachingPolicy, _factory, executor, _registry);
         _caches.add(cache);
         return cache;
     }

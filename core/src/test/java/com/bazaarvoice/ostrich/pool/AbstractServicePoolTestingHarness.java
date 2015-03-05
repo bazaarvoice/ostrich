@@ -21,7 +21,6 @@ import com.google.common.base.Ticker;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
-import com.google.common.util.concurrent.Futures;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -55,28 +54,33 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
-public class ServicePoolTest {
-    private static final ServiceEndPoint FOO_ENDPOINT = mock(ServiceEndPoint.class);
-    private static final ServiceEndPoint BAR_ENDPOINT = mock(ServiceEndPoint.class);
-    private static final ServiceEndPoint BAZ_ENDPOINT = mock(ServiceEndPoint.class);
-    private static final Service FOO_SERVICE = mock(Service.class);
-    private static final Service BAR_SERVICE = mock(Service.class);
-    private static final Service BAZ_SERVICE = mock(Service.class);
-    private static final RetryPolicy NEVER_RETRY = mock(RetryPolicy.class);
-    private static final ServiceCachingPolicy UNLIMITED_CACHING = new ServiceCachingPolicyBuilder().build();
+public abstract class AbstractServicePoolTestingHarness {
 
-    private Ticker _ticker;
-    private HostDiscovery _hostDiscovery;
-    private PartitionFilter _partitionFilter;
-    private LoadBalanceAlgorithm _loadBalanceAlgorithm;
-    private ServiceFactory<Service> _serviceFactory;
-    private ScheduledExecutorService _healthCheckExecutor;
-    private MetricRegistry _registry;
-    private ServicePool<Service> _pool;
+    protected static final ServiceEndPoint FOO_ENDPOINT = mock(ServiceEndPoint.class);
+    protected static final ServiceEndPoint BAR_ENDPOINT = mock(ServiceEndPoint.class);
+    protected static final ServiceEndPoint BAZ_ENDPOINT = mock(ServiceEndPoint.class);
+    protected static final Service FOO_SERVICE = mock(Service.class);
+    protected static final Service BAR_SERVICE = mock(Service.class);
+    protected static final Service BAZ_SERVICE = mock(Service.class);
+    protected static final RetryPolicy NEVER_RETRY = mock(RetryPolicy.class);
+
+    protected final ServiceCachingPolicy UNLIMITED_CACHING = getServiceCachingPolicy();
+
+    protected Ticker _ticker;
+    protected HostDiscovery _hostDiscovery;
+    protected PartitionFilter _partitionFilter;
+    protected LoadBalanceAlgorithm _loadBalanceAlgorithm;
+    protected ServiceFactory<Service> _serviceFactory;
+    protected ScheduledExecutorService _healthCheckExecutor;
+    protected MetricRegistry _registry;
+    protected ServicePool<Service> _pool;
+
+    protected abstract ServiceCachingPolicy getServiceCachingPolicy();
+    protected abstract ServiceFactory<Service> getServiceFactoryMock();
+
 
     @SuppressWarnings("unchecked")
     @Before
@@ -112,7 +116,7 @@ public class ServicePoolTest {
                     }
                 });
 
-        _serviceFactory = (ServiceFactory<Service>) mock(ServiceFactory.class);
+        _serviceFactory = getServiceFactoryMock();
         when(_serviceFactory.getServiceName()).thenReturn(Service.class.getSimpleName());
         when(_serviceFactory.create(FOO_ENDPOINT)).thenReturn(FOO_SERVICE);
         when(_serviceFactory.create(BAR_ENDPOINT)).thenReturn(BAR_SERVICE);
@@ -212,7 +216,7 @@ public class ServicePoolTest {
     }
 
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings ({"unchecked", "rawType"})
     @Test
     public void testPartitionFilter() {
         reset(_partitionFilter);
@@ -520,73 +524,6 @@ public class ServicePoolTest {
         });
 
         assertEquals(numActiveInitially + 1, numActiveDuringExecute);
-    }
-
-    @Test
-    public void testStatsNumActiveInstancesDecrementsAfterExecute() {
-        // Make sure we only get FOO_ENDPOINT.
-        reset(_loadBalanceAlgorithm);
-        when(_loadBalanceAlgorithm.choose(Matchers.<Iterable<ServiceEndPoint>>any(), any(ServicePoolStatistics.class)))
-                .thenReturn(FOO_ENDPOINT);
-
-        final ServicePoolStatistics servicePoolStatistics = _pool.getServicePoolStatistics();
-
-        int numActiveDuringExecute = _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Integer>() {
-            @Override
-            public Integer call(Service service) throws ServiceException {
-                return servicePoolStatistics.getNumActiveInstances(FOO_ENDPOINT);
-            }
-        });
-
-        int numActiveAfterExecute = servicePoolStatistics.getNumActiveInstances(FOO_ENDPOINT);
-
-        assertEquals(numActiveDuringExecute - 1, numActiveAfterExecute);
-    }
-
-    @Test
-    public void testStatsNumIdleCachedInstancesIncrementsAfterExecute() {
-        // Make sure we only get FOO_ENDPOINT.
-        reset(_loadBalanceAlgorithm);
-        when(_loadBalanceAlgorithm.choose(Matchers.<Iterable<ServiceEndPoint>>any(), any(ServicePoolStatistics.class)))
-                .thenReturn(FOO_ENDPOINT);
-
-        final ServicePoolStatistics servicePoolStatistics = _pool.getServicePoolStatistics();
-
-        int numIdleDuringExecute = _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Integer>() {
-            @Override
-            public Integer call(Service service) throws ServiceException {
-                return servicePoolStatistics.getNumIdleCachedInstances(FOO_ENDPOINT);
-            }
-        });
-
-        int numIdleAfterExecute = servicePoolStatistics.getNumIdleCachedInstances(FOO_ENDPOINT);
-
-        assertEquals(numIdleDuringExecute + 1, numIdleAfterExecute);
-    }
-
-    @SuppressWarnings("unchecked")
-    @Test
-    public void testStatsNumIdleCachedInstancesDecrementsDuringExecute() {
-        // Make sure we only get FOO_ENDPOINT.
-        reset(_loadBalanceAlgorithm);
-        when(_loadBalanceAlgorithm.choose(Matchers.<Iterable<ServiceEndPoint>>any(), any(ServicePoolStatistics.class)))
-                .thenReturn(FOO_ENDPOINT);
-
-        // Prime the cache.
-        _pool.execute(NEVER_RETRY, mock(ServiceCallback.class));
-
-        final ServicePoolStatistics servicePoolStatistics = _pool.getServicePoolStatistics();
-
-        int numIdleInitially = servicePoolStatistics.getNumIdleCachedInstances(FOO_ENDPOINT);
-
-        int numIdleDuringExecute = _pool.execute(NEVER_RETRY, new ServiceCallback<Service, Integer>() {
-            @Override
-            public Integer call(Service service) throws ServiceException {
-                return servicePoolStatistics.getNumIdleCachedInstances(FOO_ENDPOINT);
-            }
-        });
-
-        assertEquals(numIdleInitially - 1, numIdleDuringExecute);
     }
 
     @Test
@@ -962,6 +899,6 @@ public class ServicePoolTest {
     }
 
     // A dummy interface for testing...
-    private static interface Service {
+    protected static interface Service {
     }
 }
