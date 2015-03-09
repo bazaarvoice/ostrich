@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
 
 /**
  * A cache for "heavy weight" client instances, i.e. ones that are already thread safe.
@@ -89,7 +90,8 @@ public class MultiThreadedClientServiceCache<S> implements ServiceCache<S> {
     private final Cache<Long, ServiceHandle<S>> _toBeDeletedList;
 
     // timers to report register and evict events
-    private final Timer _registerTimer, _evictionTimer;
+    private final Timer _registerTimer;
+    private final Timer _evictionTimer;
     private final Metrics.InstanceMetrics _metrics;
 
     // factory to deal with service handles
@@ -186,9 +188,7 @@ public class MultiThreadedClientServiceCache<S> implements ServiceCache<S> {
     @Override
     public ServiceHandle<S> checkOut(ServiceEndPoint endPoint) throws Exception {
         checkNotNull(endPoint);
-        if (_isClosed) {
-            throw new IllegalStateException("cache is closed");
-        }
+        checkState(!_isClosed, "cache is closed");
         ServiceHandle<S> instanceHandle = _instancesPerEndpoint.get(endPoint);
         if (instanceHandle == null) {
             return doRegister(endPoint);
