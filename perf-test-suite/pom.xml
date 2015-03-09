@@ -16,7 +16,7 @@
     <version>0.1</version>
     <properties>
         <maven.deploy.skip>true</maven.deploy.skip>
-        <ostrich.core.version>${parent.version}</ostrich.core.version>
+        <ostrich.core.version>${project.parent.version}</ostrich.core.version>
     </properties>
 
     <dependencies>

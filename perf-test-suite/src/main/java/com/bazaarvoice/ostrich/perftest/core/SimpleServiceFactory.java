@@ -1,7 +1,7 @@
 package com.bazaarvoice.ostrich.perftest.core;
 
 import com.bazaarvoice.ostrich.ServiceEndPoint;
-import com.bazaarvoice.ostrich.ServiceFactory;
+import com.bazaarvoice.ostrich.ThreadSafeServiceFactory;
 import com.bazaarvoice.ostrich.metrics.Metrics;
 import com.bazaarvoice.ostrich.perftest.utils.HashFunction;
 import com.bazaarvoice.ostrich.pool.ServicePoolBuilder;
@@ -12,12 +12,11 @@ import com.codahale.metrics.Timer;
 /**
  * A service factory, as needed in the ServiceCache
  */
-public class SimpleServiceFactory implements ServiceFactory<Service<String, String>> {
+public class SimpleServiceFactory implements ThreadSafeServiceFactory<Service<String, String>> {
 
     private final Meter _serviceCreated;
     private final Meter _serviceDestroyed;
     private final Timer _serviceTimer;
-
 
     /**
      * private constructor
@@ -74,33 +73,6 @@ public class SimpleServiceFactory implements ServiceFactory<Service<String, Stri
     @Override
     public boolean isRetriableException(Exception exception) {
         throw new RuntimeException("isRetriableException() should not get executed as part the performance test suite");
-    }
-
-    /**
-     * exposes the service created meter
-     *
-     * @return service created meter
-     */
-    public Meter getServiceCreated() {
-        return _serviceCreated;
-    }
-
-    /**
-     * exposes the service destroyed meter
-     *
-     * @return service destroyed meter
-     */
-    public Meter getServiceDestroyed() {
-        return _serviceDestroyed;
-    }
-
-    /**
-     * exposes the service timer meter
-     *
-     * @return service timer meter
-     */
-    public Timer getServiceTimer() {
-        return _serviceTimer;
     }
 
     /**

@@ -3,15 +3,71 @@ package com.bazaarvoice.ostrich.pool;
 import java.util.concurrent.TimeUnit;
 
 import static com.bazaarvoice.ostrich.pool.ServiceCachingPolicy.ExhaustionAction;
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
 public class ServiceCachingPolicyBuilder {
+    public static final int EVICTION_DURATION_SECONDS = 300;
     public static final ServiceCachingPolicy NO_CACHING = new ServiceCachingPolicyBuilder()
             .withMaxNumServiceInstances(0)
             .withMaxNumServiceInstancesPerEndPoint(0)
             .withCacheExhaustionAction(ExhaustionAction.GROW)
             .build();
+
+    /**
+     * Default multi thread clients policy with eviction duration of 300 seconds
+     */
+    public static final ServiceCachingPolicy DEFAULT_MULTI_THREAD_CLIENTS_POLICY = newMultiThreadedClientPolicy(EVICTION_DURATION_SECONDS);
+
+    /**
+     * Creates a ServiceCachingPolice configured for multi threaded client strategy,
+     * the {@code MultiThreadedClientServiceCache}
+     * <p/>
+     * This policy returns true for useMultiThreadedClientPolicy() but throws
+     * {@code UnsupportedOperationException} for everything else
+     *
+     * A zero eviction duration calls for immediate eviction of a bad handle,
+     * otherwise it waits for specified seconds before automatically removing
+     * the handle
+     *
+     * @param evictionTTLDuration the eviction tTL duration in seconds
+     * @return ServiceCachingPolicy configured to build a {@code MultiThreadClientServiceCache}
+     */
+    public static ServiceCachingPolicy newMultiThreadedClientPolicy(final int evictionTTLDuration) {
+        checkArgument(evictionTTLDuration >= 0);
+        return new ServiceCachingPolicy() {
+            @Override
+            public int getMaxNumServiceInstances() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public int getMaxNumServiceInstancesPerEndPoint() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public long getMaxServiceInstanceIdleTime(TimeUnit unit) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public ExhaustionAction getCacheExhaustionAction() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public boolean useMultiThreadedClientPolicy() {
+                return true;
+            }
+
+            @Override
+            public int evictionTTLForMultiThreadedClientPolicy() {
+                return evictionTTLDuration;
+            }
+        };
+    }
 
     private int _maxNumServiceInstances = -1;
     private int _maxNumServiceInstancesPerEndPoint = -1;
@@ -110,6 +166,16 @@ public class ServiceCachingPolicyBuilder {
             @Override
             public ExhaustionAction getCacheExhaustionAction() {
                 return cacheExhaustionAction;
+            }
+
+            @Override
+            public boolean useMultiThreadedClientPolicy() {
+                return false;
+            }
+
+            @Override
+            public int evictionTTLForMultiThreadedClientPolicy() {
+                throw new UnsupportedOperationException();
             }
         };
     }
