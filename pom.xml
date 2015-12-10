@@ -10,14 +10,14 @@
 
     <groupId>com.bazaarvoice.ostrich</groupId>
     <artifactId>ostrich</artifactId>
-    <version>1.7.5</version>
+    <version>1.7.6-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <scm>
         <url>https://github.com/bazaarvoice/ostrich</url>
         <connection>scm:git:git@github.com:bazaarvoice/ostrich.git</connection>
         <developerConnection>scm:git:git@github.com:bazaarvoice/ostrich.git</developerConnection>
-      <tag>ostrich-1.7.5</tag>
+      <tag>HEAD</tag>
   </scm>
 
     <name>ostrich</name>
