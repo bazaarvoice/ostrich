@@ -22,6 +22,16 @@ public class ServiceEndPointBuilderTest {
     }
 
     @Test
+    public void testUrlLikeId() {
+        // Allow characters that can appear in a URL without needing escaping (e.g. prod://services/profile-v1)
+        new ServiceEndPointBuilder()
+                // example taken directly from the comments in ServiceEndPointBuilder.VALID_CHARACTERS
+                .withId("prod://services/profile-v1")
+                .withServiceName("service")
+                .build();
+    }
+
+    @Test
     public void testServiceName() {
         ServiceEndPoint endPoint = new ServiceEndPointBuilder()
                 .withServiceName("service")
