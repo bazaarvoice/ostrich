@@ -429,10 +429,45 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
     }
 
     private synchronized void addEndPoint(ServiceEndPoint endPoint) {
-        _serviceCache.register(endPoint);
-        _recentlyRemovedEndPoints.remove(endPoint);
-        _badEndPoints.remove(endPoint);
-        LOG.debug("End point added to service pool. End point ID: {}", endPoint.getId());
+        // submit calls schedule with 0 delay
+        _healthCheckExecutor.submit( new EndPointAdditionProcessor( endPoint ) );
+    }
+
+    private final class EndPointAdditionProcessor implements Runnable {
+
+        private final ServiceEndPoint endPoint;
+
+        private EndPointAdditionProcessor( final ServiceEndPoint endPoint ) {
+            this.endPoint = endPoint;
+        }
+
+        @Override
+        public void run() {
+            HealthCheckResult result = checkHealth( endPoint );
+            if(result.isHealthy()) {
+                synchronized ( ServicePool.this ) {
+                    _serviceCache.register( endPoint );
+                    _recentlyRemovedEndPoints.remove( endPoint );
+                    _badEndPoints.remove( endPoint );
+                }
+                LOG.debug("End point added to service pool. End point ID: {}", endPoint.getId());
+            }
+            else {
+                synchronized ( ServicePool.this ) {
+                    // not calling markEndPointAsBad as it skips the flow if this endPoint is recently
+                    // removed, which defeats the purpose of adding an endPoint which was rediscovered
+                    // as a good endPoint after being removed as bad
+                    // only start a fresh health check if the node is new/not marked as bad already
+                    if(! _badEndPoints.containsKey( endPoint )) {
+                        HealthCheck healthCheck = new HealthCheck(endPoint);
+                        _badEndPoints.put(endPoint, healthCheck);
+                        healthCheck.start(); // this does not start a health check, just submits a scheduled health check
+                    }
+                    // else let ostrich decide when to health check and bring back the node
+                }
+                LOG.debug("Unhealthy end point added to badEndPoints for later addition to service pool. End point ID: {}", endPoint.getId());
+            }
+        }
     }
 
     private synchronized void removeEndPoint(ServiceEndPoint endPoint) {
