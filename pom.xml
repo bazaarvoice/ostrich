@@ -4,8 +4,8 @@
 
     <parent>
         <groupId>com.bazaarvoice.commons</groupId>
-        <artifactId>bv-opensource-super-pom</artifactId>
-        <version>1.2</version>
+        <artifactId>bv-super-pom</artifactId>
+        <version>1.17</version>
     </parent>
 
     <groupId>com.bazaarvoice.ostrich</groupId>
@@ -17,8 +17,8 @@
         <url>https://github.com/bazaarvoice/ostrich</url>
         <connection>scm:git:git@github.com:bazaarvoice/ostrich.git</connection>
         <developerConnection>scm:git:git@github.com:bazaarvoice/ostrich.git</developerConnection>
-      <tag>HEAD</tag>
-  </scm>
+        <tag>HEAD</tag>
+    </scm>
 
     <name>ostrich</name>
 
