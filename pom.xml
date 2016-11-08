@@ -26,7 +26,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.minimum.version>1.7</java.minimum.version>
-        <curator.extensions.version>1.4.1</curator.extensions.version>
+        <curator.extensions.version>1.4.4</curator.extensions.version>
         <dropwizard.version>0.7.1</dropwizard.version>
     </properties>
 
