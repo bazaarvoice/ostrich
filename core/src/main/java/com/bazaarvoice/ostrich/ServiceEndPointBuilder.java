@@ -83,6 +83,7 @@ public class ServiceEndPointBuilder {
                 return Objects.toStringHelper("ServiceEndPoint")
                         .add("name", serviceName)
                         .add("id", id)
+                        .add("payload", payload)
                         .toString();
             }
         };
