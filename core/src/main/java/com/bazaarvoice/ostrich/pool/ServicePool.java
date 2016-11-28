@@ -205,14 +205,14 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
             if (Iterables.isEmpty(allEndPoints)) {
                 throw (lastException == null)
                         ? new NoAvailableHostsException(String.format("No endpoints discovered for service %s", getServiceName()))
-                        : new NoAvailableHostsException(lastException);
+                        : new NoAvailableHostsException(lastException.getMessage(), lastException);
             }
 
             Iterable<ServiceEndPoint> validEndPoints = getValidEndPoints(allEndPoints);
             if (Iterables.isEmpty(validEndPoints)) {
                 throw (lastException == null)
                         ? new OnlyBadHostsException(String.format("No valid endpoints discovered for service %s, all endpoints: %s", getServiceName(), allEndPoints))
-                        : new OnlyBadHostsException(lastException);
+                        : new OnlyBadHostsException(lastException.getMessage(), lastException);
             }
 
             ServiceEndPoint endPoint = chooseEndPoint(validEndPoints, partitionContext);
