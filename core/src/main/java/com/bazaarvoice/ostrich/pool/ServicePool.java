@@ -204,21 +204,21 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
             Iterable<ServiceEndPoint> allEndPoints = getAllEndPoints();
             if (Iterables.isEmpty(allEndPoints)) {
                 throw (lastException == null)
-                        ? new NoAvailableHostsException()
+                        ? new NoAvailableHostsException(String.format("No endpoints discovered for service %s", getServiceName()))
                         : new NoAvailableHostsException(lastException);
             }
 
             Iterable<ServiceEndPoint> validEndPoints = getValidEndPoints(allEndPoints);
             if (Iterables.isEmpty(validEndPoints)) {
                 throw (lastException == null)
-                        ? new OnlyBadHostsException()
+                        ? new OnlyBadHostsException(String.format("No valid endpoints discovered for service %s, all endpoints: %s", getServiceName(), allEndPoints))
                         : new OnlyBadHostsException(lastException);
             }
 
             ServiceEndPoint endPoint = chooseEndPoint(validEndPoints, partitionContext);
             if (endPoint == null) {
                 throw (lastException == null)
-                        ? new NoSuitableHostsException()
+                        ? new NoSuitableHostsException(String.format("No suitable endpoint discovered for service %s from valid endpoints %s", getServiceName(), validEndPoints))
                         : new NoSuitableHostsException(lastException);
             }
 
@@ -234,7 +234,7 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
                     throw Throwables.propagate(e);
                 }
 
-                LOG.info("Retriable exception from end point id: {}, {}", endPoint.getId(), e.toString());
+                LOG.info("Retriable exception from end point: {}, {}", endPoint, e.toString());
                 LOG.debug("Exception", e);
                 lastException = e;
             }
@@ -304,7 +304,7 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
                 timer.stop();
             }
         } catch (NoCachedInstancesAvailableException e) {
-            LOG.debug("Service cache exhausted. End point ID: {}", endPoint.getId(), e);
+            LOG.debug("Service cache exhausted. End point: {}", endPoint, e);
             // Don't mark an end point as bad just because there are no cached end points for it.
             throw e;
         } catch (Exception e) {
@@ -313,7 +313,7 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
                 // layer while trying to communicate with the end point.  These errors are often transient, so we
                 // enqueue a health check for the end point and mark it as unavailable for the time being.
                 markEndPointAsBad(endPoint);
-                LOG.debug("Bad end point discovered. End point ID: {}", endPoint.getId(), e);
+                LOG.debug("Bad end point discovered. End point: {}", endPoint, e);
             }
             throw e;
         } finally {
@@ -322,8 +322,8 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
                     _serviceCache.checkIn(handle);
                 } catch (Exception e) {
                     // This should never happen, but log just in case.
-                    LOG.warn("Error returning end point to cache. End point ID: {}, {}",
-                            endPoint.getId(), e.toString());
+                    LOG.warn("Error returning end point to cache. End point: {}, {}",
+                            endPoint, e.toString());
                     LOG.debug("Exception", e);
                 }
             }
@@ -404,7 +404,7 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
             if (!result.isHealthy()) {
                 Exception exception = ((FailedHealthCheckResult) result).getException();
                 if (exception == null || isRetriableException(exception)) {
-                    LOG.debug("Unhealthy end point discovered. End point ID: {}", endPoint.getId());
+                    LOG.debug("Unhealthy end point discovered. End point {}", endPoint);
                     endPoints.remove(endPoint);
                     markEndPointAsBad(endPoint);
                     continue;
@@ -431,7 +431,7 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
     private synchronized void addEndPoint(ServiceEndPoint endPoint) {
         _recentlyRemovedEndPoints.remove(endPoint);
         markEndPointAsBad(endPoint);
-        LOG.debug("End point added to service pool. End point ID: {}", endPoint.getId());
+        LOG.debug("End point added to service pool. End point: {}", endPoint);
     }
 
     private synchronized void removeEndPoint(ServiceEndPoint endPoint) {
@@ -444,7 +444,7 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
         _recentlyRemovedEndPoints.add(endPoint);
         _badEndPoints.remove(endPoint);
         _serviceCache.evict(endPoint);
-        LOG.debug("End point removed from service pool. End point ID: {}", endPoint.getId());
+        LOG.debug("End point removed from service pool. End point: {}", endPoint);
     }
 
     private synchronized void markEndPointAsBad(ServiceEndPoint endPoint) {

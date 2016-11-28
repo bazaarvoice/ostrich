@@ -109,7 +109,7 @@ class AsyncServicePool<S> implements com.bazaarvoice.ostrich.AsyncServicePool<S>
 
         Iterable<ServiceEndPoint> endPoints = _pool.getAllEndPoints();
         if (Iterables.isEmpty(endPoints)) {
-            throw new NoAvailableHostsException();
+            throw new NoAvailableHostsException(String.format("No hosts discovered for service %s", _pool.getServiceName()));
         }
 
         for (final ServiceEndPoint endPoint : endPoints) {
@@ -141,7 +141,7 @@ class AsyncServicePool<S> implements com.bazaarvoice.ostrich.AsyncServicePool<S>
                                 }
 
                                 lastException = e;
-                                LOG.info("Retriable exception from end point id: " + endPoint.getId(), e);
+                                LOG.info("Retriable exception from end point: " + endPoint, e);
                             }
                         } while (retry.allowRetry(++numAttempts, TimeUnit.NANOSECONDS.toMillis(_ticker.read() - start)));
 

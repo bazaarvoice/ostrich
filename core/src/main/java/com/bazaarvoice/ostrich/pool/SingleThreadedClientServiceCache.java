@@ -184,7 +184,7 @@ class SingleThreadedClientServiceCache<S> implements ServiceCache<S> {
 
             // This will happen if there are no available connections and there is no room for a new one,
             // or if a newly created connection is not valid.
-            throw new NoCachedInstancesAvailableException();
+            throw new NoCachedInstancesAvailableException(String.format("No cached instances available for endpoint: %s", endPoint));
         }
     }
 
