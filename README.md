@@ -10,3 +10,4 @@ Quick Start Guides
 * [For service providers](core/docs/service-provider-quick-start.md)
 * [For service consumers](core/docs/service-consumer-quick-start.md)
 * [For operators](core/docs/operator-quick-start.md)
+* [Raised exceptions](core/docs/exceptions.md)
