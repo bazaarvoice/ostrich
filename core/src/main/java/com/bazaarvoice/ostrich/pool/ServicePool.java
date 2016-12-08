@@ -209,7 +209,7 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
             if (endPoint == null) {
                 throw (lastException == null)
                         ? new NoSuitableHostsException(String.format("No suitable endpoint discovered for service %s from valid endpoints %s", getServiceName(), validEndPoints))
-                        : new NoSuitableHostsException(lastException);
+                        : new NoSuitableHostsException(lastException.getMessage(), lastException);
             }
 
             try {
