@@ -8,6 +8,7 @@ import com.bazaarvoice.ostrich.ServiceEndPointPredicate;
 import com.bazaarvoice.ostrich.exceptions.MaxRetriesException;
 import com.bazaarvoice.ostrich.exceptions.NoAvailableHostsException;
 import com.bazaarvoice.ostrich.metrics.Metrics;
+import com.bazaarvoice.ostrich.util.Stopwatch;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;

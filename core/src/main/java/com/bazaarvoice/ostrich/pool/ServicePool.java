@@ -20,6 +20,7 @@ import com.bazaarvoice.ostrich.healthcheck.DefaultHealthCheckResults;
 import com.bazaarvoice.ostrich.healthcheck.HealthCheckRetryDelay;
 import com.bazaarvoice.ostrich.metrics.Metrics;
 import com.bazaarvoice.ostrich.partition.PartitionFilter;
+import com.bazaarvoice.ostrich.util.Stopwatch;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
