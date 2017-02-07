@@ -15,7 +15,7 @@ public class ServiceEndPointBuilder {
             .or(CharMatcher.inRange('a', 'z'))
             .or(CharMatcher.inRange('A', 'Z'))
             .or(CharMatcher.inRange('0', '9'))
-            .or(CharMatcher.anyOf("._-:"))
+            .or(CharMatcher.anyOf("._-:/"))
             .precomputed();
 
     private Optional<String> _serviceName = Optional.absent();
