@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.bazaarvoice.commons</groupId>
         <artifactId>bv-opensource-super-pom</artifactId>
-        <version>1.2</version>
+        <version>1.4</version>
     </parent>
 
     <groupId>com.bazaarvoice.ostrich</groupId>
@@ -17,16 +17,20 @@
         <url>https://github.com/bazaarvoice/ostrich</url>
         <connection>scm:git:git@github.com:bazaarvoice/ostrich.git</connection>
         <developerConnection>scm:git:git@github.com:bazaarvoice/ostrich.git</developerConnection>
-      <tag>HEAD</tag>
-  </scm>
+        <tag>HEAD</tag>
+    </scm>
 
     <name>ostrich</name>
+
+    <prerequisites>
+        <maven>3.3.9</maven>
+    </prerequisites>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.minimum.version>1.7</java.minimum.version>
-        <curator.extensions.version>1.4.4</curator.extensions.version>
+        <curator.extensions.version>1.4.5</curator.extensions.version>
         <dropwizard.version>0.7.1</dropwizard.version>
     </properties>
 
@@ -49,7 +53,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-release-plugin</artifactId>
-                    <version>2.5.1</version>
+                    <version>2.5.3</version>
                     <configuration>
                         <dryRun>false</dryRun>
                     </configuration>
@@ -58,7 +62,7 @@
                 <!-- Make sure we always turn all warnings on during compilation. -->
                 <plugin>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.1</version>
+                    <version>3.7.0</version>
                     <configuration>
                         <compilerArgument>-Xlint:all</compilerArgument>
                         <showWarnings>true</showWarnings>
