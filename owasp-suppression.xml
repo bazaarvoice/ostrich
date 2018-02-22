@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="https://www.owasp.org/index.php/OWASP_Dependency_Check_Suppression"
+        xsi:schemaLocation="https://www.owasp.org/index.php/OWASP_Dependency_Check_Suppression suppression.xsd"
+>
+    <suppress>
+        <notes><![CDATA[
+   file name: jackson-datatype-jdk7-2.6.7.jar
+   ]]></notes>
+        <cve>CVE-2016-7051</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: jackson-datatype-jdk7-2.6.7.jar
+   ]]></notes>
+        <cve>CVE-2016-3720</cve>
+    </suppress>
+</suppressions>

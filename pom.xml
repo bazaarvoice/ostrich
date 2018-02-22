@@ -30,8 +30,11 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.minimum.version>1.7</java.minimum.version>
-        <curator.extensions.version>1.4.5</curator.extensions.version>
+        <curator.extensions.version>1.5.1</curator.extensions.version>
         <dropwizard.version>0.7.1</dropwizard.version>
+        <slf4j.version>1.7.21</slf4j.version>
+        <logback.version>1.2.3</logback.version>
+        <jackson.version>2.9.4</jackson.version>
     </properties>
 
     <build>
@@ -45,6 +48,16 @@
                     <serverId>sonatype-nexus-staging</serverId>
                     <nexusUrl>https://oss.sonatype.org/</nexusUrl>
                     <autoReleaseAfterClose>true</autoReleaseAfterClose>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.owasp</groupId>
+                <artifactId>dependency-check-maven</artifactId>
+                <configuration>
+                    <failBuildOnCVSS>6</failBuildOnCVSS>
+                    <suppressionFile>
+                        ${session.executionRootDirectory}/owasp-suppression.xml
+                    </suppressionFile>
                 </configuration>
             </plugin>
         </plugins>
@@ -88,15 +101,53 @@
             </dependency>
 
             <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-databind</artifactId>
-                <version>2.3.2</version>
+               <groupId>com.fasterxml.jackson</groupId>
+               <artifactId>jackson-bom</artifactId>
+               <version>${jackson.version}</version>
+               <scope>import</scope>
+               <type>pom</type>
+           </dependency>
+            
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>${slf4j.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-api</artifactId>
-                <version>1.7.21</version>
+                <artifactId>log4j-over-slf4j</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>jul-to-slf4j</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>jcl-over-slf4j</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-log4j12</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-core</artifactId>
+                <version>${logback.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-classic</artifactId>
+                <version>${logback.version}</version>
             </dependency>
 
             <dependency>
