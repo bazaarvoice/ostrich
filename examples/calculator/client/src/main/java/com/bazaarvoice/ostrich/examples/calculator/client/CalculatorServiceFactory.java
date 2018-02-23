@@ -21,11 +21,17 @@ import javax.validation.Validation;
 import javax.validation.Validator;
 import java.net.URI;
 
+/**
+ * The type Calculator service factory.
+ */
 public class CalculatorServiceFactory implements ServiceFactory<CalculatorService> {
     private final Client _client;
 
     /**
      * Connects to the CalculatorService using the Apache commons http client library.
+     *
+     * @param configuration the http client configuration
+     * @param metrics       the metrics
      */
     public CalculatorServiceFactory(HttpClientConfiguration configuration, MetricRegistry metrics) {
         this(createDefaultJerseyClient(configuration, metrics));
@@ -34,6 +40,8 @@ public class CalculatorServiceFactory implements ServiceFactory<CalculatorServic
     /**
      * Connects to the CalculatorService using the specified Jersey client.  If you're writing a Dropwizard server,
      * use @{link JerseyClientFactory} to create the Jersey client.
+     *
+     * @param jerseyClient the jersey client
      */
     public CalculatorServiceFactory(Client jerseyClient) {
         _client = jerseyClient;

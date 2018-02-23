@@ -10,7 +10,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Policy that results in a bounded, exponentially increasing delay between healthchecks.
- * <p/>
+ *
  * The delay interval is randomized to avoid the "thundering herd" effect when there are many
  * clients all attempting to retry at the same time.
  */

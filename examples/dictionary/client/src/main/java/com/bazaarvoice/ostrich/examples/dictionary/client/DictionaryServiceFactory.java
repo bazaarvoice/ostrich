@@ -21,11 +21,17 @@ import javax.validation.Validation;
 import javax.validation.Validator;
 import java.net.URI;
 
+/**
+ * The type Dictionary service factory.
+ */
 public class DictionaryServiceFactory implements ServiceFactory<DictionaryService> {
     private final Client _client;
 
     /**
      * Connects to the DictionaryService using the Apache commons http client library.
+     *
+     * @param configuration the configuration
+     * @param metrics       the metrics
      */
     public DictionaryServiceFactory(HttpClientConfiguration configuration, MetricRegistry metrics) {
         this(createDefaultJerseyClient(configuration, metrics));
@@ -34,6 +40,8 @@ public class DictionaryServiceFactory implements ServiceFactory<DictionaryServic
     /**
      * Connects to the DictionaryService using the specified Jersey client.  If you're writing a Dropwizard server,
      * use @{link JerseyClientFactory} to create the Jersey client.
+     *
+     * @param jerseyClient the jersey client
      */
     public DictionaryServiceFactory(Client jerseyClient) {
         _client = jerseyClient;

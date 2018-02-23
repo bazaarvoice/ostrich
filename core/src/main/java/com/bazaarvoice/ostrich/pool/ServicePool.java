@@ -39,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
@@ -48,7 +49,13 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Throwables.throwIfUnchecked;
 
+/**
+ * The type Service pool.
+ *
+ * @param <S> the type parameter
+ */
 class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
     private static final Logger LOG = LoggerFactory.getLogger(ServicePool.class);
 
@@ -78,6 +85,21 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
     private final Meter _numExecuteAttemptFailures;
     private final HealthCheckRetryDelay _healthCheckRetryDelay;
 
+    /**
+     * Instantiates a new Service pool.
+     *
+     * @param ticker                             the ticker
+     * @param hostDiscovery                      the host discovery
+     * @param cleanupHostDiscoveryOnClose        the cleanup host discovery on close
+     * @param serviceFactory                     the service factory
+     * @param cachingPolicy                      the caching policy
+     * @param partitionFilter                    the partition filter
+     * @param loadBalanceAlgorithm               the load balance algorithm
+     * @param healthCheckExecutor                the health check executor
+     * @param shutdownHealthCheckExecutorOnClose the shutdown health check executor on close
+     * @param healthCheckRetryDelay              the health check retry delay
+     * @param metrics                            the metrics
+     */
     ServicePool(Ticker ticker, HostDiscovery hostDiscovery, boolean cleanupHostDiscoveryOnClose,
                 ServiceFactory<S> serviceFactory, ServiceCachingPolicy cachingPolicy,
                 PartitionFilter partitionFilter, LoadBalanceAlgorithm loadBalanceAlgorithm,
@@ -92,7 +114,7 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
         _shutdownHealthCheckExecutorOnClose = shutdownHealthCheckExecutorOnClose;
         _badEndPoints = Maps.newConcurrentMap();
         _badEndPointFilter = Predicates.not(Predicates.in(_badEndPoints.keySet()));
-        _recentlyRemovedEndPoints = Sets.newSetFromMap(CacheBuilder.newBuilder()
+        _recentlyRemovedEndPoints = Collections.newSetFromMap(CacheBuilder.newBuilder()
                 .ticker(_ticker)
                 .expireAfterWrite(10, TimeUnit.MINUTES)  // TODO: Make this a constant
                 .<ServiceEndPoint, Boolean>build()
@@ -231,7 +253,8 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
 
                 // Don't retry if exception is too severe.
                 if (!isRetriableException(e)) {
-                    throw Throwables.propagate(e);
+                    throwIfUnchecked(e);
+                    throw new RuntimeException(e);
                 }
 
                 LOG.info("Retriable exception from end point: {}, {}", endPoint, e.toString());
@@ -256,8 +279,10 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
 
     /**
      * Determine the set of all {@link ServiceEndPoint}s.
-     * <p/>
+     *
      * NOTE: This method is package private specifically so that {@link AsyncServicePool} can call it.
+     *
+     * @return the all end points
      */
     Iterable<ServiceEndPoint> getAllEndPoints() {
         return _hostDiscovery.getHosts();
@@ -287,8 +312,14 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
 
     /**
      * Execute a callback on a specific end point.
-     * <p/>
+     *
      * NOTE: This method is package private specifically so that {@link AsyncServicePool} can call it.
+     *
+     * @param <R>      the type parameter
+     * @param endPoint the end point
+     * @param callback the callback
+     * @return the Result of execution
+     * @throws Exception the exception
      */
     <R> R executeOnEndPoint(ServiceEndPoint endPoint, ServiceCallback<S, R> callback)
             throws Exception {
@@ -334,6 +365,9 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
      * Check if an exception is retriable.
      * </p>
      * NOTE: This method is package private specifically so that {@link AsyncServicePool} can call it.
+     *
+     * @param exception the exception
+     * @return the boolean
      */
     boolean isRetriableException(Exception exception) {
         return _serviceFactory.isRetriableException(exception);
@@ -348,26 +382,51 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
         return _serviceFactory.getServiceName();
     }
 
+    /**
+     * Gets host discovery.
+     *
+     * @return the host discovery
+     */
     @VisibleForTesting
     HostDiscovery getHostDiscovery() {
         return _hostDiscovery;
     }
 
+    /**
+     * Gets partition filter.
+     *
+     * @return the partition filter
+     */
     @VisibleForTesting
     PartitionFilter getPartitionFilter() {
         return _partitionFilter;
     }
 
+    /**
+     * Gets load balance algorithm.
+     *
+     * @return the load balance algorithm
+     */
     @VisibleForTesting
     LoadBalanceAlgorithm getLoadBalanceAlgorithm() {
         return _loadBalanceAlgorithm;
     }
 
+    /**
+     * Gets service pool statistics.
+     *
+     * @return the service pool statistics
+     */
     @VisibleForTesting
     ServicePoolStatistics getServicePoolStatistics() {
         return _servicePoolStatistics;
     }
 
+    /**
+     * Gets bad end points.
+     *
+     * @return the bad end points
+     */
     @VisibleForTesting
     Set<ServiceEndPoint> getBadEndPoints() {
         return ImmutableSet.copyOf(_badEndPoints.keySet());
@@ -462,6 +521,12 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
         }
     }
 
+    /**
+     * Check health health check result.
+     *
+     * @param endPoint the end point
+     * @return the health check result
+     */
     @VisibleForTesting
     HealthCheckResult checkHealth(ServiceEndPoint endPoint) {
         // We have to be very careful to not allow any exceptions to make it out of of this method, if they do then
@@ -485,6 +550,9 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
                 : new FailedHealthCheckResult(endPoint.getId(), duration, exception);
     }
 
+    /**
+     * The type Health check verifier.
+     */
     @VisibleForTesting
     final class HealthCheckVerifier implements Runnable {
         @Override
@@ -499,6 +567,9 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
         }
     }
 
+    /**
+     * The type Health check.
+     */
     @VisibleForTesting
     final class HealthCheck implements Runnable {
         private final ServiceEndPoint _endPoint;
@@ -509,10 +580,18 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
         private boolean _scheduled;
         private boolean _running;
 
+        /**
+         * Instantiates a new Health check.
+         *
+         * @param endPoint the end point
+         */
         public HealthCheck(ServiceEndPoint endPoint) {
             _endPoint = endPoint;
         }
 
+        /**
+         * Start.
+         */
         public void start() {
             _lock.lock();
             try {
@@ -524,6 +603,11 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
             }
         }
 
+        /**
+         * Cancel.
+         *
+         * @param mayInterruptIfRunning the may interrupt if running
+         */
         public void cancel(boolean mayInterruptIfRunning) {
             _lock.lock();
             try {
@@ -538,6 +622,9 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
             }
         }
 
+        /**
+         * Verify scheduling.
+         */
         public void verifyScheduling() {
             _lock.lock();
             try {
@@ -598,6 +685,12 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
         private final String _endPointId;
         private final long _responseTimeInNanos;
 
+        /**
+         * Instantiates a new Successful health check result.
+         *
+         * @param endPointId          the end point id
+         * @param responseTimeInNanos the response time in nanos
+         */
         public SuccessfulHealthCheckResult(String endPointId, long responseTimeInNanos) {
             _endPointId = endPointId;
             _responseTimeInNanos = responseTimeInNanos;
@@ -631,12 +724,25 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
         private final long _responseTimeInNanos;
         private final Exception _exception;
 
+        /**
+         * Instantiates a new Failed health check result.
+         *
+         * @param endPointId          the end point id
+         * @param responseTimeInNanos the response time in nanos
+         * @param exception           the exception
+         */
         public FailedHealthCheckResult(String endPointId, long responseTimeInNanos, Exception exception) {
             _endPointId = endPointId;
             _responseTimeInNanos = responseTimeInNanos;
             _exception = exception;
         }
 
+        /**
+         * Instantiates a new Failed health check result.
+         *
+         * @param endPointId          the end point id
+         * @param responseTimeInNanos the response time in nanos
+         */
         public FailedHealthCheckResult(String endPointId, long responseTimeInNanos) {
             this(endPointId, responseTimeInNanos, null);
         }
@@ -656,6 +762,11 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
             return unit.convert(_responseTimeInNanos, TimeUnit.NANOSECONDS);
         }
 
+        /**
+         * Gets exception.
+         *
+         * @return the exception
+         */
         public Exception getException() {
             return _exception;
         }

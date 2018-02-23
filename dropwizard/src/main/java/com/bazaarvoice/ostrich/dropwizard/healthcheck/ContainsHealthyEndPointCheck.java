@@ -26,6 +26,7 @@ public class ContainsHealthyEndPointCheck extends HealthCheck {
      * healthy end point.
      *
      * @param pool The {@code ServicePool} to look for healthy end points in.
+     * @return the contains healthy end point check
      */
     public static ContainsHealthyEndPointCheck forPool(ServicePool<?> pool) {
         return new ContainsHealthyEndPointCheck(pool);
@@ -36,6 +37,7 @@ public class ContainsHealthyEndPointCheck extends HealthCheck {
      * it has at least one healthy end point.
      *
      * @param proxy The {@code ServicePoolProxy} containing the service pool to look for valid end points in.
+     * @return the contains healthy end point check
      */
     public static ContainsHealthyEndPointCheck forProxy(Object proxy) {
         return new ContainsHealthyEndPointCheck(ServicePoolProxies.getPool(proxy));

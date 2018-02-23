@@ -16,7 +16,7 @@ public class ServiceCachingPolicyBuilder {
     /**
      * Creates a ServiceCachingPolicy configured for multi threaded client strategy,
      * the {@link com.bazaarvoice.ostrich.pool.MultiThreadedClientServiceCache}
-     * <p/>
+     *
      * This policy returns true for useMultiThreadedClientPolicy() but throws
      * {@link java.lang.UnsupportedOperationException} for everything else
      *
@@ -78,7 +78,7 @@ public class ServiceCachingPolicyBuilder {
     /**
      * Set the maximum number of cached services instances for a single end point in the built policy. If never called,
      * the policy will allow growth bounded only by the {@link #withMaxNumServiceInstances maxNumServiceInstances}.
-     * <p/>
+     *
      * NOTE: The per end point maximum must be less than or equal to the total maximum, unless either is unbounded.
      *
      * @param maxNumServiceInstancesPerEndPoint The maximum number of service instances for one end point in the cache.

@@ -31,16 +31,21 @@ public interface ServiceCache<S> extends Closeable {
      * others
      *
      * @param handle The service handle that is being checked in
+     * @throws Exception the exception
      */
     void checkIn(ServiceHandle<S> handle) throws Exception;
 
     /**
+     * Gets num idle instances.
+     *
      * @param endPoint to find idle instance count for
      * @return number of registered service handles for the given endPoint
      */
     int getNumIdleInstances(ServiceEndPoint endPoint);
 
     /**
+     * Gets num active instances.
+     *
      * @param endPoint to find active instance count for
      * @return number of active service handles for a given endPoint
      */

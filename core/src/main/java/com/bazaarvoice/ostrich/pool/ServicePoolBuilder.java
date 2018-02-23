@@ -127,7 +127,7 @@ public class ServicePoolBuilder<S> {
 
     /**
      * Adds a {@code ScheduledExecutorService} instance to the builder for use in executing health checks.
-     * <p/>
+     *
      * Adding an executor is optional.  If one isn't specified then one will be created and used automatically.
      *
      * @param executor The {@code ScheduledExecutorService} to use
@@ -141,7 +141,7 @@ public class ServicePoolBuilder<S> {
     /**
      * Adds an {@code ExecutorService} instance to the builder for use in executing asynchronous requests. The executor
      * is not used unless an asynchronous pool is built with the {@link #buildAsync} method.
-     * <p/>
+     *
      * Adding an executor is optional.  If one isn't specified then one will be created and used automatically when
      * {@code buildAsync} is called.
      *
@@ -155,7 +155,7 @@ public class ServicePoolBuilder<S> {
 
     /**
      * Enables caching of service instances in the built {@link ServicePool}.
-     * <p/>
+     *
      * Specifying a caching policy is optional.  If one isn't specified then a default one that doesn't cache service
      * instances will be created and used automatically.
      *
@@ -279,7 +279,7 @@ public class ServicePoolBuilder<S> {
     /**
      * Builds a dynamic proxy that wraps a {@code ServicePool} and implements the service interface directly.  This is
      * appropriate for stateless services where it's sensible for the same retry policy to apply to every method.
-     * <p/>
+     *
      * It is the caller's responsibility to shutdown the service pool when they're done with it by casting the proxy
      * to {@link java.io.Closeable} and calling the {@link java.io.Closeable#close()} method.
      *
@@ -351,7 +351,7 @@ public class ServicePoolBuilder<S> {
     }
 
     private class ClosingHostDiscoverySource implements HostDiscoverySource {
-        private HostDiscoverySource _wrappedSource;
+        private final HostDiscoverySource _wrappedSource;
 
         public ClosingHostDiscoverySource(HostDiscoverySource wrappedSource) {
             _wrappedSource = wrappedSource;

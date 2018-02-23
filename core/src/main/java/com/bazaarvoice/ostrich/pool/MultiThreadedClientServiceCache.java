@@ -30,10 +30,10 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * A ServiceCache for "heavy weight" client instances, i.e. ones that are already thread safe.
  * Therefore unlike {@link com.bazaarvoice.ostrich.pool.SingleThreadedClientServiceCache}, we
  * can just map EndPoints to a single shared instance of a "heavy weight" client.
- * <p/>
+ *
  * This applies to third party client libraries for connecting to generic or specialized
  * services, i.e. {@code HttpClient}, {@code JestClient}, {@code ElasticSearchClient} etc.
- * <p/>
+ *
  * If your client library is multi-thread safe, this ServiceCache should provide better
  * performance than the {@link com.bazaarvoice.ostrich.pool.SingleThreadedClientServiceCache}.
  *
@@ -51,11 +51,11 @@ public class MultiThreadedClientServiceCache<S> implements ServiceCache<S> {
     /**
      * We want to be able to perform more than 300 checkOuts and checkIns per second.
      * Thus we would like those methods to use an un-synchronized / non-blocking Map implementation.
-     * <p/>
+     *
      * In order to do that we use a Copy-On-Write approach where all modifications
      * (new EndPoint, EndPoint goes away, etc) will create a new Map instance.  This is acceptable as
      * EndPoint addition / removal events are rare compared to checkIns and checkOuts.
-     * <p/>
+     *
      * Because we are changing the pointer that is "_instancesPerEndpoint", we have to use the volatile
      * keyword to force any thread that accesses the map to have the latest reference to it. There is a
      * performance penalty associated with volatile, but it is better than synchronization.
@@ -178,7 +178,7 @@ public class MultiThreadedClientServiceCache<S> implements ServiceCache<S> {
 
     /**
      * Mimics the behavior of a cache check in, actually a NO-OP.
-     * <p/>
+     *
      * Since the {@code MultiThreadedClientServiceCache} does not have multiple service handles for an endPoint
      *
      * @param handle The service handle that is being checked in.
@@ -191,7 +191,7 @@ public class MultiThreadedClientServiceCache<S> implements ServiceCache<S> {
 
     /**
      * Given an ServiceEndpoint return a ServiceHandle.
-     * <p/>
+     *
      * If a ServiceHandle does not exist for the given ServiceEndpoint, this method will
      * synchronously create one and return it.
      *

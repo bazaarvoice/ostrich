@@ -16,18 +16,45 @@ public final class PartitionContextBuilder {
 
     private final ImmutableMap.Builder<String, Object> _map = ImmutableMap.builder();
 
+    /**
+     * Empty partition context.
+     *
+     * @return the partition context
+     */
     public static PartitionContext empty() {
         return EMPTY;
     }
 
+    /**
+     * Of partition context.
+     *
+     * @param obj the obj
+     * @return the partition context
+     */
     public static PartitionContext of(Object obj) {
         return new Context(ImmutableMap.of("", obj));
     }
 
+    /**
+     * Of partition context.
+     *
+     * @param key   the key
+     * @param value the value
+     * @return the partition context
+     */
     public static PartitionContext of(String key, Object value) {
         return new Context(ImmutableMap.of(key, value));
     }
 
+    /**
+     * Of partition context.
+     *
+     * @param key1   the key 1
+     * @param value1 the value 1
+     * @param key2   the key 2
+     * @param value2 the value 2
+     * @return the partition context
+     */
     public static PartitionContext of(String key1, Object value1, String key2, Object value2) {
         return new Context(ImmutableMap.of(key1, value1, key2, value2));
     }
@@ -36,7 +63,9 @@ public final class PartitionContextBuilder {
      * Adds the specified key and value to the partition context.  Null keys or values and duplicate keys are not
      * allowed.
      *
-     * @return this
+     * @param key   the key
+     * @param value the value
+     * @return this partition context builder
      */
     public PartitionContextBuilder put(String key, Object value) {
         _map.put(key, value);
@@ -47,7 +76,8 @@ public final class PartitionContextBuilder {
      * Adds the specified keys and values to the partition context.  Null keys or values and duplicate keys are not
      * allowed.
      *
-     * @return this
+     * @param map the map
+     * @return this partition context builder
      */
     public PartitionContextBuilder putAll(Map<String, ?> map) {
         _map.putAll(map);
@@ -56,6 +86,8 @@ public final class PartitionContextBuilder {
 
     /**
      * Returns a newly-create immutable {@code PartitionContext}.
+     *
+     * @return the partition context
      */
     public PartitionContext build() {
         return new Context(_map.build());

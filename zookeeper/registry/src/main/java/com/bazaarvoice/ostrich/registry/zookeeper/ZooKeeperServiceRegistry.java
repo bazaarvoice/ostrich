@@ -36,7 +36,7 @@ public class ZooKeeperServiceRegistry implements ServiceRegistry
 {
     /**
      * The root path in ZooKeeper for where service registrations are stored.
-     * <p/>
+     *
      * WARNING: Do not modify this without also modifying the ALL of the corresponding paths in the service registry,
      * host discovery, and service discovery classes!!!
      */

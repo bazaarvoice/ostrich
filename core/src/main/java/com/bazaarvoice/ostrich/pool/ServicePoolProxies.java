@@ -18,6 +18,7 @@ public abstract class ServicePoolProxies {
 
     /**
      * Returns true if the specified object is a dynamic service proxy created by {@link ServicePoolBuilder#buildProxy}.
+     *
      * @param dynamicProxy An object that might be service dynamic proxy.
      * @return true if the specified object is a dynamic service proxy.
      */
@@ -27,8 +28,9 @@ public abstract class ServicePoolProxies {
 
     /**
      * Closes the service pool associated with the specified dynamic service proxy.
+     *
+     * @param <S>          The service interface type.
      * @param dynamicProxy A service pool dynamic proxy created by {@link ServicePoolBuilder#buildProxy}.
-     * @param <S> The service interface type.
      */
     public static <S> void close(S dynamicProxy) {
         // Use closeQuietly since ServicePool.close() doesn't throw IOException.
@@ -41,7 +43,11 @@ public abstract class ServicePoolProxies {
 
     /**
      * Gets the number of valid end points that the provided service pool knows about.
-     * @see ServicePool#getNumValidEndPoints()
+     *
+     * @param <S>          the type parameter
+     * @param dynamicProxy the dynamic proxy
+     * @return the num valid end points
+     * @see ServicePool#getNumValidEndPoints() ServicePool#getNumValidEndPoints()
      */
     public static <S> int getNumValidEndPoints(S dynamicProxy) {
         return getPool(dynamicProxy).getNumValidEndPoints();
@@ -49,7 +55,11 @@ public abstract class ServicePoolProxies {
 
     /**
      * Gets the number of bad end points that the provided service pool knows about.
-     * @see ServicePool#getNumBadEndPoints()
+     *
+     * @param <S>          the type parameter
+     * @param dynamicProxy the dynamic proxy
+     * @return the num bad end points
+     * @see ServicePool#getNumBadEndPoints() ServicePool#getNumBadEndPoints()
      */
     public static <S> int getNumBadEndPoints(S dynamicProxy) {
         return getPool(dynamicProxy).getNumBadEndPoints();
@@ -57,11 +67,11 @@ public abstract class ServicePoolProxies {
 
     /**
      * Finds a healthy end point in the pool and provides the result of the health check that showed it to be healthy.
-     * @see com.bazaarvoice.ostrich.ServicePool#checkForHealthyEndPoint
+     *
+     * @param <S>          The service interface type.
      * @param dynamicProxy A service pool dynamic proxy created by {@link ServicePoolBuilder#buildProxy}.
-     * @param <S> The service interface type.
-     * @return {@code HealthCheckResults} with the first healthy end point found, or a {@code HealthCheckResults}
-     * containing all failed {@code HealthCheckResult}s encountered if no healthy end points exist.
+     * @return {@code HealthCheckResults} with the first healthy end point found, or a {@code HealthCheckResults} containing all failed {@code HealthCheckResult}s encountered if no healthy end points exist.
+     * @see com.bazaarvoice.ostrich.ServicePool#checkForHealthyEndPoint com.bazaarvoice.ostrich.ServicePool#checkForHealthyEndPoint
      */
     public static <S> HealthCheckResults checkForHealthyEndPoint(S dynamicProxy) {
         return getPool(dynamicProxy).checkForHealthyEndPoint();
@@ -71,8 +81,9 @@ public abstract class ServicePoolProxies {
      * Returns the {@link com.bazaarvoice.ostrich.ServicePool} used by the specified dynamic service proxy.  This can be
      * used for various reasons, including making a service call using non-standard retry parameters or getting access
      * to service pool statistics.
+     *
+     * @param <S>          The service interface type.
      * @param dynamicProxy A service pool dynamic proxy created by {@link ServicePoolBuilder#buildProxy}.
-     * @param <S> The service interface type.
      * @return The {@link com.bazaarvoice.ostrich.ServicePool} used by the specified dynamic service proxy.
      */
     public static <S> com.bazaarvoice.ostrich.ServicePool<S> getPool(S dynamicProxy) {

@@ -18,7 +18,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * A thin wrapper implementation around Yammer Metrics for use by SOA.  This wrapper adds the following functionality:
- * <p/>
+ *
  * The ability to control what {@link MetricRegistry} instance is used for SOA metrics via the constructor.  This gives
  * us the ability in the future to isolate the SOA metrics from the end user's application metrics as well as publish
  * them somewhere differently from the end user's application metrics.
@@ -27,6 +27,10 @@ public abstract class Metrics implements Closeable {
     /**
      * Create a metrics instance that corresponds to a class.  This is useful for cases where a single instance handles
      * many different services at the same time.  For example a ServiceRegistry.
+     *
+     * @param metrics the metrics
+     * @param cls     the class
+     * @return the class metrics
      */
     public static ClassMetrics forClass(MetricRegistry metrics, Class<?> cls) {
         return new ClassMetrics(metrics, cls);
@@ -35,23 +39,46 @@ public abstract class Metrics implements Closeable {
     /**
      * Create a metrics instance that corresponds to a single instance of a class.  This is useful for cases where there
      * exists one instance per service.  For example in a ServicePool.
+     *
+     * @param metrics     the metrics
+     * @param instance    the instance
+     * @param serviceName the service name
+     * @return the instance metrics
      */
     public static InstanceMetrics forInstance(MetricRegistry metrics, Object instance, String serviceName) {
         return new InstanceMetrics(metrics, instance, serviceName);
     }
 
+    /**
+     * The type Class metrics.
+     */
     public static final class ClassMetrics implements Closeable {
         private final MetricRegistry _metrics;
         private final Class<?> _class;
         private final String _prefix;
         private final Set<String> _names = Sets.newHashSet();
 
+        /**
+         * Instantiates a new Class metrics.
+         *
+         * @param metrics the metrics
+         * @param cls     the cls
+         */
         ClassMetrics(MetricRegistry metrics, Class<?> cls) {
             _metrics = checkNotNull(metrics);
             _class = checkNotNull(cls);
             _prefix = MetricRegistry.name(_class);
         }
 
+        /**
+         * Gauge gauge.
+         *
+         * @param <T>         the type parameter
+         * @param serviceName the service name
+         * @param name        the name
+         * @param metric      the metric
+         * @return the gauge
+         */
         public synchronized <T> Gauge<T> gauge(String serviceName, String name, Gauge<T> metric) {
             checkNotNullOrEmpty(serviceName);
             checkNotNullOrEmpty(name);
@@ -59,24 +86,52 @@ public abstract class Metrics implements Closeable {
             return _metrics.register(name(serviceName, name), metric);
         }
 
+        /**
+         * Counter counter.
+         *
+         * @param serviceName the service name
+         * @param name        the name
+         * @return the counter
+         */
         public synchronized Counter counter(String serviceName, String name) {
             checkNotNullOrEmpty(serviceName);
             checkNotNullOrEmpty(name);
             return _metrics.counter(name(serviceName, name));
         }
 
+        /**
+         * Histogram histogram.
+         *
+         * @param serviceName the service name
+         * @param name        the name
+         * @return the histogram
+         */
         public synchronized Histogram histogram(String serviceName, String name) {
             checkNotNullOrEmpty(serviceName);
             checkNotNullOrEmpty(name);
             return _metrics.histogram(name(serviceName, name));
         }
 
+        /**
+         * Meter meter.
+         *
+         * @param serviceName the service name
+         * @param name        the name
+         * @return the meter
+         */
         public synchronized Meter meter(String serviceName, String name) {
             checkNotNullOrEmpty(serviceName);
             checkNotNullOrEmpty(name);
             return _metrics.meter(name(serviceName, name));
         }
 
+        /**
+         * Timer timer.
+         *
+         * @param serviceName the service name
+         * @param name        the name
+         * @return the timer
+         */
         public synchronized Timer timer(String serviceName, String name) {
             checkNotNullOrEmpty(serviceName);
             checkNotNullOrEmpty(name);
@@ -91,6 +146,13 @@ public abstract class Metrics implements Closeable {
             _names.clear();
         }
 
+        /**
+         * Name string.
+         *
+         * @param serviceName the service name
+         * @param name        the name
+         * @return the string
+         */
         @VisibleForTesting
         String name(String serviceName, String name) {
             String fullName = MetricRegistry.name(_prefix, serviceName, name);
@@ -99,6 +161,9 @@ public abstract class Metrics implements Closeable {
         }
     }
 
+    /**
+     * The type Instance metrics.
+     */
     public static class InstanceMetrics implements Closeable {
         private final MetricRegistry _metrics;
         private final Object _instance;
@@ -109,6 +174,13 @@ public abstract class Metrics implements Closeable {
         private final Counter _instanceCounter;
         private final Set<String> _names = Sets.newHashSet();
 
+        /**
+         * Instantiates a new Instance metrics.
+         *
+         * @param metrics     the metrics
+         * @param instance    the instance
+         * @param serviceName the service name
+         */
         InstanceMetrics(MetricRegistry metrics, Object instance, String serviceName) {
             _metrics = checkNotNull(metrics);
             _instance = checkNotNull(instance);
@@ -119,6 +191,14 @@ public abstract class Metrics implements Closeable {
             _instanceCounter.inc();
         }
 
+        /**
+         * Gauge gauge.
+         *
+         * @param <T>   the type parameter
+         * @param name  the name
+         * @param gauge the gauge
+         * @return the gauge
+         */
         @SuppressWarnings("unchecked")
         public synchronized <T> Gauge<T> gauge(String name, Gauge<T> gauge) {
             checkNotNullOrEmpty(name);
@@ -135,21 +215,45 @@ public abstract class Metrics implements Closeable {
             return metric;
         }
 
+        /**
+         * Counter counter.
+         *
+         * @param name the name
+         * @return the counter
+         */
         public synchronized Counter counter(String name) {
             checkNotNullOrEmpty(name);
             return _metrics.counter(name(name));
         }
 
+        /**
+         * Histogram histogram.
+         *
+         * @param name the name
+         * @return the histogram
+         */
         public synchronized Histogram histogram(String name) {
             checkNotNullOrEmpty(name);
             return _metrics.histogram(name(name));
         }
 
+        /**
+         * Meter meter.
+         *
+         * @param name the name
+         * @return the meter
+         */
         public synchronized Meter meter(String name) {
             checkNotNullOrEmpty(name);
             return _metrics.meter(name(name));
         }
 
+        /**
+         * Timer timer.
+         *
+         * @param name the name
+         * @return the timer
+         */
         public synchronized Timer timer(String name) {
             checkNotNullOrEmpty(name);
             return _metrics.timer(name(name));
@@ -167,12 +271,23 @@ public abstract class Metrics implements Closeable {
             }
             _names.clear();
         }
-        
+
+        /**
+         * Gets instance counter.
+         *
+         * @return the instance counter
+         */
         @VisibleForTesting
         Counter getInstanceCounter() {
             return _instanceCounter;
         }
 
+        /**
+         * Name string.
+         *
+         * @param name the name
+         * @return the string
+         */
         @VisibleForTesting
         String name(String name) {
             String fullName = MetricRegistry.name(_prefix, _serviceName, name);

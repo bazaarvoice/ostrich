@@ -15,7 +15,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * The <code>ServiceDiscovery</code> class encapsulates a ZooKeeper backed NodeDiscovery which watches the root service
  * path in ZooKeeper and will monitor which services are known to exist.  As services come and go the results of calling
  * the <code>#getServices</code> method will change.
- * <p/>
+ *
  * NOTE: It's possible that a returned service doesn't have any {@code ServiceEndPoint} instances currently registered.
  * This class only watches the root service path's child nodes -- it doesn't make sure that a service has child nodes
  * of its own.
@@ -23,7 +23,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class ZooKeeperServiceDiscovery implements ServiceDiscovery {
     /**
      * The root path in ZooKeeper for where service registrations are stored.
-     * <p/>
+     *
      * WARNING: Do not modify this without also modifying the ALL of the corresponding paths in the service registry,
      * host discovery, and service discovery classes!!!
      */
@@ -47,7 +47,7 @@ public class ZooKeeperServiceDiscovery implements ServiceDiscovery {
     private final NodeDiscovery<String> _nodeDiscovery;
 
     public ZooKeeperServiceDiscovery(CuratorFramework curator) {
-        this(new NodeDiscovery<String>(curator, ROOT_SERVICES_PATH, SERVICE_NAME_PARSER));
+        this(new NodeDiscovery<>(curator, ROOT_SERVICES_PATH, SERVICE_NAME_PARSER));
     }
 
     @VisibleForTesting

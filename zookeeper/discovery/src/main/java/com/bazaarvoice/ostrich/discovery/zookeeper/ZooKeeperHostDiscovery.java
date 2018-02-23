@@ -15,13 +15,13 @@ import com.google.common.collect.ConcurrentHashMultiset;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multiset;
-import com.google.common.collect.Sets;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.utils.ZKPaths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -37,7 +37,7 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
 
     /**
      * The root path in ZooKeeper for where service registrations are stored.
-     * <p/>
+     *
      * WARNING: Do not modify this without also modifying the ALL of the corresponding paths in the service registry,
      * host discovery, and service discovery classes!!!
      */
@@ -69,7 +69,7 @@ public class ZooKeeperHostDiscovery implements HostDiscovery {
 
         String servicePath = makeServicePath(serviceName);
 
-        _listeners = Sets.newSetFromMap(Maps.<EndPointListener, Boolean>newConcurrentMap());
+        _listeners = Collections.newSetFromMap(Maps.<EndPointListener, Boolean>newConcurrentMap());
         _endPoints = ConcurrentHashMultiset.create();
 
         _nodeDiscovery = factory.create(

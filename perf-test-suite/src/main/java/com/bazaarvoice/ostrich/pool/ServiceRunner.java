@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * This needs to be in the com.bazaarvoice.ostrich.pool package so that it can have direct access to ServiceCache
- * <p/>
+ *
  * This instantiates a service cache, creates threads to run test on and exposes various metrics for monitoring
  */
 @SuppressWarnings ("deprecation")

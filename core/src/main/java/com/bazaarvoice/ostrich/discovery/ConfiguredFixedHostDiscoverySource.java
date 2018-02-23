@@ -18,6 +18,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * To make this directly configurable via a Dropwizard YAML configuration file, subclass this class, provide a concrete
  * Payload class implementation that the Dropwizard YAML parser can use to construct the Map constructor argument, and
  * mark the single argument constructor with @JsonCreator.
+ *
+ * @param <Payload> the type parameter
  */
 public class ConfiguredFixedHostDiscoverySource<Payload> implements HostDiscoverySource {
     /** Map of end point id to payload data. */
@@ -34,6 +36,8 @@ public class ConfiguredFixedHostDiscoverySource<Payload> implements HostDiscover
     /**
      * Creates a {@link HostDiscoverySource} that, if the map is non-empty, can override other host discovery sources
      * such as ZooKeeper with a fixed set of end points.
+     *
+     * @param endPoints the end points
      */
     public ConfiguredFixedHostDiscoverySource(Map<String, Payload> endPoints) {
         _endPoints = checkNotNull(endPoints);
@@ -60,6 +64,11 @@ public class ConfiguredFixedHostDiscoverySource<Payload> implements HostDiscover
 
     /**
      * Subclasses may override this to customize the persistent format of the payload.
+     *
+     * @param serviceName the service name
+     * @param id          the id
+     * @param payload     the payload
+     * @return the string
      */
     @SuppressWarnings("UnusedParameters")
     protected String serialize(String serviceName, String id, Payload payload) {
