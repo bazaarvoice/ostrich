@@ -9,6 +9,7 @@ import com.google.common.collect.Maps;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -37,6 +38,9 @@ class AnnotationPartitionContextSupplier implements PartitionContextSupplier {
 
         ImmutableMap.Builder<Method, String[]> builder = ImmutableMap.builder();
         for (Method ifcMethod : ifc.getMethods()) {
+            if (Modifier.isStatic(ifcMethod.getModifiers())) {
+                continue; // Static methods of ifc aren't members of impl.
+            }
             Method implMethod;
             try {
                 implMethod = impl.getMethod(ifcMethod.getName(), ifcMethod.getParameterTypes());

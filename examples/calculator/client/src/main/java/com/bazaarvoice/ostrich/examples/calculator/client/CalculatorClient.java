@@ -1,8 +1,8 @@
 package com.bazaarvoice.ostrich.examples.calculator.client;
 
 import com.bazaarvoice.ostrich.ServiceEndPoint;
-import com.sun.jersey.api.client.Client;
 
+import javax.ws.rs.client.Client;
 import javax.ws.rs.core.UriBuilder;
 import java.net.URI;
 
@@ -42,7 +42,12 @@ public class CalculatorClient implements CalculatorService {
     }
 
     private int call(String op, int a, int b) {
-        URI uri = _service.clone().segment(op, Integer.toString(a), Integer.toString(b)).build();
-        return _client.resource(uri).get(Integer.class);
+        return _client
+                .target(_service)
+                .path(op)
+                .path(Integer.toString(a))
+                .path(Integer.toString(b))
+                .request()
+                .get(Integer.class);
     }
 }
