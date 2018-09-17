@@ -69,6 +69,6 @@ public class CalculatorServiceFactory implements ServiceFactory<CalculatorServic
         Response response = _client.target(adminUrl).path("/healthcheck").request().method("HEAD");
         int status = response.getStatus();
         response.close();
-        return status == 200;
+        return status == Response.Status.OK.getStatusCode();
     }
 }

@@ -71,6 +71,6 @@ public class DictionaryServiceFactory implements ServiceFactory<DictionaryServic
         Response response = _client.target(adminUrl).path("/healthcheck").request().method("HEAD");
         int status = response.getStatus();
         response.close();
-        return status == 200;
+        return status == Response.Status.OK.getStatusCode();
     }
 }
