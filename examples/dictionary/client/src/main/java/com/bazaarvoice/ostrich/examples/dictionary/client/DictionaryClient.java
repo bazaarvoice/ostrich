@@ -2,10 +2,9 @@ package com.bazaarvoice.ostrich.examples.dictionary.client;
 
 import com.bazaarvoice.ostrich.ServiceEndPoint;
 import com.bazaarvoice.ostrich.partition.PartitionKey;
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.UniformInterfaceException;
 
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.client.Client;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 import java.net.URI;
@@ -29,19 +28,24 @@ public class DictionaryClient implements DictionaryService {
     public boolean contains(@PartitionKey String word) {
         try {
             URI uri = _service.clone().segment("contains", word).build();
-            return _client.resource(uri).get(Boolean.class);
-        } catch (UniformInterfaceException e) {
+            return _client
+                    .target(_service)
+                    .path("contains")
+                    .path(word)
+                    .request()
+                    .get(Boolean.class);
+        } catch (WebApplicationException e) {
             throw convertException(e);
         }
     }
 
-    private RuntimeException convertException(UniformInterfaceException e) {
-        ClientResponse response = e.getResponse();
-        String exceptionType = response.getHeaders().getFirst("X-BV-Exception");
+    private RuntimeException convertException(WebApplicationException e) {
+        Response response = e.getResponse();
+        String exceptionType = response.getStringHeaders().getFirst("X-BV-Exception");
 
         if (response.getStatus() == Response.Status.BAD_REQUEST.getStatusCode() &&
                 IllegalArgumentException.class.getName().equals(exceptionType)) {
-            return new IllegalArgumentException(response.getEntity(String.class), e);
+            return new IllegalArgumentException(response.readEntity(String.class), e);
         }
         return e;
     }

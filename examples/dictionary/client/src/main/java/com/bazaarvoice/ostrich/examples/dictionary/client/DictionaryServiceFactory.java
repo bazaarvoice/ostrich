@@ -4,21 +4,13 @@ import com.bazaarvoice.ostrich.ServiceEndPoint;
 import com.bazaarvoice.ostrich.ServiceFactory;
 import com.bazaarvoice.ostrich.pool.ServicePoolBuilder;
 import com.codahale.metrics.MetricRegistry;
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.ClientHandlerException;
-import com.sun.jersey.api.client.UniformInterfaceException;
-import com.sun.jersey.client.apache4.ApacheHttpClient4;
-import com.sun.jersey.client.apache4.ApacheHttpClient4Handler;
-import com.sun.jersey.client.apache4.config.ApacheHttpClient4Config;
-import com.sun.jersey.client.apache4.config.DefaultApacheHttpClient4Config;
-import io.dropwizard.client.HttpClientBuilder;
-import io.dropwizard.client.HttpClientConfiguration;
-import io.dropwizard.jackson.Jackson;
-import io.dropwizard.jersey.jackson.JacksonMessageBodyProvider;
-import org.apache.http.client.HttpClient;
+import io.dropwizard.client.JerseyClientBuilder;
+import io.dropwizard.client.JerseyClientConfiguration;
 
-import javax.validation.Validation;
-import javax.validation.Validator;
+import javax.ws.rs.ProcessingException;
+import javax.ws.rs.ServerErrorException;
+import javax.ws.rs.client.Client;
+import javax.ws.rs.core.Response;
 import java.net.URI;
 
 public class DictionaryServiceFactory implements ServiceFactory<DictionaryService> {
@@ -27,7 +19,7 @@ public class DictionaryServiceFactory implements ServiceFactory<DictionaryServic
     /**
      * Connects to the DictionaryService using the Apache commons http client library.
      */
-    public DictionaryServiceFactory(HttpClientConfiguration configuration, MetricRegistry metrics) {
+    public DictionaryServiceFactory(JerseyClientConfiguration configuration, MetricRegistry metrics) {
         this(createDefaultJerseyClient(configuration, metrics));
     }
 
@@ -39,14 +31,9 @@ public class DictionaryServiceFactory implements ServiceFactory<DictionaryServic
         _client = jerseyClient;
     }
 
-    private static ApacheHttpClient4 createDefaultJerseyClient(HttpClientConfiguration configuration,
+    private static Client createDefaultJerseyClient(JerseyClientConfiguration configuration,
                                                                MetricRegistry metrics) {
-        HttpClient httpClient = new HttpClientBuilder(metrics).using(configuration).build("dictionary");
-        ApacheHttpClient4Handler handler = new ApacheHttpClient4Handler(httpClient, null, true);
-        ApacheHttpClient4Config config = new DefaultApacheHttpClient4Config();
-        Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
-        config.getSingletons().add(new JacksonMessageBodyProvider(Jackson.newObjectMapper(), validator));
-        return new ApacheHttpClient4(handler, config);
+        return new JerseyClientBuilder(metrics).using(configuration).build("dictionary");
     }
 
     @Override
@@ -73,15 +60,17 @@ public class DictionaryServiceFactory implements ServiceFactory<DictionaryServic
 
     @Override
     public boolean isRetriableException(Exception exception) {
-        // Try another server if network error (ClientHandlerException) or 5xx response code (UniformInterfaceException)
-        return exception instanceof ClientHandlerException ||
-                (exception instanceof UniformInterfaceException &&
-                        ((UniformInterfaceException) exception).getResponse().getStatus() >= 500);
+        // Try another server if network error or parsing error (ProcessingException)
+        // or 5xx response code (ServerErrorException)
+        return exception instanceof ProcessingException || exception instanceof ServerErrorException;
     }
 
     @Override
     public boolean isHealthy(ServiceEndPoint endPoint) {
         URI adminUrl = Payload.valueOf(endPoint.getPayload()).getAdminUrl();
-        return _client.resource(adminUrl).path("/healthcheck").head().getStatus() == 200;
+        Response response = _client.target(adminUrl).path("/healthcheck").request().method("HEAD");
+        int status = response.getStatus();
+        response.close();
+        return status == Response.Status.OK.getStatusCode();
     }
 }

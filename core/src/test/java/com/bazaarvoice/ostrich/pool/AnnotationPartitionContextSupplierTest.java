@@ -138,6 +138,13 @@ public class AnnotationPartitionContextSupplierTest {
         assertEquals(ImmutableMap.<String, Object>of("", "value"), partitionContext.asMap());
     }
 
+    @Test
+    public void testStaticMethod() throws Exception {
+        PartitionContextSupplier contextSupplier =
+                new AnnotationPartitionContextSupplier(MyServiceImpl.class, MyExtendedServiceImpl.class);
+        assertTrue(contextSupplier.forCall(MyServiceImpl.class.getMethod("staticMethod")).asMap().isEmpty());
+    }
+
     private static interface MyService {
         void noArgs();
         void unnamed(String string);
@@ -155,6 +162,8 @@ public class AnnotationPartitionContextSupplierTest {
     }
 
     private static class MyServiceImpl implements MyService {
+        // Java 8+ interfaces support static methods, but test on a class for Java 7 compatibility.
+        public static void staticMethod() {}
         @Override
         public void noArgs() {}
         @Override

@@ -6,14 +6,8 @@
 >
     <suppress>
         <notes><![CDATA[
-   file name: jackson-datatype-jdk7-2.6.7.jar
-   ]]></notes>
-        <cve>CVE-2016-7051</cve>
-    </suppress>
-    <suppress>
-        <notes><![CDATA[
-   file name: jackson-datatype-jdk7-2.6.7.jar
-   ]]></notes>
-        <cve>CVE-2016-3720</cve>
+    file name: curator-framework-2.12.0.jar
+    ]]></notes>
+        <cve>CVE-2016-5017</cve>
     </suppress>
 </suppressions>
