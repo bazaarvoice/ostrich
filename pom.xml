@@ -86,6 +86,16 @@
                         <showDeprecation>true</showDeprecation>
                     </configuration>
                 </plugin>
+
+                <!-- Turn off doclint for now until we can update everything -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>3.0.1</version>
+                    <configuration>
+                        <doclint>none</doclint>
+                    </configuration>
+                </plugin>
             </plugins>
         </pluginManagement>
     </build>
