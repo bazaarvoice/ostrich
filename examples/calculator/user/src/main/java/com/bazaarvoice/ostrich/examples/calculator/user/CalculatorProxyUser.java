@@ -15,6 +15,7 @@ import com.google.common.io.Closeables;
 import io.dropwizard.client.JerseyClientConfiguration;
 import io.dropwizard.configuration.ConfigurationException;
 import io.dropwizard.configuration.ConfigurationFactory;
+import io.dropwizard.configuration.YamlConfigurationFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.util.JarLocation;
 import net.sourceforge.argparse4j.ArgumentParsers;
@@ -122,7 +123,7 @@ public class CalculatorProxyUser {
     private static CalculatorConfiguration loadConfigFile(String configFile) throws IOException,
             ConfigurationException {
         Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
-        ConfigurationFactory<CalculatorConfiguration> configFactory = new ConfigurationFactory<>(
+        ConfigurationFactory<CalculatorConfiguration> configFactory = new YamlConfigurationFactory<>(
                 CalculatorConfiguration.class, validator, Jackson.newObjectMapper(), "calculator"
         );
         if (configFile != null) {

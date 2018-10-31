@@ -20,6 +20,7 @@ import com.google.common.io.LineProcessor;
 import io.dropwizard.client.JerseyClientConfiguration;
 import io.dropwizard.configuration.ConfigurationException;
 import io.dropwizard.configuration.ConfigurationFactory;
+import io.dropwizard.configuration.YamlConfigurationFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.util.JarLocation;
 import net.sourceforge.argparse4j.ArgumentParsers;
@@ -141,7 +142,7 @@ public class DictionaryUser {
     private static DictionaryConfiguration loadConfigFile(String configFile)
             throws IOException, ConfigurationException {
         Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
-        ConfigurationFactory<DictionaryConfiguration> configFactory = new ConfigurationFactory<>(
+        ConfigurationFactory<DictionaryConfiguration> configFactory = new YamlConfigurationFactory<>(
                 DictionaryConfiguration.class, validator, Jackson.newObjectMapper(), "dictionary"
         );
         if (configFile != null) {

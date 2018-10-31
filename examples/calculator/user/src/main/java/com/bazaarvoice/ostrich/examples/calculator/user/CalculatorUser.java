@@ -1,12 +1,10 @@
 package com.bazaarvoice.ostrich.examples.calculator.user;
 
-import com.bazaarvoice.ostrich.ServiceCallback;
 import com.bazaarvoice.ostrich.ServicePool;
 import com.bazaarvoice.ostrich.discovery.zookeeper.ZooKeeperHostDiscovery;
 import com.bazaarvoice.ostrich.dropwizard.healthcheck.ContainsHealthyEndPointCheck;
 import com.bazaarvoice.ostrich.examples.calculator.client.CalculatorService;
 import com.bazaarvoice.ostrich.examples.calculator.client.CalculatorServiceFactory;
-import com.bazaarvoice.ostrich.exceptions.ServiceException;
 import com.bazaarvoice.ostrich.pool.ServiceCachingPolicy;
 import com.bazaarvoice.ostrich.pool.ServiceCachingPolicyBuilder;
 import com.bazaarvoice.ostrich.pool.ServicePoolBuilder;
@@ -17,6 +15,7 @@ import com.google.common.io.Closeables;
 import io.dropwizard.client.JerseyClientConfiguration;
 import io.dropwizard.configuration.ConfigurationException;
 import io.dropwizard.configuration.ConfigurationFactory;
+import io.dropwizard.configuration.YamlConfigurationFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.util.JarLocation;
 import net.sourceforge.argparse4j.ArgumentParsers;
@@ -52,12 +51,7 @@ public class CalculatorUser {
                 final int b = 1 + _random.nextInt(9);
                 final int op = _random.nextInt(4);
                 int result = _calculatorPool.execute(new ExponentialBackoffRetry(5, 50, 1000, TimeUnit.MILLISECONDS),
-                        new ServiceCallback<CalculatorService, Integer>() {
-                            @Override
-                            public Integer call(CalculatorService service) throws ServiceException {
-                                return CalculatorUser.this.call(service, op, a, b);
-                            }
-                        });
+                        service -> CalculatorUser.this.call(service, op, a, b));
                 LOG.info("i:{}, result:{}", i, result);
             } catch (Exception e) {
                 LOG.warn("i:{}, {}", i, e);
@@ -126,7 +120,7 @@ public class CalculatorUser {
     private static CalculatorConfiguration loadConfigFile(String configFile)
             throws IOException, ConfigurationException {
         Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
-        ConfigurationFactory<CalculatorConfiguration> configFactory = new ConfigurationFactory<>(
+        ConfigurationFactory<CalculatorConfiguration> configFactory = new YamlConfigurationFactory<>(
                 CalculatorConfiguration.class, validator, Jackson.newObjectMapper(), "calculator"
         );
         if (configFile != null) {
