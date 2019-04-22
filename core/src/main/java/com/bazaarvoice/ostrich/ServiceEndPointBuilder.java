@@ -5,6 +5,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 
 import java.util.Objects;
+import java.util.StringJoiner;
 
 public class ServiceEndPointBuilder {
     // Service names and versions have a restricted set of valid characters in them for simplicity.  These are the
@@ -87,10 +88,10 @@ public class ServiceEndPointBuilder {
 
             @Override
             public String toString() {
-                return com.google.common.base.Objects.toStringHelper("ServiceEndPoint")
-                        .add("name", serviceName)
-                        .add("id", id)
-                        .add("payload", payload)
+                return new StringJoiner(", ", ServiceEndPoint.class.getSimpleName() + "{", "}")
+                        .add("name=" + _serviceName)
+                        .add("id=" + _id)
+                        .add("payload=" + _payload)
                         .toString();
             }
         };

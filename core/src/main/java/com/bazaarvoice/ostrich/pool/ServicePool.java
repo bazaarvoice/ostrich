@@ -25,7 +25,6 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Objects;
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import com.google.common.base.Throwables;
@@ -40,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -620,8 +620,8 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
 
         @Override
         public String toString() {
-            return Objects.toStringHelper(this)
-                    .add("endPointId", _endPointId)
+            return new StringJoiner(", ", SuccessfulHealthCheckResult.class.getSimpleName() + "{", "}")
+                    .add("endPointId=" + _endPointId)
                     .toString();
         }
     }
@@ -662,9 +662,9 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
 
         @Override
         public String toString() {
-            return Objects.toStringHelper(this)
-                    .add("endPointId", _endPointId)
-                    .add("exception", _exception)
+            return new StringJoiner(", ", FailedHealthCheckResult.class.getSimpleName() + "{", "}")
+                    .add("endPointId=" + _endPointId)
+                    .add("exception=" + _exception)
                     .toString();
         }
     }
