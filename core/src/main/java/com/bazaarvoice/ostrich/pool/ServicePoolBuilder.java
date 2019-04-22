@@ -336,7 +336,8 @@ public class ServicePoolBuilder<S> {
                 _closeHostDiscovery = false;
             }
 
-            throw Throwables.propagate(t);
+            Throwables.throwIfUnchecked(t);
+            throw new RuntimeException(t);
         }
     }
 

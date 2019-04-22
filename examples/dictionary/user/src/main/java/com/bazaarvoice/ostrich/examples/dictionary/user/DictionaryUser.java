@@ -50,10 +50,10 @@ public class DictionaryUser {
 
     public void spellCheck(File file) throws IOException {
         LOG.info("Spell checking file: {}", file);
-        Files.readLines(file, Charsets.UTF_8, new LineProcessor<Void>() {
+        Files.asCharSource(file, Charsets.UTF_8).readLines(new LineProcessor<Void>() {
             @Override
             public boolean processLine(String line) throws IOException {
-                for (String word : Splitter.on(CharMatcher.WHITESPACE).split(line)) {
+                for (String word : Splitter.on(CharMatcher.whitespace()).split(line)) {
                     // Discard punctuation, numbers, etc.
                     word = LETTER.retainFrom(word);
                     if (!word.isEmpty()) {

@@ -38,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentMap;
@@ -92,7 +93,7 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
         _shutdownHealthCheckExecutorOnClose = shutdownHealthCheckExecutorOnClose;
         _badEndPoints = Maps.newConcurrentMap();
         _badEndPointFilter = Predicates.not(Predicates.in(_badEndPoints.keySet()));
-        _recentlyRemovedEndPoints = Sets.newSetFromMap(CacheBuilder.newBuilder()
+        _recentlyRemovedEndPoints = Collections.newSetFromMap(CacheBuilder.newBuilder()
                 .ticker(_ticker)
                 .expireAfterWrite(10, TimeUnit.MINUTES)  // TODO: Make this a constant
                 .<ServiceEndPoint, Boolean>build()
@@ -231,7 +232,8 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
 
                 // Don't retry if exception is too severe.
                 if (!isRetriableException(e)) {
-                    throw Throwables.propagate(e);
+                    Throwables.throwIfUnchecked(e);
+                    throw new RuntimeException(e);
                 }
 
                 LOG.info("Retriable exception from end point: {}, {}", endPoint, e.toString());
@@ -504,7 +506,7 @@ class ServicePool<S> implements com.bazaarvoice.ostrich.ServicePool<S> {
         private final ServiceEndPoint _endPoint;
         private final Lock _lock = new ReentrantLock();
         private int _count = 0;
-        private Future _future;
+        private Future<?> _future;
         private boolean _cancelled;
         private boolean _scheduled;
         private boolean _running;

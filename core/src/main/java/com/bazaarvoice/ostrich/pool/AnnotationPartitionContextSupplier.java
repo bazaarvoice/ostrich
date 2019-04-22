@@ -3,7 +3,6 @@ package com.bazaarvoice.ostrich.pool;
 import com.bazaarvoice.ostrich.PartitionContext;
 import com.bazaarvoice.ostrich.PartitionContextBuilder;
 import com.bazaarvoice.ostrich.partition.PartitionKey;
-import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 
@@ -45,7 +44,7 @@ class AnnotationPartitionContextSupplier implements PartitionContextSupplier {
             try {
                 implMethod = impl.getMethod(ifcMethod.getName(), ifcMethod.getParameterTypes());
             } catch (NoSuchMethodException e) {
-                throw Throwables.propagate(e);  // Should never happen if impl implements ifc.
+                throw new RuntimeException(e);  // Should never happen if impl implements ifc.
             }
 
             String[] keyMappings = collectPartitionKeyAnnotations(implMethod);
