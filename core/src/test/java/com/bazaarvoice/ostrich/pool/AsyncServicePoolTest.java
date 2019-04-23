@@ -94,7 +94,7 @@ public class AsyncServicePoolTest {
     @Test
     public void testExecutesCallbackInPool() {
         // Use a real executor so that it can actually call into the callback
-        AsyncServicePool<Service> pool = newAsyncPool(MoreExecutors.sameThreadExecutor());
+        AsyncServicePool<Service> pool = newAsyncPool(MoreExecutors.newDirectExecutorService());
 
         ServiceCallback<Service, Void> callback = (ServiceCallback<Service, Void>) mock(ServiceCallback.class);
         pool.execute(NEVER_RETRY, callback);
@@ -105,7 +105,7 @@ public class AsyncServicePoolTest {
     @SuppressWarnings("unchecked")
     @Test
     public void testExecutesPartitionContextInPool() {
-        AsyncServicePool<Service> pool = newAsyncPool(MoreExecutors.sameThreadExecutor());
+        AsyncServicePool<Service> pool = newAsyncPool(MoreExecutors.newDirectExecutorService());
 
         ServiceCallback<Service, Void> callback = (ServiceCallback<Service, Void>) mock(ServiceCallback.class);
         PartitionContext context = mock(PartitionContext.class);
@@ -139,7 +139,7 @@ public class AsyncServicePoolTest {
         when(_mockPool.getAllEndPoints()).thenReturn(Lists.newArrayList(FOO, BAR, BAZ));
 
         // Use a real executor so that it can actually call into the callback
-        AsyncServicePool<Service> pool = newAsyncPool(MoreExecutors.sameThreadExecutor());
+        AsyncServicePool<Service> pool = newAsyncPool(MoreExecutors.newDirectExecutorService());
 
         ServiceCallback<Service, Void> callback = (ServiceCallback<Service, Void>) mock(ServiceCallback.class);
         pool.executeOnAll(NEVER_RETRY, callback);
@@ -162,7 +162,7 @@ public class AsyncServicePoolTest {
         when(_mockPool.executeOnEndPoint(same(BAZ), any(ServiceCallback.class))).thenReturn("BAZ");
 
         // Use a real executor so that it can actually call into the callback
-        AsyncServicePool<Service> pool = newAsyncPool(MoreExecutors.sameThreadExecutor());
+        AsyncServicePool<Service> pool = newAsyncPool(MoreExecutors.newDirectExecutorService());
 
         Collection<Future<String>> futures = pool.executeOnAll(NEVER_RETRY, mock(ServiceCallback.class));
         assertEquals(3, futures.size());
@@ -183,7 +183,7 @@ public class AsyncServicePoolTest {
         when(_mockPool.isRetriableException(any(Exception.class))).thenReturn(false);
 
         // Use a real executor so that it can actually call into the callback
-        AsyncServicePool<Service> pool = newAsyncPool(MoreExecutors.sameThreadExecutor());
+        AsyncServicePool<Service> pool = newAsyncPool(MoreExecutors.newDirectExecutorService());
 
         Collection<Future<Void>> futures = pool.executeOnAll(NEVER_RETRY, mock(ServiceCallback.class));
         assertEquals(1, futures.size());
@@ -206,7 +206,7 @@ public class AsyncServicePoolTest {
         when(_mockPool.isRetriableException(any(Exception.class))).thenReturn(true);
 
         // Use a real executor so that it can actually call into the callback
-        AsyncServicePool<Service> pool = newAsyncPool(MoreExecutors.sameThreadExecutor());
+        AsyncServicePool<Service> pool = newAsyncPool(MoreExecutors.newDirectExecutorService());
 
         Collection<Future<Void>> futures = pool.executeOnAll(NEVER_RETRY, mock(ServiceCallback.class));
         assertEquals(1, futures.size());
@@ -276,7 +276,7 @@ public class AsyncServicePoolTest {
         when(predicate.apply(same(BAZ))).thenReturn(true);
 
         // Use a real executor so that it can actually call into the callback
-        AsyncServicePool<Service> pool = newAsyncPool(MoreExecutors.sameThreadExecutor());
+        AsyncServicePool<Service> pool = newAsyncPool(MoreExecutors.newDirectExecutorService());
 
         ServiceCallback<Service, Void> callback = (ServiceCallback<Service, Void>) mock(ServiceCallback.class);
         pool.executeOn(predicate, NEVER_RETRY, callback);
@@ -300,7 +300,7 @@ public class AsyncServicePoolTest {
         when(predicate.apply(same(BAZ))).thenReturn(false);
 
         // Use a real executor so that it can actually call into the callback
-        AsyncServicePool<Service> pool = newAsyncPool(MoreExecutors.sameThreadExecutor());
+        AsyncServicePool<Service> pool = newAsyncPool(MoreExecutors.newDirectExecutorService());
         pool.executeOn(predicate, NEVER_RETRY, mock(ServiceCallback.class));
 
         verify(_mockPool, never()).executeOnEndPoint(any(ServiceEndPoint.class), any(ServiceCallback.class));
@@ -319,7 +319,7 @@ public class AsyncServicePoolTest {
         when(_mockPool.executeOnEndPoint(same(BAZ), any(ServiceCallback.class))).thenReturn("BAZ");
 
         // Use a real executor so that it can actually call into the callback
-        AsyncServicePool<Service> pool = newAsyncPool(MoreExecutors.sameThreadExecutor());
+        AsyncServicePool<Service> pool = newAsyncPool(MoreExecutors.newDirectExecutorService());
 
         ServiceEndPointPredicate predicate = mock(ServiceEndPointPredicate.class);
         when(predicate.apply(same(FOO))).thenReturn(false);
@@ -342,7 +342,7 @@ public class AsyncServicePoolTest {
         when(predicate.apply(any(ServiceEndPoint.class))).thenReturn(true);
 
         // Use a real executor so that it can actually call into the callback
-        AsyncServicePool<Service> pool = newAsyncPool(MoreExecutors.sameThreadExecutor());
+        AsyncServicePool<Service> pool = newAsyncPool(MoreExecutors.newDirectExecutorService());
 
         pool.executeOn(predicate, NEVER_RETRY, mock(ServiceCallback.class));
 
@@ -362,7 +362,7 @@ public class AsyncServicePoolTest {
         when(_mockPool.isRetriableException(any(Exception.class))).thenReturn(true);
 
         // Use a real executor so that it can actually call into the callback
-        AsyncServicePool<Service> pool = newAsyncPool(MoreExecutors.sameThreadExecutor());
+        AsyncServicePool<Service> pool = newAsyncPool(MoreExecutors.newDirectExecutorService());
 
         RetryPolicy retry = mock(RetryPolicy.class);
         when(retry.allowRetry(anyInt(), anyLong())).thenReturn(true);

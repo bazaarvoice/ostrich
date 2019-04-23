@@ -1,10 +1,9 @@
 package com.bazaarvoice.ostrich.examples.dictionary.service;
 
-import com.google.common.base.Objects;
-
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ExceptionMapper;
 import javax.ws.rs.ext.Provider;
+import java.util.Optional;
 
 @Provider
 public class IllegalArgumentExceptionMapper implements ExceptionMapper<IllegalArgumentException> {
@@ -12,7 +11,7 @@ public class IllegalArgumentExceptionMapper implements ExceptionMapper<IllegalAr
     public Response toResponse(IllegalArgumentException e) {
         return Response.status(Response.Status.BAD_REQUEST)
                 .header("X-BV-Exception", e.getClass().getName())
-                .entity(Objects.firstNonNull(e.getMessage(), "Invalid argument."))
+                .entity(Optional.ofNullable(e.getMessage()).orElse("Invalid argument."))
                 .build();
     }
 }

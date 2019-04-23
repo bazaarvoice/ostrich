@@ -300,7 +300,7 @@ public class MultiThreadedClientServiceCache<S> implements ServiceCache<S> {
 
         // This method is synchronized, as even though we are not swapping the copy-on-write map,
         // we are still modifying its contents a bit.
-        HeavyServiceHandle serviceHandle = _instancesPerEndpoint.get(endPoint);
+        HeavyServiceHandle<?> serviceHandle = _instancesPerEndpoint.get(endPoint);
         if (serviceHandle != null) {
             serviceHandle.flagAsEvicted();
         }

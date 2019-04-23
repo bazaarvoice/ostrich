@@ -13,7 +13,6 @@ import com.bazaarvoice.ostrich.exceptions.ServiceException;
 import com.bazaarvoice.ostrich.healthcheck.FixedHealthCheckRetryDelay;
 import com.bazaarvoice.ostrich.partition.PartitionFilter;
 import com.codahale.metrics.MetricRegistry;
-import com.google.common.base.Throwables;
 import com.google.common.base.Ticker;
 import com.google.common.collect.ImmutableList;
 import org.junit.After;
@@ -217,7 +216,7 @@ public class ServicePoolCachingTest {
                             try {
                                 canReturn.await(10, TimeUnit.SECONDS);
                             } catch (InterruptedException e) {
-                                throw Throwables.propagate(e);
+                                throw new RuntimeException(e);
                             }
 
                             return service;
@@ -276,7 +275,7 @@ public class ServicePoolCachingTest {
                             try {
                                 canReturn.await(10, TimeUnit.SECONDS);
                             } catch (InterruptedException e) {
-                                throw Throwables.propagate(e);
+                                throw new RuntimeException(e);
                             }
 
                             return service;

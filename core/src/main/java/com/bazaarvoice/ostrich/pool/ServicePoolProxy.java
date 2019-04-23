@@ -70,9 +70,10 @@ class ServicePoolProxy<S> extends AbstractInvocationHandler {
                 try {
                     return method.invoke(service, args);
                 } catch (IllegalAccessException e) {
-                    throw Throwables.propagate(e);
+                    throw new RuntimeException(e);
                 } catch (InvocationTargetException e) {
-                    throw Throwables.propagate(e.getTargetException());
+                    Throwables.throwIfUnchecked(e.getTargetException());
+                    throw new RuntimeException(e.getTargetException());
                 }
             }
         });

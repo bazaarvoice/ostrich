@@ -15,7 +15,7 @@ public class WordList implements Predicate<String> {
 
     public WordList(File file, final Predicate<String> filter) throws IOException {
         words = Sets.newHashSet();
-        Files.readLines(file, Charsets.UTF_8, new LineProcessor<Void>() {
+        Files.asCharSource(file, Charsets.UTF_8).readLines(new LineProcessor<Void>() {
             @Override
             public boolean processLine(String line) throws IOException {
                 if (filter.apply(line)) {
