@@ -20,7 +20,6 @@
             <plugin>
                 <!-- Shade the output jars so they contain all dependencies -->
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>1.7</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
