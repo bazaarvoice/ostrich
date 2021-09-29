@@ -15,15 +15,15 @@ by monitoring health-checks on the services.
 Ostrich uses [ZooKeeper](http://zookeeper.apache.org/) to store all of its data and consequently requires the ability to
 connect to a ZooKeeper ensemble.
 
-ZooKeeper supports basic monitoring via the network using the [four letter words]
-(http://zookeeper.apache.org/doc/r3.4.3/zookeeperAdmin.html#sc_zkCommands).  You can telnet or send a netcat command to
-a server to see statistics about which clients are connected, latencies, whether or not a server is leader, etc.
+ZooKeeper supports basic monitoring via the network using the [four letter words][zk_commands].  You can telnet or send
+a netcat command to a server to see statistics about which clients are connected, latencies, whether or not a server is
+leader, etc.
 
 Internally ZooKeeper servers will typically listen on three different ports.  The first is a back-channel port that it
 uses to communicate with the other ZooKeeper nodes in the ensemble.  Over this channel it uses the [Atomic Broadcast]
-(http://zookeeper.apache.org/doc/r3.4.3/zookeeperInternals.html) protocol (which despite the name is TCP based).  The
-second port is used by clients to connect to the ZooKeeper ensemble.  This is also a TCP based protocol.  Finally the
-third port is the leader election port that it uses to figure out which server in the ensemble is marked as the leader.
+protocol (which despite the name is TCP based).  The second port is used by clients to connect to the ZooKeeper ensemble.
+This is also a TCP based protocol.  Finally the third port is the leader election port that it uses to figure out which
+server in the ensemble is marked as the leader.
 
 #### 3. Service registration
 When services register with Ostrich they create a node in ZooKeeper that contains several pieces of information:
@@ -60,22 +60,25 @@ ensures that things are globally unique and never collide, but it does more than
 particular ZooKeeper session, so when a client loses its connection with ZooKeeper it can reconnect, reestablish the
 same session and check whether or not its nodes still exist.
 
-It's important to note that all of these registration nodes that are created are all [ephemeral nodes]
-(http://zookeeper.apache.org/doc/r3.4.3/zookeeperProgrammers.html#Ephemeral+Nodes).  In ZooKeeper an ephemeral node is
-one that ZooKeeper helps to manage the lifetime of.  Specifically ZooKeeper ties the lifetime of the node to the
-lifetime of the session.  When the session ends (either explicitly by the client, or unintentionally when a network
-interruption happens) the node will be automatically deleted by ZooKeeper.
+It's important to note that all of these registration nodes that are created are all [ephemeral nodes].  In ZooKeeper
+an ephemeral node is one that ZooKeeper helps to manage the lifetime of.  Specifically ZooKeeper ties the lifetime of
+the node to the lifetime of the session.  When the session ends (either explicitly by the client, or unintentionally
+when a network interruption happens) the node will be automatically deleted by ZooKeeper.
 
 
 #### 4. Host Discovery
 Host discovery is fairly straightforward.  When a client starts up and indicates that it is interested in consuming a
 particular service the Ostrich library will register a watch in ZooKeeper on `/ostrich/<service name>`.  That way any
 membership changes that happen to that directory will cause a notification to be sent to the interested clients.
-Because service registration uses [ephemeral nodes]
-(http://zookeeper.apache.org/doc/r3.4.3/zookeeperProgrammers.html#Ephemeral+Nodes) any host that has their JVM crash
+Because service registration uses [ephemeral nodes] any host that has their JVM crash
 will automatically have their registration removed without them having to execute code to do it.  Because of this any
 client that was using a particular service will automatically stop using it when it crashes or goes down.
 
 #### 5. Protocols
 From the Ostrich perspective it is completely protocol agnostic.  It makes no requirements of its users around what
 protocols their services should use.
+
+<!-- long links -->
+[zk_commands]: http://zookeeper.apache.org/doc/r3.4.3/zookeeperAdmin.html#sc_zkCommands
+[Atomic Broadcast]: http://zookeeper.apache.org/doc/r3.4.3/zookeeperInternals.html
+[ephemeral nodes]: http://zookeeper.apache.org/doc/r3.4.3/zookeeperProgrammers.html#Ephemeral+Nodes
