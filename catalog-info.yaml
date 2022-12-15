@@ -1,0 +1,23 @@
+####################################################################
+#   Component
+####################################################################
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ostrich
+  github.com/project-slug: bazaarvoice/ostrich
+  description: "library that enables SOA architectures to be built quickly and easily."
+  annotations:
+    github.com/project-slug: bazaarvoice/ostrich
+  links:
+    - url: https://bazaarvoice.slack.com/app_redirect?channel=dev-ex
+      title: Slack channel
+      icon: send
+  tags:
+    - java
+    - jvm
+spec:
+  type: library
+  system: devex-tools
+  lifecycle: production
+  owner: developer-experience
